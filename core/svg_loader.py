@@ -46,9 +46,21 @@ class SvgLoader:
         return (rect.left(), rect.top(), rect.right(), rect.bottom())
 
     def get_pivot(self, group_id):
+        """Return the pivot point of ``group_id``.
+
+        If the group contains a circle/ellipse, their center is used;
+        otherwise, fall back to the center of the group's bounding box.
         """
-        Retourne le centre de la bbox du groupe (pour les groupes pivot).
-        """
+        group_elem = self.root.find(f".//svg:g[@id='{group_id}']", self.namespaces)
+        if group_elem is not None:
+            for tag in ("circle", "ellipse"):
+                shape = group_elem.find(f"svg:{tag}", self.namespaces)
+                if shape is not None and "cx" in shape.attrib and "cy" in shape.attrib:
+                    try:
+                        return float(shape.attrib["cx"]), float(shape.attrib["cy"])
+                    except ValueError:
+                        pass
+
         bbox = self.get_group_bounding_box(group_id)
         if bbox is None:
             return 0, 0
