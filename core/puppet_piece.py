@@ -1,8 +1,9 @@
+import math
+
 from PySide6.QtWidgets import QGraphicsEllipseItem, QGraphicsSceneMouseEvent, QGraphicsItem
 from PySide6.QtSvgWidgets import QGraphicsSvgItem
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QBrush, QPen
-import math
 
 
 class RotationHandle(QGraphicsEllipseItem):

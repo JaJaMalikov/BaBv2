@@ -1,9 +1,10 @@
-from PySide6.QtWidgets import QMainWindow, QGraphicsView, QGraphicsScene, QVBoxLayout, QWidget
-from PySide6.QtGui import QPainter
+from PySide6.QtWidgets import QMainWindow, QGraphicsView, QGraphicsScene, QVBoxLayout, QWidget, QGraphicsPixmapItem
+from PySide6.QtGui import QPainter, QPixmap
 
 from core.scene_model import SceneModel, SceneObject
 from core.puppet_piece import PuppetPiece
-from core.puppet_model import Puppet, PARENT_MAP, PIVOT_MAP, Z_ORDER  # déjà prêt !
+from core.puppet_model import Puppet, PARENT_MAP, PIVOT_MAP, Z_ORDER 
+from core.svg_loader import SvgLoader
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -38,7 +39,6 @@ class MainWindow(QMainWindow):
     def add_puppet(self, file_path, puppet_name):
         # 1. Crée le Puppet (via le modèle) et le SvgLoader
         puppet = Puppet()
-        from core.svg_loader import SvgLoader
         loader = SvgLoader(file_path)
         renderer = loader.renderer  # Le renderer partagé
         self.renderers[puppet_name] = renderer  # Conserver la référence !
@@ -95,8 +95,6 @@ class MainWindow(QMainWindow):
         self.scene_model.add_object(obj)
         # Création graphique selon type
         # Ici, pour PNG :
-        from PySide6.QtWidgets import QGraphicsPixmapItem
-        from PySide6.QtGui import QPixmap
         pixmap = QPixmap(file_path)
         item = QGraphicsPixmapItem(pixmap)
         item.setPos(x, y)
