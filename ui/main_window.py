@@ -43,14 +43,16 @@ class MainWindow(QMainWindow):
         self.renderers[puppet_name] = renderer
         puppet.build_from_svg(loader, PARENT_MAP, PIVOT_MAP, Z_ORDER)
         self.scene_model.add_puppet(puppet_name, puppet)
-        self._add_puppet_graphics(puppet_name, puppet, file_path, renderer, loader)
+        self._add_puppet_graphics(puppet_name, puppet, file_path, renderer)
         self._fit_scene_to_svg(loader)
 
-    def _add_puppet_graphics(self, puppet_name, puppet, file_path, renderer, loader):
+    def _add_puppet_graphics(self, puppet_name, puppet, file_path, renderer):
+        items = {}
         for name, member in puppet.members.items():
             target_pivot_x, target_pivot_y = puppet.get_handle_target_pivot(name)
             piece = PuppetPiece(
-                file_path, name,
+                file_path,
+                name,
                 pivot_x=member.pivot[0],
                 pivot_y=member.pivot[1],
                 target_pivot_x=target_pivot_x,
@@ -59,10 +61,20 @@ class MainWindow(QMainWindow):
                 grid=None,
             )
             piece.setZValue(member.z_order)
-            self.scene.addItem(piece)
-            offset = loader.get_group_offset(name) or (0, 0)
-            piece.setPos(offset[0], offset[1])
+            items[name] = piece
             self.graphics_items[f"{puppet_name}:{name}"] = piece
+
+        # Établir la hiérarchie parent/enfant pour éviter la dislocation
+        for name, parent_name in PARENT_MAP.items():
+            piece = items.get(name)
+            if not piece:
+                continue
+            parent_piece = items.get(parent_name)
+            if parent_piece:
+                piece.setParentItem(parent_piece)
+            else:
+                # Les racines sont ajoutées directement à la scène
+                self.scene.addItem(piece)
 
     def _fit_scene_to_svg(self, loader):
         if hasattr(loader, "get_svg_viewbox"):
