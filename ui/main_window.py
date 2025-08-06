@@ -48,11 +48,19 @@ class MainWindow(QMainWindow):
 
     def _add_puppet_graphics(self, puppet_name, puppet, file_path, renderer, loader):
         for name, member in puppet.members.items():
+            offset = loader.get_group_offset(name) or (0, 0)
+            pivot_x = member.pivot[0] - offset[0]
+            pivot_y = member.pivot[1] - offset[1]
             target_pivot_x, target_pivot_y = puppet.get_handle_target_pivot(name)
+            if target_pivot_x is not None and target_pivot_y is not None:
+                target_pivot_x -= offset[0]
+                target_pivot_y -= offset[1]
+
             piece = PuppetPiece(
-                file_path, name,
-                pivot_x=member.pivot[0],
-                pivot_y=member.pivot[1],
+                file_path,
+                name,
+                pivot_x=pivot_x,
+                pivot_y=pivot_y,
                 target_pivot_x=target_pivot_x,
                 target_pivot_y=target_pivot_y,
                 renderer=renderer,
@@ -60,7 +68,6 @@ class MainWindow(QMainWindow):
             )
             piece.setZValue(member.z_order)
             self.scene.addItem(piece)
-            offset = loader.get_group_offset(name) or (0, 0)
             piece.setPos(offset[0], offset[1])
             self.graphics_items[f"{puppet_name}:{name}"] = piece
 
