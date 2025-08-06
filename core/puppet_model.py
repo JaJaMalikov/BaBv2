@@ -121,8 +121,10 @@ class Puppet:
             if group_id not in parent_map:
                     continue
             bbox = svg_loader.get_group_bounding_box(group_id) or (0, 0, 0, 0)
+            x_min, y_min, _, _ = bbox
             pivot_group = pivot_map[group_id] if pivot_map and group_id in pivot_map else group_id
-            pivot = svg_loader.get_pivot(pivot_group)
+            pivot_global = svg_loader.get_pivot(pivot_group)
+            pivot = (pivot_global[0] - x_min, pivot_global[1] - y_min)
             z_order = z_order_map.get(group_id, 0) if z_order_map else 0
             self.members[group_id] = PuppetMember(group_id, None, pivot, bbox, z_order)
         for child, parent in parent_map.items():
