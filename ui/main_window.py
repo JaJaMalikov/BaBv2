@@ -47,12 +47,19 @@ class MainWindow(QMainWindow):
         self._fit_scene_to_svg(loader)
 
     def _add_puppet_graphics(self, puppet_name, puppet, file_path, renderer, loader):
+        created_items = {}
         for name, member in puppet.members.items():
+            offset = loader.get_group_offset(name) or (0, 0)
+            pivot_x = member.pivot[0] - offset[0]
+            pivot_y = member.pivot[1] - offset[1]
             target_pivot_x, target_pivot_y = puppet.get_handle_target_pivot(name)
+            if target_pivot_x is not None and target_pivot_y is not None:
+                target_pivot_x -= offset[0]
+                target_pivot_y -= offset[1]
             piece = PuppetPiece(
                 file_path, name,
-                pivot_x=member.pivot[0],
-                pivot_y=member.pivot[1],
+                pivot_x=pivot_x,
+                pivot_y=pivot_y,
                 target_pivot_x=target_pivot_x,
                 target_pivot_y=target_pivot_y,
                 renderer=renderer,
@@ -60,9 +67,14 @@ class MainWindow(QMainWindow):
             )
             piece.setZValue(member.z_order)
             self.scene.addItem(piece)
-            offset = loader.get_group_offset(name) or (0, 0)
             piece.setPos(offset[0], offset[1])
+            created_items[name] = piece
             self.graphics_items[f"{puppet_name}:{name}"] = piece
+
+        for name, piece in created_items.items():
+            parent_name = PARENT_MAP.get(name)
+            if parent_name and parent_name in created_items:
+                piece.setParentItem(created_items[parent_name])
 
     def _fit_scene_to_svg(self, loader):
         if hasattr(loader, "get_svg_viewbox"):
