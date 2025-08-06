@@ -30,16 +30,12 @@ PIVOT_MAP = {
     "tete": "cou",
     "haut_bras_droite": "epaule_droite",
     "avant_bras_droite": "coude_droite",
-    "main_droite": "avant_bras_droite",
     "haut_bras_gauche": "epaule_gauche",
     "avant_bras_gauche": "coude_gauche",
-    "main_gauche": "avant_bras_gauche",
     "cuisse_droite": "hanche_droite",
     "tibia_droite": "genou_droite",
-    "pied_droite": "tibia_droite",
     "cuisse_gauche": "hanche_gauche",
     "tibia_gauche": "genou_gauche",
-    "pied_gauche": "tibia_gauche",
     "cou": "cou",
     "epaule_droite": "epaule_droite",
     "coude_droite": "coude_droite",
@@ -68,14 +64,14 @@ Z_ORDER = {
     "main_gauche": 3,
     "hanche_droite": -1,
     "cuisse_droite": -2,
-    "genou_droite": -3,
-    "tibia_droite": -4,
-    "pied_droite": -5,
+    "genou_droite": 2,
+    "tibia_droite": 2,
+    "pied_droite": 3,
     "hanche_gauche": -1,
     "cuisse_gauche": -2,
-    "genou_gauche": -3,
-    "tibia_gauche": -4,
-    "pied_gauche": -5,
+    "genou_gauche": 2,
+    "tibia_gauche": 2,
+    "pied_gauche": 3,
 }
 
 
@@ -122,6 +118,8 @@ class Puppet:
         self.child_map = compute_child_map(parent_map)
         groups = svg_loader.get_groups()
         for group_id in groups:
+            if group_id not in parent_map:
+                    continue
             bbox = svg_loader.get_group_bounding_box(group_id) or (0, 0, 0, 0)
             pivot_group = pivot_map[group_id] if pivot_map and group_id in pivot_map else group_id
             pivot = svg_loader.get_pivot(pivot_group)
