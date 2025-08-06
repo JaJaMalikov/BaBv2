@@ -49,10 +49,23 @@ class MainWindow(QMainWindow):
     def _add_puppet_graphics(self, puppet_name, puppet, file_path, renderer, loader):
         for name, member in puppet.members.items():
             target_pivot_x, target_pivot_y = puppet.get_handle_target_pivot(name)
+            offset_x, offset_y = loader.get_group_offset(name) or (0, 0)
+
+            # Convert global pivots to local coordinates relative to the group's
+            # bounding box. This ensures that the transform origin and rotation
+            # handle are placed correctly once the item is positioned in the
+            # scene.
+            pivot_x = member.pivot[0] - offset_x
+            pivot_y = member.pivot[1] - offset_y
+            if target_pivot_x is not None and target_pivot_y is not None:
+                target_pivot_x -= offset_x
+                target_pivot_y -= offset_y
+
             piece = PuppetPiece(
-                file_path, name,
-                pivot_x=member.pivot[0],
-                pivot_y=member.pivot[1],
+                file_path,
+                name,
+                pivot_x=pivot_x,
+                pivot_y=pivot_y,
                 target_pivot_x=target_pivot_x,
                 target_pivot_y=target_pivot_y,
                 renderer=renderer,
@@ -60,8 +73,7 @@ class MainWindow(QMainWindow):
             )
             piece.setZValue(member.z_order)
             self.scene.addItem(piece)
-            offset = loader.get_group_offset(name) or (0, 0)
-            piece.setPos(offset[0], offset[1])
+            piece.setPos(offset_x, offset_y)
             self.graphics_items[f"{puppet_name}:{name}"] = piece
 
     def _fit_scene_to_svg(self, loader):
