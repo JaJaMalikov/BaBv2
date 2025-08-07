@@ -2,7 +2,7 @@ import os
 
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QGraphicsItem
 import pytest
 
 import sys
@@ -47,3 +47,19 @@ def test_hierarchy_and_pivot(app):
 
     # L'ordre d'affichage reste celui défini manuellement
     assert upper.zValue() == -1
+
+
+def test_puppet_translation(app):
+    window = MainWindow()
+    torso = window.graphics_items["manu:torse"]
+    hand = window.graphics_items["manu:main_droite"]
+
+    # Le torse doit être déplaçable
+    assert torso.flags() & QGraphicsItem.ItemIsMovable
+
+    original = hand.mapToScene(hand.transformOriginPoint())
+    torso.setPos(torso.x() + 50, torso.y() + 20)
+    moved = hand.mapToScene(hand.transformOriginPoint())
+
+    assert moved.x() == pytest.approx(original.x() + 50)
+    assert moved.y() == pytest.approx(original.y() + 20)

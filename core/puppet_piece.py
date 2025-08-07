@@ -81,6 +81,9 @@ class PuppetPiece(QGraphicsSvgItem):
         # Magnétisme à la grille
         if change == QGraphicsItem.ItemPositionChange and self.scene() and self.grid:
             return self.grid.snap_to_grid(value)
+        if change == QGraphicsItem.ItemPositionHasChanged:
+            for child in self.children:
+                child.update_transform_from_parent()
         # Z-value du handle quand l'item change de Z
         if change == QGraphicsItem.ItemZValueHasChanged and self.rotation_handle:
             self.rotation_handle.setZValue(value + 1)
