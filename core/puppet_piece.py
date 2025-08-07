@@ -22,8 +22,8 @@ class RotationHandle(QGraphicsEllipseItem):
         mouse_in_scene = event.scenePos()
         vector = mouse_in_scene - pivot_in_scene
         angle_in_scene = math.degrees(math.atan2(vector.y(), vector.x()))
-        parent_rotation = self.parent.parentItem().rotation() if self.parent.parentItem() else 0
-        self.parent.setRotation(angle_in_scene - parent_rotation)
+        parent_rotation = self.parent.parent_piece.rotation() if self.parent.parent_piece else 0
+        self.parent.rotate_piece(angle_in_scene - parent_rotation)
 
 
 class PuppetPiece(QGraphicsSvgItem):
@@ -54,6 +54,12 @@ class PuppetPiece(QGraphicsSvgItem):
         self.grid = grid
         self.setTransformOriginPoint(self.pivot_x, self.pivot_y)
 
+        # Chaînage logique sans dépendre de QGraphicsItem
+        self.parent_piece = None
+        self.children = []
+        self.rel_to_parent = (0.0, 0.0)
+        self.local_rotation = 0.0
+
         # Handle aligné dans l'axe du segment
         if name not in ["main_droite", "main_gauche"]:
             self.rotation_handle = RotationHandle(self)
@@ -83,5 +89,34 @@ class PuppetPiece(QGraphicsSvgItem):
             self.rotation_handle.setZValue(self.zValue() + 1)
         return super().itemChange(change, value)
 
+    def set_parent_piece(self, parent, rel_x=0.0, rel_y=0.0):
+        self.parent_piece = parent
+        self.rel_to_parent = (rel_x, rel_y)
+        if parent and self not in parent.children:
+            parent.children.append(self)
+
+    def update_transform_from_parent(self):
+        if not self.parent_piece:
+            return
+
+        parent = self.parent_piece
+        angle_rad = math.radians(parent.rotation())
+        dx, dy = self.rel_to_parent
+        rotated_dx = dx * math.cos(angle_rad) - dy * math.sin(angle_rad)
+        rotated_dy = dx * math.sin(angle_rad) + dy * math.cos(angle_rad)
+        parent_pivot = parent.mapToScene(parent.transformOriginPoint())
+        scene_x = parent_pivot.x() + rotated_dx
+        scene_y = parent_pivot.y() + rotated_dy
+        self.setPos(scene_x - self.pivot_x, scene_y - self.pivot_y)
+        self.setRotation(parent.rotation() + self.local_rotation)
+        for child in self.children:
+            child.update_transform_from_parent()
+
     def rotate_piece(self, angle_degrees):
-        self.setRotation(angle_degrees)
+        self.local_rotation = angle_degrees
+        if self.parent_piece:
+            self.update_transform_from_parent()
+        else:
+            self.setRotation(self.local_rotation)
+            for child in self.children:
+                child.update_transform_from_parent()

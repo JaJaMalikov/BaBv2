@@ -47,22 +47,62 @@ class MainWindow(QMainWindow):
         self._fit_scene_to_svg(loader)
 
     def _add_puppet_graphics(self, puppet_name, puppet, file_path, renderer, loader):
+        # Pré-calcul des offsets de chaque groupe
+        offsets = {
+            name: loader.get_group_offset(name) or (0, 0)
+            for name in puppet.members
+        }
+
+        # Création des pièces du pantin
+        pieces = {}
         for name, member in puppet.members.items():
+            offset_x, offset_y = offsets[name]
+
+            # Pivot local relatif à l'origine de l'item
+            pivot_x = member.pivot[0] - offset_x
+            pivot_y = member.pivot[1] - offset_y
+
+            # Direction du handle : convertie aussi dans le repère local
             target_pivot_x, target_pivot_y = puppet.get_handle_target_pivot(name)
+            if target_pivot_x is not None and target_pivot_y is not None:
+                target_pivot_x -= offset_x
+                target_pivot_y -= offset_y
+
             piece = PuppetPiece(
-                file_path, name,
-                pivot_x=member.pivot[0],
-                pivot_y=member.pivot[1],
+                file_path,
+                name,
+                pivot_x=pivot_x,
+                pivot_y=pivot_y,
                 target_pivot_x=target_pivot_x,
                 target_pivot_y=target_pivot_y,
                 renderer=renderer,
                 grid=None,
             )
             piece.setZValue(member.z_order)
-            self.scene.addItem(piece)
-            offset = loader.get_group_offset(name) or (0, 0)
-            piece.setPos(offset[0], offset[1])
+            pieces[name] = piece
             self.graphics_items[f"{puppet_name}:{name}"] = piece
+
+        # Chaînage logique sans affecter l'ordre d'affichage
+        for name, piece in pieces.items():
+            member = puppet.members[name]
+            offset_x, offset_y = offsets[name]
+            if member.parent:
+                parent_piece = pieces[member.parent.name]
+                parent_member = puppet.members[member.parent.name]
+                rel_x = member.pivot[0] - parent_member.pivot[0]
+                rel_y = member.pivot[1] - parent_member.pivot[1]
+                piece.set_parent_piece(parent_piece, rel_x, rel_y)
+            else:
+                piece.setPos(offset_x, offset_y)
+
+        # Ajout des items à la scène
+        for piece in pieces.values():
+            self.scene.addItem(piece)
+
+        # Positionnement initial des enfants
+        for piece in pieces.values():
+            if piece.parent_piece:
+                piece.update_transform_from_parent()
 
     def _fit_scene_to_svg(self, loader):
         if hasattr(loader, "get_svg_viewbox"):
