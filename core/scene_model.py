@@ -28,13 +28,14 @@ class Keyframe:
     def __init__(self, index):
         self.index = index
         self.objects = {}  # name -> état (position, rotation, scale, attachment, etc.)
+        self.puppets = {} # puppet_name -> { member_name -> { rot: ..., pos: ...} }
 
 class SceneModel:
     def __init__(self):
         self.puppets = {}    # name -> Puppet instance
         self.objects = {}    # name -> SceneObject
         self.background = None  # SceneObject
-        self.keyframes = []  # List[Keyframe]
+        self.keyframes = {}  # index -> Keyframe
         self.current_frame = 0
 
     # -----------------------------
@@ -68,31 +69,36 @@ class SceneModel:
     # -----------------------------
     # KEYFRAMES ET TIMELINE
     # -----------------------------
-    def add_keyframe(self, index=None):
-        if index is None:
-            index = len(self.keyframes)
-        kf = Keyframe(index)
-        # Snapshot de l'état actuel
+    def add_keyframe(self, index):
+        kf = self.keyframes.get(index)
+        if not kf:
+            kf = Keyframe(index)
+            self.keyframes[index] = kf
+        
+        # Snapshot de l'état des objets
         for name, obj in self.objects.items():
-            kf.objects[name] = obj.__dict__.copy()  # shallow copy (adapt as needed)
-        # Pareil pour les puppets si tu veux snapshot leur pose
-        self.keyframes.insert(index, kf)
+            kf.objects[name] = obj.__dict__.copy()
+
+        # Snapshot de l'état des marionnettes
+        for puppet_name, puppet in self.puppets.items():
+            puppet_state = {}
+            for member_name, member in puppet.members.items():
+                # Note: On a besoin d'un moyen de récupérer les `PuppetPiece` graphiques
+                # pour avoir leur état actuel. Ceci sera géré dans la MainWindow.
+                pass
+            kf.puppets[puppet_name] = puppet_state
+
+        # Trier les keyframes par index pour la lecture
+        self.keyframes = dict(sorted(self.keyframes.items()))
         return kf
 
     def remove_keyframe(self, index):
-        if 0 <= index < len(self.keyframes):
-            self.keyframes.pop(index)
+        self.keyframes.pop(index, None)
 
     def go_to_frame(self, index):
-        if 0 <= index < len(self.keyframes):
-            self.current_frame = index
-            kf = self.keyframes[index]
-            # Restaurer l'état des objets (à adapter si besoin)
-            for name, state in kf.objects.items():
-                if name in self.objects:
-                    for key, value in state.items():
-                        setattr(self.objects[name], key, value)
-            # Idem pour les pantins (à compléter...)
+        self.current_frame = index
+        # La restauration de l'état se fera dans la MainWindow
+        # qui a accès aux objets graphiques.
 
     # -----------------------------
     # IMPORT/EXPORT
@@ -105,9 +111,10 @@ class SceneModel:
             "keyframes": [
                 {
                     "index": kf.index,
-                    "objects": kf.objects
+                    "objects": kf.objects,
+                    "puppets": kf.puppets
                 }
-                for kf in self.keyframes
+                for kf in self.keyframes.values()
             ]
         }
         with open(file_path, "w") as f:
@@ -115,8 +122,24 @@ class SceneModel:
 
     def import_json(self, file_path):
         import json
-        with open(file_path, "r") as f:
-            data = json.load(f)
-        # A compléter pour restaurer tout l'état...
+        try:
+            with open(file_path, "r") as f:
+                data = json.load(f)
+        except (IOError, json.JSONDecodeError) as e:
+            print(f"Erreur lors du chargement du fichier : {e}")
+            return
+
+        self.keyframes.clear()
+
+        loaded_keyframes = data.get("keyframes", [])
+        for kf_data in loaded_keyframes:
+            index = kf_data.get("index")
+            if index is not None:
+                new_kf = Keyframe(index)
+                new_kf.objects = kf_data.get("objects", {})
+                new_kf.puppets = kf_data.get("puppets", {})
+                self.keyframes[index] = new_kf
+        
+        self.keyframes = dict(sorted(self.keyframes.items()))
 
 
