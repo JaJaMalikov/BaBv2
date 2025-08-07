@@ -100,15 +100,18 @@ class PuppetPiece(QGraphicsSvgItem):
             return
 
         parent = self.parent_piece
-        angle_rad = math.radians(parent.rotation())
+        parent_rotation = parent.rotation()
+        angle_rad = math.radians(parent_rotation)
         dx, dy = self.rel_to_parent
-        rotated_dx = dx * math.cos(angle_rad) - dy * math.sin(angle_rad)
-        rotated_dy = dx * math.sin(angle_rad) + dy * math.cos(angle_rad)
+        cos_a = math.cos(angle_rad)
+        sin_a = math.sin(angle_rad)
+        rotated_dx = dx * cos_a - dy * sin_a
+        rotated_dy = dx * sin_a + dy * cos_a
         parent_pivot = parent.mapToScene(parent.transformOriginPoint())
         scene_x = parent_pivot.x() + rotated_dx
         scene_y = parent_pivot.y() + rotated_dy
         self.setPos(scene_x - self.pivot_x, scene_y - self.pivot_y)
-        self.setRotation(parent.rotation() + self.local_rotation)
+        self.setRotation(parent_rotation + self.local_rotation)
         for child in self.children:
             child.update_transform_from_parent()
 
