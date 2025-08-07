@@ -47,3 +47,20 @@ def test_hierarchy_and_pivot(app):
 
     # L'ordre d'affichage reste celui défini manuellement
     assert upper.zValue() == -1
+
+
+def test_move_puppet(app):
+    window = MainWindow()
+    from PySide6.QtWidgets import QGraphicsItem
+    torso = window.graphics_items["manu:torse"]
+    arm = window.graphics_items["manu:haut_bras_droite"]
+
+    assert torso.flags() & QGraphicsItem.ItemIsMovable
+
+    arm_before = arm.mapToScene(arm.transformOriginPoint())
+    torso.setPos(torso.pos().x() + 40, torso.pos().y() + 25)
+    app.processEvents()
+    arm_after = arm.mapToScene(arm.transformOriginPoint())
+
+    assert arm_after.x() == pytest.approx(arm_before.x() + 40)
+    assert arm_after.y() == pytest.approx(arm_before.y() + 25)

@@ -53,6 +53,7 @@ class PuppetPiece(QGraphicsSvgItem):
         self.target_pivot_y = float(target_pivot_y) if target_pivot_y is not None else None
         self.grid = grid
         self.setTransformOriginPoint(self.pivot_x, self.pivot_y)
+        self.setFlag(QGraphicsItem.ItemSendsGeometryChanges)
 
         # Chaînage logique sans dépendre de QGraphicsItem
         self.parent_piece = None
@@ -87,6 +88,10 @@ class PuppetPiece(QGraphicsSvgItem):
         # Z-value du handle quand la pièce est ajoutée à la scène
         if change == QGraphicsItem.ItemSceneHasChanged and self.rotation_handle:
             self.rotation_handle.setZValue(self.zValue() + 1)
+        # Déplacement du membre : tous les enfants suivent
+        if change == QGraphicsItem.ItemPositionHasChanged:
+            for child in self.children:
+                child.update_transform_from_parent()
         return super().itemChange(change, value)
 
     def set_parent_piece(self, parent, rel_x=0.0, rel_y=0.0):
