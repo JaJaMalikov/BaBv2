@@ -7,6 +7,11 @@ from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtCore import QRectF
 
 
+_COORD_PATTERN = re.compile(
+    r"((?:[-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?\s*)+)"
+)
+
+
 class SvgLoader:
     def __init__(self, svg_path: str) -> None:
         self.svg_path = svg_path
@@ -130,8 +135,4 @@ def translate_path(d, dx, dy):
                 new_nums.append(n)
         return " ".join(new_nums)
 
-    return re.sub(
-        r"((?:[-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?\s*)+)",
-        repl,
-        d
-    )
+    return _COORD_PATTERN.sub(repl, d)
