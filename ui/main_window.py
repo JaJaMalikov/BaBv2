@@ -1,6 +1,11 @@
 from PySide6.QtWidgets import (
-    QMainWindow, QGraphicsView, QGraphicsScene, QVBoxLayout,
-    QWidget, QGraphicsPixmapItem
+    QMainWindow,
+    QGraphicsView,
+    QGraphicsScene,
+    QVBoxLayout,
+    QWidget,
+    QGraphicsPixmapItem,
+    QGraphicsItem,
 )
 from PySide6.QtGui import QPainter, QPixmap
 from PySide6.QtCore import Qt
@@ -97,6 +102,8 @@ class MainWindow(QMainWindow):
                 piece.set_parent_piece(parent_piece, rel_x, rel_y)
             else:
                 piece.setPos(offset_x, offset_y)
+                piece.setFlag(QGraphicsItem.ItemIsMovable, True)
+                piece.setFlag(QGraphicsItem.ItemSendsGeometryChanges, True)
 
         # Ajout des items à la scène
         for piece in pieces.values():
