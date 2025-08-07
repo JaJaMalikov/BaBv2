@@ -7,6 +7,11 @@ from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtCore import QRectF
 
 
+_COORD_PATTERN = re.compile(
+    r"((?:[-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?\s*)+)"
+)
+
+
 class SvgLoader:
     def __init__(self, svg_path: str) -> None:
         self.svg_path = svg_path
@@ -47,70 +52,15 @@ class SvgLoader:
 
     def get_pivot(self, group_id):
         """
-        Détermine le pivot (origine de rotation) du groupe
-        en prenant le centre du plus petit cercle trouvé.
+        Retourne le centre de la bbox du groupe (pour les groupes pivot).
         """
-        group_elem = self.root.find(
-            f".//svg:g[@id='{group_id}']",
-            self.namespaces
-        )
-
-        if group_elem is None:
+        bbox = self.get_group_bounding_box(group_id)
+        if bbox is None:
             return 0, 0
-
-        min_radius = None
-        pivot_x = 0
-        pivot_y = 0
-
-        # First inspect <circle> elements directly
-        for circ in group_elem.findall(".//svg:circle", self.namespaces):
-            try:
-                r = float(circ.attrib.get("r", "0"))
-                cx = float(circ.attrib.get("cx", "0"))
-                cy = float(circ.attrib.get("cy", "0"))
-            except ValueError:
-                continue
-
-            if min_radius is None or r < min_radius:
-                min_radius = r
-                pivot_x = cx
-                pivot_y = cy
-
-        # Fallback to look for small path based circles
-        for circle in group_elem.findall(".//svg:path", self.namespaces):
-            d = circle.attrib.get("d")
-            if d:
-                bounds = self._get_path_bounds(d)
-                if bounds:
-                    x_min, y_min, x_max, y_max = bounds
-                    width = x_max - x_min
-                    height = y_max - y_min
-                    radius = min(width, height) / 2
-                    cx = x_min + width / 2
-                    cy = y_min + height / 2
-
-                    if min_radius is None or radius < min_radius:
-                        min_radius = radius
-                        pivot_x = cx
-                        pivot_y = cy
-
-        return pivot_x, pivot_y
-
-    def _get_path_bounds(self, d):
-        """
-        Analyse grossièrement un chemin SVG pour trouver ses bornes min/max.
-        """
-        try:
-            coords = re.findall(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?", d)
-            coords = [float(c) for c in coords]
-            xs = coords[::2]
-            ys = coords[1::2]
-            if not xs or not ys:
-                return None
-            return min(xs), min(ys), max(xs), max(ys)
-        except Exception as e:
-            print(f"Erreur parsing path: {e}")
-            return None
+        x_min, y_min, x_max, y_max = bbox
+        cx = (x_min + x_max) / 2
+        cy = (y_min + y_max) / 2
+        return cx, cy
 
     def extract_group(self, group_id: str, output_path: str):
         """Export ``group_id`` as a standalone SVG file."""
@@ -157,6 +107,14 @@ class SvgLoader:
 
         return x_min, y_min
 
+    def get_svg_viewbox(self):
+        viewbox = self.root.attrib.get("viewBox")
+        if viewbox:
+            return [float(x) for x in viewbox.strip().split()]
+        # Fallback : width/height (mais pas toujours fiable)
+        width = float(self.root.attrib.get("width", 0))
+        height = float(self.root.attrib.get("height", 0))
+        return [0, 0, width, height]
 
 def translate_path(d, dx, dy):
     """
@@ -177,8 +135,4 @@ def translate_path(d, dx, dy):
                 new_nums.append(n)
         return " ".join(new_nums)
 
-    return re.sub(
-        r"((?:[-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?\s*)+)",
-        repl,
-        d
-    )
+    return _COORD_PATTERN.sub(repl, d)
