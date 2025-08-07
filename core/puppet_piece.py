@@ -87,6 +87,10 @@ class PuppetPiece(QGraphicsSvgItem):
         # Z-value du handle quand la pièce est ajoutée à la scène
         if change == QGraphicsItem.ItemSceneHasChanged and self.rotation_handle:
             self.rotation_handle.setZValue(self.zValue() + 1)
+        # Propagation du déplacement aux enfants
+        if change == QGraphicsItem.ItemPositionHasChanged:
+            for child in self.children:
+                child.update_transform_from_parent()
         return super().itemChange(change, value)
 
     def set_parent_piece(self, parent, rel_x=0.0, rel_y=0.0):

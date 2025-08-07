@@ -47,3 +47,19 @@ def test_hierarchy_and_pivot(app):
 
     # L'ordre d'affichage reste celui défini manuellement
     assert upper.zValue() == -1
+
+
+def test_puppet_translation(app):
+    window = MainWindow()
+
+    torso = window.graphics_items["manu:torse"]
+    elbow = window.graphics_items["manu:coude_droite"]
+
+    before = elbow.mapToScene(elbow.transformOriginPoint())
+
+    dx, dy = 50, 30
+    torso.setPos(torso.x() + dx, torso.y() + dy)
+
+    after = elbow.mapToScene(elbow.transformOriginPoint())
+    assert after.x() == pytest.approx(before.x() + dx)
+    assert after.y() == pytest.approx(before.y() + dy)
