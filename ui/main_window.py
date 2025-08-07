@@ -1,19 +1,22 @@
 from PySide6.QtWidgets import (
     QMainWindow, QGraphicsView, QGraphicsScene, QVBoxLayout,
-    QWidget, QGraphicsPixmapItem, QGraphicsEllipseItem
+    QWidget, QGraphicsPixmapItem
 )
-from PySide6.QtGui import QPainter, QPixmap, QPen, QColor
+from PySide6.QtGui import QPainter, QPixmap
 from PySide6.QtCore import Qt
 
 from core.scene_model import SceneModel, SceneObject
 from core.puppet_piece import PuppetPiece
 from core.puppet_model import Puppet, PARENT_MAP, PIVOT_MAP, Z_ORDER
 from core.svg_loader import SvgLoader
+from ui.ui_menu import Ui_MainWindow
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Borne and the Bayrou - Disco MIX")
+        self.ui = Ui_MainWindow()
+        self.ui.setupUi(self)
 
         # --- Modèle central ---
         self.scene_model = SceneModel()
