@@ -2,7 +2,7 @@ import os
 
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QGraphicsItem
 import pytest
 
 import sys
@@ -47,3 +47,25 @@ def test_hierarchy_and_pivot(app):
 
     # L'ordre d'affichage reste celui défini manuellement
     assert upper.zValue() == -1
+
+
+def test_puppet_translation_moves_children(app):
+    window = MainWindow()
+
+    torso = window.graphics_items["manu:torse"]
+    elbow = window.graphics_items["manu:coude_droite"]
+
+    # Le torse peut être déplacé
+    assert torso.flags() & QGraphicsItem.ItemIsMovable
+
+    torso_pivot_before = torso.mapToScene(torso.transformOriginPoint())
+    elbow_pivot_before = elbow.mapToScene(elbow.transformOriginPoint())
+    dx_before = elbow_pivot_before.x() - torso_pivot_before.x()
+    dy_before = elbow_pivot_before.y() - torso_pivot_before.y()
+
+    torso.setPos(torso.x() + 50, torso.y() + 20)
+
+    torso_pivot_after = torso.mapToScene(torso.transformOriginPoint())
+    elbow_pivot_after = elbow.mapToScene(elbow.transformOriginPoint())
+    assert elbow_pivot_after.x() - torso_pivot_after.x() == pytest.approx(dx_before)
+    assert elbow_pivot_after.y() - torso_pivot_after.y() == pytest.approx(dy_before)

@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import (
     QMainWindow, QGraphicsView, QGraphicsScene, QVBoxLayout,
-    QWidget, QGraphicsPixmapItem
+    QWidget, QGraphicsPixmapItem, QGraphicsItem
 )
 from PySide6.QtGui import QPainter, QPixmap
 from PySide6.QtCore import Qt
@@ -82,6 +82,9 @@ class MainWindow(QMainWindow):
                 grid=None,
             )
             piece.setZValue(member.z_order)
+            if member.parent is None:
+                piece.setFlag(QGraphicsItem.ItemIsMovable)
+                piece.setFlag(QGraphicsItem.ItemSendsGeometryChanges)
             pieces[name] = piece
             self.graphics_items[f"{puppet_name}:{name}"] = piece
 
