@@ -37,6 +37,9 @@ class SceneModel:
         self.background = None  # SceneObject
         self.keyframes = {}  # index -> Keyframe
         self.current_frame = 0
+        self.start_frame = 0
+        self.end_frame = 100
+        self.fps = 24
 
     # -----------------------------
     # PUPPETS ET OBJETS
@@ -106,6 +109,11 @@ class SceneModel:
     def export_json(self, file_path):
         import json
         data = {
+            "settings": {
+                "start_frame": self.start_frame,
+                "end_frame": self.end_frame,
+                "fps": self.fps
+            },
             "puppets": list(self.puppets.keys()),  # à affiner
             "objects": {k: v.__dict__ for k, v in self.objects.items()},
             "keyframes": [
@@ -128,6 +136,11 @@ class SceneModel:
         except (IOError, json.JSONDecodeError) as e:
             print(f"Erreur lors du chargement du fichier : {e}")
             return
+
+        settings = data.get("settings", {})
+        self.start_frame = settings.get("start_frame", 0)
+        self.end_frame = settings.get("end_frame", 100)
+        self.fps = settings.get("fps", 24)
 
         self.keyframes.clear()
 

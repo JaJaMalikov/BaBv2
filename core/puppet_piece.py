@@ -3,7 +3,7 @@ import math
 from PySide6.QtWidgets import QGraphicsEllipseItem, QGraphicsSceneMouseEvent, QGraphicsItem
 from PySide6.QtSvgWidgets import QGraphicsSvgItem
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QBrush, QPen
+from PySide6.QtGui import QBrush, QPen, QColor
 
 
 class RotationHandle(QGraphicsEllipseItem):
@@ -67,15 +67,27 @@ class PuppetPiece(QGraphicsSvgItem):
                 dx = self.target_pivot_x - self.pivot_x
                 dy = self.target_pivot_y - self.pivot_y
                 norm = (dx ** 2 + dy ** 2) ** 0.5 or 1
-                offset = 30  # distance (pixels) du pivot
+                offset = 40  # distance (pixels) du pivot
                 handle_x = self.pivot_x + dx / norm * offset
                 handle_y = self.pivot_y + dy / norm * offset
             else:
-                handle_x = self.pivot_x + 30
+                handle_x = self.pivot_x + 40
                 handle_y = self.pivot_y
             self.rotation_handle.setPos(handle_x, handle_y)
         else:
             self.rotation_handle = None
+
+    def set_handle_visibility(self, visible):
+        if not self.rotation_handle:
+            return
+        if visible:
+            brush_color = QColor(0, 150, 255, 120) # Bleu semi-transparent
+            pen_color = QColor(255, 255, 255, 180) # Blanc semi-transparent
+            self.rotation_handle.setBrush(QBrush(brush_color))
+            self.rotation_handle.setPen(QPen(pen_color, 1.5))
+        else:
+            self.rotation_handle.setBrush(QBrush(Qt.transparent))
+            self.rotation_handle.setPen(QPen(Qt.transparent))
 
     def itemChange(self, change, value):
         # Magnétisme à la grille

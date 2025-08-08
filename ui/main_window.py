@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
     QDockWidget,
     QFileDialog,
 )
-from PySide6.QtGui import QPainter, QPixmap
+from PySide6.QtGui import QPainter, QPixmap, QAction
 from PySide6.QtCore import Qt, QTimer
 
 from core.scene_model import SceneModel, SceneObject
@@ -48,14 +48,20 @@ class MainWindow(QMainWindow):
         
         # --- Timer pour la lecture ---
         self.playback_timer = QTimer(self)
-        self.playback_timer.setInterval(1000 // 24) # 24 FPS
         self.playback_timer.timeout.connect(self.next_frame)
+        self.set_fps(self.scene_model.fps)
+
+        # --- Menus ---
+        self.setup_menus()
 
         # Connexions
         self.timeline_widget.addKeyframeClicked.connect(self.add_keyframe)
+        self.timeline_widget.deleteKeyframeClicked.connect(self.delete_keyframe)
         self.timeline_widget.frameChanged.connect(self.go_to_frame)
         self.timeline_widget.playClicked.connect(self.play_animation)
         self.timeline_widget.pauseClicked.connect(self.pause_animation)
+        self.timeline_widget.fpsChanged.connect(self.set_fps)
+        self.timeline_widget.rangeChanged.connect(self.set_range)
         self.ui.actionSauvegarder.triggered.connect(self.save_scene)
         self.ui.actionCharger_2.triggered.connect(self.load_scene)
 
@@ -65,6 +71,24 @@ class MainWindow(QMainWindow):
 
         # --- Chargement du pantin au démarrage ---
         self.add_puppet("assets/wesh.svg", "manu")
+        self._update_timeline_ui_from_model()
+
+    def setup_menus(self):
+        # Remplace les actions du menu "Toggle Timeline" par celle du dock widget
+        self.ui.menuToggle_Timeline.clear()
+        self.ui.menuToggle_Timeline.addAction(self.timeline_dock.toggleViewAction())
+
+        # Action pour afficher/masquer les poignées de rotation
+        self.ui.menuToggle_Transformation.clear()
+        toggle_handles_action = QAction("Afficher les poignées", self, checkable=True)
+        toggle_handles_action.setChecked(False)
+        toggle_handles_action.toggled.connect(self.toggle_rotation_handles)
+        self.ui.menuToggle_Transformation.addAction(toggle_handles_action)
+
+    def toggle_rotation_handles(self, visible):
+        for item in self.graphics_items.values():
+            if isinstance(item, PuppetPiece):
+                item.set_handle_visibility(visible)
 
     def save_scene(self):
         filePath, _ = QFileDialog.getSaveFileName(self, "Sauvegarder la scène", "", "JSON Files (*.json)")
@@ -86,10 +110,26 @@ class MainWindow(QMainWindow):
 
     def next_frame(self):
         current_frame = self.scene_model.current_frame
+        start_frame = self.scene_model.start_frame
+        end_frame = self.scene_model.end_frame
         new_frame = current_frame + 1
-        if new_frame > self.timeline_widget.slider.maximum():
-            new_frame = 0 # Loop
+        if new_frame > end_frame:
+            new_frame = start_frame # Loop
         self.timeline_widget.set_current_frame(new_frame)
+
+    def set_fps(self, fps):
+        self.scene_model.fps = fps
+        self.playback_timer.setInterval(1000 // fps)
+
+    def set_range(self, start, end):
+        self.scene_model.start_frame = start
+        self.scene_model.end_frame = end
+
+    def _update_timeline_ui_from_model(self):
+        self.timeline_widget.fps_spinbox.setValue(self.scene_model.fps)
+        self.timeline_widget.start_frame_spinbox.setValue(self.scene_model.start_frame)
+        self.timeline_widget.end_frame_spinbox.setValue(self.scene_model.end_frame)
+        self.timeline_widget.slider.setRange(self.scene_model.start_frame, self.scene_model.end_frame)
 
     def add_puppet(self, file_path, puppet_name):
         puppet = Puppet()
@@ -253,8 +293,14 @@ class MainWindow(QMainWindow):
         self.timeline_widget.add_keyframe_marker(frame_index)
         print(f"Keyframe ajouté à l'index {frame_index}")
 
+    def delete_keyframe(self, frame_index):
+        self.scene_model.remove_keyframe(frame_index)
+        self.timeline_widget.remove_keyframe_marker(frame_index)
+        print(f"Keyframe supprimé de l'index {frame_index}")
+
     def go_to_frame(self, index):
         self.scene_model.go_to_frame(index)
+        self.timeline_widget.set_current_frame(index)
         self.update_scene_from_model()
 
     def export_scene(self, file_path):
@@ -265,4 +311,5 @@ class MainWindow(QMainWindow):
         self.timeline_widget.clear_keyframes()
         for kf_index in self.scene_model.keyframes:
             self.timeline_widget.add_keyframe_marker(kf_index)
+        self._update_timeline_ui_from_model()
         self.update_scene_from_model()
