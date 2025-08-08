@@ -22,6 +22,7 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
 *   **`macronotron.py`**: Point d'entrée de l'application.
 *   **`assets/`**: Contient les ressources graphiques (SVG).
 *   **`tests/`**: Contient les tests unitaires.
+*   **`ts_vite/`**: Portage TypeScript du projet utilisant Vite.
 
 ## Dépendances
 

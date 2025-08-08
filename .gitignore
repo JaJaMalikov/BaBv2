@@ -1,4 +1,7 @@
 **/__pycache__
 pyproject.toml
 pyproject.toml.user
+node_modules/
+ts_vite/node_modules/
+ts_vite/dist/
 
