@@ -1,4 +1,6 @@
 **/__pycache__
 pyproject.toml
 pyproject.toml.user
+**/node_modules
+**/dist
 
