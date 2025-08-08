@@ -17,7 +17,7 @@ from core.puppet_piece import PuppetPiece
 from core.puppet_model import Puppet, PARENT_MAP, PIVOT_MAP, Z_ORDER
 from core.svg_loader import SvgLoader
 from ui.ui_menu import Ui_MainWindow
-from ui.timeline_widget import TimelineWidget
+from ui.timeline_widget2 import TimelineWidget
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -41,7 +41,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(main_widget)
 
         # --- Timeline ---
-        self.timeline_dock = QDockWidget("Timeline", self)
+        self.timeline_dock = QDockWidget()
         self.timeline_widget = TimelineWidget()
         self.timeline_dock.setWidget(self.timeline_widget)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.timeline_dock)
