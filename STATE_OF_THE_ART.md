@@ -42,6 +42,10 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
     *   **Marqueurs de Keyframes**: Des marqueurs visuels clairs sont dessinés sur la timeline.
     *   **Poignées de rotation basculables**: Les poignées pour la manipulation des membres peuvent être affichées ou masquées pour ne pas surcharger la vue.
     *   **Timeline escamotable**: Le panneau de la timeline peut être masqué via le menu pour maximiser l'espace de travail sur la scène.
+    *   **Visualisation de la Scène**: La scène affiche désormais des **bordures visibles** et ses **dimensions en temps réel**.
+    *   **Contrôle du Zoom Avancé**: Le zoom/dézoom est possible avec **Ctrl + molette de la souris**, et le **niveau de zoom actuel est affiché** dans la barre de statut.
+    *   **Centrage de la Vue**: Une option permet de **centrer la vue sur le pantin**.
+    *   **Arrière-plan Personnalisable**: Possibilité de charger une **image d'arrière-plan** qui s'adapte automatiquement à la taille de la scène.
 *   **Sauvegarde et Chargement**: L'ensemble de la scène d'animation, y compris toutes les keyframes et les réglages de la timeline (FPS, plage de lecture), peut être sauvegardé dans un fichier `.json` et rechargé ultérieurement.
 
 ## État actuel et prochaines étapes possibles

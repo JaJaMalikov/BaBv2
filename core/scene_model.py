@@ -34,12 +34,14 @@ class SceneModel:
     def __init__(self):
         self.puppets = {}    # name -> Puppet instance
         self.objects = {}    # name -> SceneObject
-        self.background = None  # SceneObject
         self.keyframes = {}  # index -> Keyframe
         self.current_frame = 0
         self.start_frame = 0
         self.end_frame = 100
         self.fps = 24
+        self.scene_width = 1536
+        self.scene_height = 1024
+        self.background_path = None
 
     # -----------------------------
     # PUPPETS ET OBJETS
@@ -112,7 +114,10 @@ class SceneModel:
             "settings": {
                 "start_frame": self.start_frame,
                 "end_frame": self.end_frame,
-                "fps": self.fps
+                "fps": self.fps,
+                "scene_width": self.scene_width,
+                "scene_height": self.scene_height,
+                "background_path": self.background_path
             },
             "puppets": list(self.puppets.keys()),  # à affiner
             "objects": {k: v.__dict__ for k, v in self.objects.items()},
@@ -141,6 +146,9 @@ class SceneModel:
         self.start_frame = settings.get("start_frame", 0)
         self.end_frame = settings.get("end_frame", 100)
         self.fps = settings.get("fps", 24)
+        self.scene_width = settings.get("scene_width", 1920)
+        self.scene_height = settings.get("scene_height", 1080)
+        self.background_path = settings.get("background_path", None)
 
         self.keyframes.clear()
 

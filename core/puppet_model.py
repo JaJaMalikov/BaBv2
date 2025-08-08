@@ -8,22 +8,26 @@ PARENT_MAP = {
     "haut_bras_droite": "epaule_droite",
     "coude_droite": "haut_bras_droite",
     "avant_bras_droite": "coude_droite",
-    "main_droite": "avant_bras_droite",
+    "poignet_droite": "avant_bras_droite",
+    "main_droite": "poignet_droite",
     "epaule_gauche": "torse",
     "haut_bras_gauche": "epaule_gauche",
     "coude_gauche": "haut_bras_gauche",
     "avant_bras_gauche": "coude_gauche",
-    "main_gauche": "avant_bras_gauche",
+    "poignet_gauche": "avant_bras_gauche",
+    "main_gauche": "poignet_gauche",
     "hanche_droite": "torse",
     "cuisse_droite": "hanche_droite",
     "genou_droite": "cuisse_droite",
     "tibia_droite": "genou_droite",
-    "pied_droite": "tibia_droite",
+    "cheville_droite": "tibia_droite",
+    "pied_droite": "cheville_droite",
     "hanche_gauche": "torse",
     "cuisse_gauche": "hanche_gauche",
     "genou_gauche": "cuisse_gauche",
     "tibia_gauche": "genou_gauche",
-    "pied_gauche": "tibia_gauche",
+    "cheville_gauche": "tibia_gauche",
+    "pied_gauche": "cheville_gauche",
 }
 
 PIVOT_MAP = {
@@ -36,16 +40,10 @@ PIVOT_MAP = {
     "tibia_droite": "genou_droite",
     "cuisse_gauche": "hanche_gauche",
     "tibia_gauche": "genou_gauche",
-    "cou": "cou",
-    "epaule_droite": "epaule_droite",
-    "coude_droite": "coude_droite",
-    "epaule_gauche": "epaule_gauche",
-    "coude_gauche": "coude_gauche",
-    "hanche_droite": "hanche_droite",
-    "genou_droite": "genou_droite",
-    "hanche_gauche": "hanche_gauche",
-    "genou_gauche": "genou_gauche",
-    "torse": "torse"
+    "main_droite": "poignet_droite",
+    "main_gauche": "poignet_gauche",
+    "pied_droite": "cheville_droite",
+    "pied_gauche": "cheville_gauche"
 }
 
 Z_ORDER = {
@@ -100,10 +98,12 @@ class PuppetMember:
         self.pivot = pivot
         self.bbox = bbox
         self.z_order = z_order
+        self.rel_pos = (0, 0)
 
     def add_child(self, child):
         self.children.append(child)
         child.parent = self
+        child.rel_pos = (child.pivot[0] - self.pivot[0], child.pivot[1] - self.pivot[1])
 
     def __repr__(self):
         return f"<{self.name} pivot={self.pivot} z={self.z_order}>"
@@ -183,7 +183,7 @@ def validate_svg_structure(svg_loader, parent_map, pivot_map):
 
 
 def main():
-    svg_path = "assets/wesh.svg"
+    svg_path = "assets/manululu.svg"
     loader = SvgLoader(svg_path)
     validate_svg_structure(loader, PARENT_MAP, PIVOT_MAP)
     puppet = Puppet()

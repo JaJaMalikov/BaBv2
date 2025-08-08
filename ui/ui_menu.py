@@ -6,7 +6,6 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(800, 600)
         self.actionObjet = QAction(MainWindow)
         self.actionObjet.setObjectName(u"actionObjet")
         self.actionReset_Sc_ne = QAction(MainWindow)
