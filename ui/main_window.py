@@ -10,9 +10,13 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QInputDialog,
     QGraphicsRectItem,
-    QGraphicsTextItem
+    QGraphicsTextItem,
+    QToolBar,
+    QToolButton,
+    QLabel,
+    QHBoxLayout,
 )
-from PySide6.QtGui import QPainter, QPixmap, QAction, QColor, QPen
+from PySide6.QtGui import QPainter, QPixmap, QAction, QColor, QPen, QIcon, QPainterPath
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtSvgWidgets import QGraphicsSvgItem
 
@@ -25,9 +29,77 @@ from ui.timeline_widget import TimelineWidget
 from ui.inspector_widget import InspectorWidget
 
 class ZoomableView(QGraphicsView):
+    """GraphicsView avec zoom au scroll et mini barre d'outils overlay.
+
+    L'overlay contient des contrôles essentiels (Zoom -, Zoom +, Fit, Center,
+    poignée de rotation) pour garder les outils accessibles sans empiéter sur
+    l'espace scénique.
+    """
     def __init__(self, scene, parent=None):
         super().__init__(scene, parent)
-        self.main_window = None # Will be set by MainWindow
+        self.main_window = None  # Will be set by MainWindow
+        self._overlay = None
+        self._zoom_label = None
+        self._build_overlay()
+
+    def _build_overlay(self):
+        # Overlay container (semi-transparent, coins arrondis)
+        self._overlay = QWidget(self)
+        self._overlay.setAttribute(Qt.WA_StyledBackground, True)
+        self._overlay.setStyleSheet(
+            "background: rgba(0,0,0,120); border-radius: 8px;"
+        )
+        lay = QHBoxLayout(self._overlay)
+        lay.setContentsMargins(8, 6, 8, 6)
+        lay.setSpacing(6)
+
+        def make_btn(icon: QIcon | None, tooltip, cb):
+            btn = QToolButton(self._overlay)
+            if icon is not None:
+                btn.setIcon(icon)
+                btn.setIconSize(self.devicePixelRatioF() and btn.iconSize() or btn.iconSize())
+            btn.setToolTip(tooltip)
+            btn.clicked.connect(cb)
+            btn.setStyleSheet(
+                "QToolButton { color: #E0E0E0; font-weight: 500; }"
+            )
+            btn.setAutoRaise(True)
+            return btn
+
+        # Icônes vectoriels simples
+        minus_btn = make_btn(self._icon_minus(), "Zoom arrière (Ctrl+Molette)", lambda: self.main_window and self.main_window.zoom(0.8))
+        plus_btn = make_btn(self._icon_plus(), "Zoom avant (Ctrl+Molette)", lambda: self.main_window and self.main_window.zoom(1.25))
+        fit_btn = make_btn(self._icon_fit(), "Ajuster à la scène", lambda: self.main_window and self.main_window.fit_to_view())
+        ctr_btn = make_btn(self._icon_center(), "Centrer sur la marionnette", lambda: self.main_window and self.main_window.center_on_puppet())
+        tog_btn = make_btn(self._icon_rotate(True), "Afficher les poignées de rotation", lambda: self.main_window and self.main_window.toggle_rotation_handles(True))
+        hid_btn = make_btn(self._icon_rotate(False), "Masquer les poignées de rotation", lambda: self.main_window and self.main_window.toggle_rotation_handles(False))
+        # Minimize/restore Timeline
+        # timeline minimize control removed per new UX
+
+        self._zoom_label = QLabel("100%", self._overlay)
+        self._zoom_label.setStyleSheet("color: #CFCFCF; padding-left: 6px; padding-right: 2px;")
+
+        for w in (minus_btn, plus_btn, fit_btn, ctr_btn, tog_btn, hid_btn, self._zoom_label):
+            lay.addWidget(w)
+
+        self._position_overlay()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._position_overlay()
+
+    def _position_overlay(self):
+        if not self._overlay:
+            return
+        margin = 10
+        ow = self._overlay.sizeHint().width()
+        oh = self._overlay.sizeHint().height()
+        # coin haut-gauche
+        self._overlay.setGeometry(margin, margin, ow, oh)
+
+    def set_zoom_label(self, text: str):
+        if self._zoom_label:
+            self._zoom_label.setText(text)
 
     def wheelEvent(self, event):
         if event.modifiers() == Qt.ControlModifier:
@@ -37,6 +109,124 @@ class ZoomableView(QGraphicsView):
                 self.main_window.zoom(factor)
         else:
             super().wheelEvent(event)
+
+    # Panning clic molette (manuel)
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MiddleButton:
+            self._panning = True
+            self._pan_start = event.position()
+            self.viewport().setCursor(Qt.ClosedHandCursor)
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if getattr(self, "_panning", False):
+            delta = event.position() - self._pan_start
+            self._pan_start = event.position()
+            h = self.horizontalScrollBar(); v = self.verticalScrollBar()
+            h.setValue(h.value() - int(delta.x()))
+            v.setValue(v.value() - int(delta.y()))
+            event.accept()
+            return
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.MiddleButton and getattr(self, "_panning", False):
+            self._panning = False
+            self.viewport().unsetCursor()
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
+
+    # Timeline minimize removed (two states only: shown/hidden via dock)
+
+    # -------- Icons drawing --------
+    def _make_icon(self, draw_fn, size: int = 20) -> QIcon:
+        pm = QPixmap(size, size)
+        pm.fill(Qt.transparent)
+        p = QPainter(pm)
+        p.setRenderHint(QPainter.Antialiasing)
+        color = QColor('#E0E0E0')
+        p.setPen(QPen(color, 2, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+        p.setBrush(Qt.NoBrush)
+        draw_fn(p, size)
+        p.end()
+        return QIcon(pm)
+
+    def _icon_plus(self) -> QIcon:
+        def draw(p: QPainter, s: int):
+            c = s/2
+            r = s*0.35
+            p.drawLine(int(c-r), int(c), int(c+r), int(c))
+            p.drawLine(int(c), int(c-r), int(c), int(c+r))
+        return self._make_icon(draw)
+
+    def _icon_minus(self) -> QIcon:
+        def draw(p: QPainter, s: int):
+            c = s/2
+            r = s*0.35
+            p.drawLine(int(c-r), int(c), int(c+r), int(c))
+        return self._make_icon(draw)
+
+    def _icon_center(self) -> QIcon:
+        def draw(p: QPainter, s: int):
+            c = s/2
+            r = s*0.35
+            p.drawEllipse(int(c-r/2), int(c-r/2), int(r), int(r))
+            p.drawLine(int(c - r), int(c), int(c + r), int(c))
+            p.drawLine(int(c), int(c - r), int(c), int(c + r))
+        return self._make_icon(draw)
+
+    def _icon_fit(self) -> QIcon:
+        def draw(p: QPainter, s: int):
+            # four diagonal arrows pointing outwards
+            m = 4
+            # top-left
+            p.drawLine(m, m+6, m, m)
+            p.drawLine(m, m, m+6, m)
+            # top-right
+            p.drawLine(s-m-6, m, s-m, m)
+            p.drawLine(s-m, m, s-m, m+6)
+            # bottom-right
+            p.drawLine(s-m, s-m-6, s-m, s-m)
+            p.drawLine(s-m, s-m, s-m-6, s-m)
+            # bottom-left
+            p.drawLine(m+6, s-m, m, s-m)
+            p.drawLine(m, s-m, m, s-m-6)
+        return self._make_icon(draw)
+
+    def _icon_rotate(self, enabled: bool) -> QIcon:
+        def draw(p: QPainter, s: int):
+            c = s/2
+            r = s*0.32
+            path = QPainterPath()
+            path.moveTo(c + r, c)
+            path.arcTo(c - r, c - r, 2*r, 2*r, 0, 270)
+            p.drawPath(path)
+            # arrow head
+            p.drawLine(int(c + r*0.6), int(c - r*0.9), int(c + r), int(c))
+            p.drawLine(int(c + r*0.15), int(c - r*0.75), int(c + r), int(c))
+            if not enabled:
+                p.drawLine(int(c-r), int(c+r), int(c+r), int(c-r))
+        return self._make_icon(draw)
+
+    def _icon_minimize(self, minimized: bool) -> QIcon:
+        def draw(p: QPainter, s: int):
+            c = s/2
+            if minimized:
+                # up chevrons
+                p.drawLine(int(c-6), int(c+3), int(c), int(c-3))
+                p.drawLine(int(c), int(c-3), int(c+6), int(c+3))
+                p.drawLine(int(c-6), int(c+7), int(c), int(c+1))
+                p.drawLine(int(c), int(c+1), int(c+6), int(c+7))
+            else:
+                # down chevrons
+                p.drawLine(int(c-6), int(c-3), int(c), int(c+3))
+                p.drawLine(int(c), int(c+3), int(c+6), int(c-3))
+                p.drawLine(int(c-6), int(c+1), int(c), int(c+7))
+                p.drawLine(int(c), int(c+7), int(c+6), int(c+1))
+        return self._make_icon(draw)
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -58,23 +248,40 @@ class MainWindow(QMainWindow):
         self.view = ZoomableView(self.scene, self)
         self.view.main_window = self # Set the reference to MainWindow
         self.view.setRenderHint(QPainter.Antialiasing)
+        self.view.setRenderHint(QPainter.SmoothPixmapTransform)
+        self.view.setBackgroundBrush(QColor("#121212"))
+        try:
+            # Remove frame to maximize viewport; ignore if unavailable
+            from PySide6.QtWidgets import QFrame
+            self.view.setFrameShape(QFrame.NoFrame)
+        except Exception:
+            pass
         self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.view.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
         main_widget = QWidget()
         layout = QVBoxLayout(main_widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
         layout.addWidget(self.view)
         self.setCentralWidget(main_widget)
 
         self.timeline_dock = QDockWidget("Timeline", self)
+        self.timeline_dock.setObjectName("dock_timeline")
         self.timeline_widget = TimelineWidget()
+        # Assurer la visibilité des commandes (pas de mode compact par défaut)
+        if hasattr(self.timeline_widget, 'set_compact'):
+            self.timeline_widget.set_compact(False)
         self.timeline_dock.setWidget(self.timeline_widget)
+        self.timeline_dock.setFeatures(QDockWidget.DockWidgetMovable | QDockWidget.DockWidgetClosable)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.timeline_dock)
 
         self.inspector_dock = QDockWidget("Inspector", self)
+        self.inspector_dock.setObjectName("dock_inspector")
         self.inspector_widget = InspectorWidget(self)
         self.inspector_dock.setWidget(self.inspector_widget)
-        self.inspector_dock.setFloating(True)
+        # Docké à droite, masqué par défaut (pas flottant)
+        self.inspector_dock.setFeatures(QDockWidget.DockWidgetMovable | QDockWidget.DockWidgetClosable)
         self.addDockWidget(Qt.RightDockWidgetArea, self.inspector_dock)
         self.inspector_dock.hide()
 
@@ -89,8 +296,15 @@ class MainWindow(QMainWindow):
         self.add_puppet("assets/manululu.svg", "manu")
         self.inspector_widget.refresh()
         self._update_timeline_ui_from_model()
-        self.center_on_puppet() # Center view on puppet at startup
+        # Fit au démarrage pour maximiser l'espace scénique
+        self.fit_to_view()
         self._update_zoom_status() # Initial zoom status
+
+        # Barre d'outils principale (léger) pour accès rapide
+        self._build_main_toolbar()
+
+        # Stylesheet unifié (docks/toolbar/overlay)
+        self._apply_unified_stylesheet()
 
     def setup_menus(self):
         self.ui.menuToggle_Inspector.clear()
@@ -103,12 +317,28 @@ class MainWindow(QMainWindow):
         toggle_handles_action.toggled.connect(self.toggle_rotation_handles)
         self.ui.menuToggle_Transformation.addAction(toggle_handles_action)
 
+        # Raccourcis / tooltips modernes
+        self.ui.action_9.setShortcut("Ctrl+=")      # Zoom in
+        self.ui.action_9.setStatusTip("Zoom avant")
+        self.ui.action_10.setShortcut("Ctrl+-")     # Zoom out
+        self.ui.action_10.setStatusTip("Zoom arrière")
+        self.ui.actionFit.setShortcut("F")
+        self.ui.actionFit.setStatusTip("Adapter la scène à la vue")
+        self.ui.actionCenter.setShortcut("C")
+        self.ui.actionCenter.setStatusTip("Centrer sur la marionnette")
+        self.inspector_dock.toggleViewAction().setShortcut("F4")
+        self.timeline_dock.toggleViewAction().setShortcut("F3")
+
     def connect_signals(self):
         self.timeline_widget.addKeyframeClicked.connect(self.add_keyframe)
         self.timeline_widget.deleteKeyframeClicked.connect(self.delete_keyframe)
         self.timeline_widget.frameChanged.connect(self.go_to_frame)
         self.timeline_widget.playClicked.connect(self.play_animation)
         self.timeline_widget.pauseClicked.connect(self.pause_animation)
+        if hasattr(self.timeline_widget, 'stopClicked'):
+            self.timeline_widget.stopClicked.connect(self.stop_animation)
+        if hasattr(self.timeline_widget, 'loopToggled'):
+            self.timeline_widget.loopToggled.connect(self._on_loop_toggled)
         self.timeline_widget.fpsChanged.connect(self.set_fps)
         self.timeline_widget.rangeChanged.connect(self.set_range)
 
@@ -123,6 +353,58 @@ class MainWindow(QMainWindow):
         self.ui.action_10.triggered.connect(lambda: self.zoom(0.8))
         self.ui.actionFit.triggered.connect(self.fit_to_view)
         self.ui.actionCenter.triggered.connect(self.center_on_puppet)
+
+    def _build_main_toolbar(self):
+        tb = QToolBar("Outils", self)
+        tb.setObjectName("toolbar_main")
+        tb.setMovable(False)
+        tb.setFloatable(False)
+        tb.setToolButtonStyle(Qt.ToolButtonIconOnly)
+        tb.setIconSize(tb.iconSize())
+        # Actions clés, réutilise celles du menu
+        # Assigner des icônes aux actions si possible
+        self.ui.action_9.setIcon(self.view._icon_plus())
+        self.ui.action_10.setIcon(self.view._icon_minus())
+        self.ui.actionFit.setIcon(self.view._icon_fit())
+        self.ui.actionCenter.setIcon(self.view._icon_center())
+        tb.addAction(self.ui.action_9)      # Zoom +
+        tb.addAction(self.ui.action_10)     # Zoom -
+        tb.addAction(self.ui.actionFit)
+        tb.addAction(self.ui.actionCenter)
+        tb.addSeparator()
+        tb.addAction(self.inspector_dock.toggleViewAction())
+        tb.addAction(self.timeline_dock.toggleViewAction())
+        self.addToolBar(Qt.TopToolBarArea, tb)
+
+    def _apply_unified_stylesheet(self):
+        self.setStyleSheet(
+            """
+            QDockWidget {
+                titlebar-close-icon: none;
+                titlebar-normal-icon: none;
+                background: #1E1E1E;
+                color: #E0E0E0;
+            }
+            QDockWidget::title {
+                background: #1B1B1B;
+                padding: 4px 8px;
+                border: 1px solid #2A2A2A;
+                color: #E0E0E0;
+            }
+            QToolBar {
+                background: #1B1B1B;
+                border-bottom: 1px solid #2A2A2A;
+                spacing: 4px;
+            }
+            QToolButton {
+                color: #E0E0E0;
+            }
+            QStatusBar {
+                background: #121212;
+                color: #CFCFCF;
+            }
+            """
+        )
 
     def _setup_scene_visuals(self):
         self.scene_border_item = QGraphicsRectItem()
@@ -145,7 +427,16 @@ class MainWindow(QMainWindow):
         self.scene_size_text_item.setPos(rect.right() - text_rect.width() - 10, rect.bottom() - text_rect.height() - 10)
 
     def _update_zoom_status(self):
-        self.statusBar().showMessage(f"Zoom: {self.zoom_factor:.0%}")
+        txt = f"Zoom: {self.zoom_factor:.0%}"
+        self.statusBar().showMessage(txt)
+        # MàJ du label overlay dans la vue
+        if hasattr(self, 'view') and hasattr(self.view, 'set_zoom_label'):
+            self.view.set_zoom_label(f"{int(self.zoom_factor*100)}%")
+
+    # -------------------------------------------------
+    # Timeline helpers
+    # -------------------------------------------------
+    # toggle_timeline_minimize removed
 
     def zoom(self, factor):
         self.view.scale(factor, factor)
@@ -217,14 +508,27 @@ class MainWindow(QMainWindow):
     def pause_animation(self):
         self.playback_timer.stop()
 
+    def stop_animation(self):
+        self.playback_timer.stop()
+        start = self.scene_model.start_frame
+        self.timeline_widget.set_current_frame(start)
+
     def next_frame(self):
         current_frame = self.scene_model.current_frame
         start_frame = self.scene_model.start_frame
         end_frame = self.scene_model.end_frame
         new_frame = current_frame + 1
         if new_frame > end_frame:
-            new_frame = start_frame
+            if getattr(self, 'loop_enabled', True):
+                new_frame = start_frame
+            else:
+                self.pause_animation()
+                self.timeline_widget.set_current_frame(end_frame)
+                return
         self.timeline_widget.set_current_frame(new_frame)
+
+    def _on_loop_toggled(self, enabled: bool):
+        self.loop_enabled = bool(enabled)
 
     def set_fps(self, fps):
         self.scene_model.fps = fps

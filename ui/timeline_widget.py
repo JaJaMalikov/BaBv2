@@ -3,11 +3,11 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from PySide6.QtCore import Qt, Signal, QRectF, QPointF, QRect
+from PySide6.QtCore import Qt, Signal, QRectF, QPointF, QRect, QSize
 from PySide6.QtGui import QPainter, QColor, QPen, QBrush, QMouseEvent, QWheelEvent, QKeyEvent, QAction, QPolygonF
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QSlider, QSpinBox, QLabel,
-    QStyleOptionSlider, QStyle, QMenu
+    QStyleOptionSlider, QStyle, QMenu, QToolButton
 )
 
 # -------------------------
@@ -53,6 +53,7 @@ class TimelineWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setMinimumHeight(180)
+        self._minimized = False
 
         self._tracks: list[str] = ["Global"]
         self._kfs: dict[str, set[int]] = {"Global": set()}
@@ -78,58 +79,29 @@ class TimelineWidget(QWidget):
         self._dragging_kf: list[KF] | None = None
         self._drag_origin_frame = 0
 
-        # --- Toolbar (compat + zoom) ---
+        # --- Layout root ---
         self._main_layout = QVBoxLayout(self)
         self._main_layout.setContentsMargins(5, 5, 5, 5)
+        self._main_layout.addStretch()
 
-        self.toolbar = QWidget()
+        # Bottom toolbar (separate widget)
+        self.toolbar = QWidget(self)
         bar = QHBoxLayout(self.toolbar)
-        bar.setContentsMargins(0, 0, 0, 0)
-        self.play_btn = QPushButton("Play")
-        self.play_btn.setCheckable(True)
-        self.play_btn.clicked.connect(self._on_play_clicked)
-        bar.addWidget(self.play_btn)
-
-        self.add_kf_btn = QPushButton("+ Keyframe")
-        self.add_kf_btn.clicked.connect(lambda: self._emit_add_kf(self._current))
-        bar.addWidget(self.add_kf_btn)
-
-        self.del_kf_btn = QPushButton("- Keyframe")
-        self.del_kf_btn.clicked.connect(lambda: self._emit_del_kf(self._current))
-        bar.addWidget(self.del_kf_btn)
-
+        bar.setContentsMargins(4, 2, 4, 2)
+        bar.setSpacing(6)
+        # Transport
+        self.play_btn = QToolButton(); self.play_btn.setText("⏵"); self.play_btn.setCheckable(True); self.play_btn.clicked.connect(self._on_play_clicked); bar.addWidget(self.play_btn)
+        self.stop_btn = QToolButton(); self.stop_btn.setText("■"); self.stop_btn.setToolTip("Stop et retour au début"); self.stop_btn.clicked.connect(self._on_stop_clicked); bar.addWidget(self.stop_btn)
+        self.loop_btn = QToolButton(); self.loop_btn.setText("Loop"); self.loop_btn.setCheckable(True); self.loop_btn.setChecked(True); self.loop_btn.toggled.connect(self._on_loop_toggled); bar.addWidget(self.loop_btn)
+        # Keyframes
+        self.add_kf_btn = QToolButton(); self.add_kf_btn.setText("＋◆"); self.add_kf_btn.setToolTip("Ajouter keyframe"); self.add_kf_btn.clicked.connect(lambda: self._emit_add_kf(self._current)); bar.addWidget(self.add_kf_btn)
+        self.del_kf_btn = QToolButton(); self.del_kf_btn.setText("－◆"); self.del_kf_btn.setToolTip("Supprimer keyframe"); self.del_kf_btn.clicked.connect(lambda: self._emit_del_kf(self._current)); bar.addWidget(self.del_kf_btn)
         bar.addStretch()
-
-        bar.addWidget(QLabel("Frame:"))
-        self.frame_spin = QSpinBox()
-        self.frame_spin.setRange(0, 999999)
-        self.frame_spin.valueChanged.connect(self.set_current_frame)
-        bar.addWidget(self.frame_spin)
-
-        bar.addWidget(QLabel("  Start:"))
-        self.start_spin = QSpinBox(); self.start_spin.setRange(0, 999999)
-        self.start_spin.valueChanged.connect(self._on_range_spin)
-        bar.addWidget(self.start_spin)
-
-        bar.addWidget(QLabel("End:"))
-        self.end_spin = QSpinBox(); self.end_spin.setRange(0, 999999)
-        self.end_spin.setValue(100)
-        self.end_spin.valueChanged.connect(self._on_range_spin)
-        bar.addWidget(self.end_spin)
-
-        bar.addWidget(QLabel("  FPS:"))
-        self.fps_spin = QSpinBox(); self.fps_spin.setRange(1, 240)
-        self.fps_spin.setValue(24)
-        self.fps_spin.valueChanged.connect(self._on_fps_changed)
-        bar.addWidget(self.fps_spin)
-
-        bar.addWidget(QLabel("  Zoom:"))
-        self.zoom_slider = QSlider(Qt.Horizontal)
-        self.zoom_slider.setRange(0, 100)
-        self.zoom_slider.setValue(self._ppf_to_slider(self._px_per_frame))
-        self.zoom_slider.valueChanged.connect(self._on_zoom_slider)
-        bar.addWidget(self.zoom_slider)
-
+        # Time/frame and FPS
+        self.time_label = QLabel("00:00"); self.time_label.setToolTip("Temps (mm:ss)"); bar.addWidget(self.time_label)
+        self.frame_spin = QSpinBox(); self.frame_spin.setRange(0, 999999); self.frame_spin.setFixedWidth(80); self.frame_spin.valueChanged.connect(self.set_current_frame); bar.addWidget(self.frame_spin)
+        bar.addWidget(QLabel("FPS:"))
+        self.fps_spin = QSpinBox(); self.fps_spin.setRange(1, 240); self.fps_spin.setValue(24); self.fps_spin.valueChanged.connect(self._on_fps_changed); bar.addWidget(self.fps_spin)
         self._main_layout.addWidget(self.toolbar)
 
         # Hidden slider kept for backward-compat with existing code
@@ -139,14 +111,22 @@ class TimelineWidget(QWidget):
         self.slider.setVisible(False)
         self._main_layout.addWidget(self.slider)
 
+        # Hidden Start/End/FPS spinboxes for API compatibility (not added to layout)
+        self.start_spin = QSpinBox(); self.start_spin.setRange(0, 999999)
+        self.start_spin.valueChanged.connect(self._on_range_spin)
+        self.end_spin = QSpinBox(); self.end_spin.setRange(0, 999999); self.end_spin.setValue(100)
+        self.end_spin.valueChanged.connect(self._on_range_spin)
+        self.fps_spin = QSpinBox(); self.fps_spin.setRange(1, 240); self.fps_spin.setValue(24)
+        self.fps_spin.valueChanged.connect(self._on_fps_changed)
+
         # Back-compat attribute aliases for v1 API
         self.fps_spinbox = self.fps_spin
         self.start_frame_spinbox = self.start_spin
         self.end_frame_spinbox = self.end_spin
         self.frame_spinbox = self.frame_spin
 
-        # Compact by default (minimal header)
-        self.set_compact(True)
+        # Toolbar overlay: no compact toggle needed
+        self.set_compact(False)
 
         self.setFocusPolicy(Qt.StrongFocus)
         # HUD: show frame/time under cursor
@@ -155,6 +135,9 @@ class TimelineWidget(QWidget):
 
         # lock height to visible tracks if auto_height
         self._apply_auto_height()
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
 
     # -------------------------
     # Public API
@@ -174,6 +157,7 @@ class TimelineWidget(QWidget):
         self._current = frame_index
         self._sync_frame_widgets()
         self.frameChanged.emit(frame_index)
+        self._update_time_label()
         self.update()
 
     def add_keyframe_marker(self, frame_index: int, track: str = "Global"):
@@ -226,13 +210,14 @@ class TimelineWidget(QWidget):
         self.update()
 
     def _apply_auto_height(self):
-        if not getattr(self, "_auto_height", False):
-            return
+        # Ruler + tracks + bottom toolbar
+        toolbar_h = self.toolbar.sizeHint().height() if hasattr(self, 'toolbar') and self.toolbar is not None else 0
         rows = max(1, len(self._visible_tracks()))
-        h = 6 + RULER_H + rows * (TRACK_H + TRACK_MARGIN) + 6
-        # leave a tiny safety margin for borders
-        self.setMinimumHeight(h)
-        self.setMaximumHeight(h)
+        total = 6 + RULER_H + rows * (TRACK_H + TRACK_MARGIN) + 6 + toolbar_h
+        self.setMinimumHeight(total)
+        self.setMaximumHeight(16777215)
+
+    # No minimize API: visibility is handled by the dock itself
 
     # -------------------------
     # Internals — UI sync
@@ -275,13 +260,14 @@ class TimelineWidget(QWidget):
     def _on_fps_changed(self, v: int):
         self._fps = v
         self.fpsChanged.emit(v)
+        self._update_time_label()
 
     def _on_play_clicked(self, checked: bool):
         if checked:
-            self.play_btn.setText("Pause")
+            self.play_btn.setText("⏸")
             self.playClicked.emit()
         else:
-            self.play_btn.setText("Play")
+            self.play_btn.setText("⏵")
             self.pauseClicked.emit()
 
     def _ppf_to_slider(self, ppf: float) -> int:
@@ -293,10 +279,7 @@ class TimelineWidget(QWidget):
         t = v / 100.0
         return self._min_ppf + t * (self._max_ppf - self._min_ppf)
 
-    def _on_zoom_slider(self, v: int):
-        self._px_per_frame = self._slider_to_ppf(v)
-        self.zoomChanged.emit(self._px_per_frame)
-        self.update()
+    # Mouse-driven zoom only; no UI slider
 
     def _emit_add_kf(self, frame: int):
         self.addKeyframeClicked.emit(int(frame))
@@ -314,8 +297,7 @@ class TimelineWidget(QWidget):
         return QRect(5, 5, self.width() - 10, RULER_H - 10)
 
     def _track_y(self, idx: int) -> int:
-        top = RULER_H + 2 + idx * (TRACK_H + TRACK_MARGIN)
-        return top
+        return RULER_H + 2 + idx * (TRACK_H + TRACK_MARGIN)
 
     def _frame_to_x(self, frame: float) -> float:
         return 10 + (frame - self._start - self._scroll_frames) * self._px_per_frame
@@ -526,7 +508,6 @@ class TimelineWidget(QWidget):
         if e.modifiers() & Qt.ControlModifier:
             # zoom around mouse x
             self._px_per_frame = max(self._min_ppf, min(self._max_ppf, self._px_per_frame * (1.0 + steps*0.1)))
-            self.zoom_slider.setValue(self._ppf_to_slider(self._px_per_frame))
             # keep the frame under cursor stable
             mouse_frame = self._x_to_frame(e.position().x())
             x_after = self._frame_to_x(mouse_frame)
@@ -559,9 +540,6 @@ class TimelineWidget(QWidget):
             self.set_current_frame(self._end)
         elif e.modifiers() & Qt.ControlModifier and e.key() == Qt.Key_0:
             self._fit_range()
-        elif e.key() == Qt.Key_T:
-            # quick toggle of compact mode
-            self.set_compact(not getattr(self, '_compact', True))
         elif e.key() == Qt.Key_I:
             # set IN to current
             if self._current <= self._end:
@@ -640,6 +618,37 @@ class TimelineWidget(QWidget):
         s = int(secs % 60)
         return f"{m:02d}:{s:02d}"
 
+    def _on_stop_clicked(self):
+        # Ensure play is off and emit stop
+        if self.play_btn.isChecked():
+            self.play_btn.setChecked(False)
+            self.play_btn.setText("⏵")
+        self.stopClicked.emit()
+
+    def _on_loop_toggled(self, checked: bool):
+        self.loop_enabled = bool(checked)
+        self.loopToggled.emit(self.loop_enabled)
+
+    def _jump_prev_kf(self):
+        target = None
+        cur = self._current
+        for t in self._visible_tracks():
+            for fr in sorted(self._kfs.get(t, set())):
+                if fr < cur:
+                    target = fr if target is None or fr > target else target
+        if target is not None:
+            self.set_current_frame(target)
+
+    def _jump_next_kf(self):
+        target = None
+        cur = self._current
+        for t in self._visible_tracks():
+            for fr in sorted(self._kfs.get(t, set())):
+                if fr > cur:
+                    target = fr if target is None or fr < target else target
+        if target is not None:
+            self.set_current_frame(target)
+
     def _fit_range(self):
         # Zoom to show Start..End fully
         visible_px = max(100, self.width() - 20)
@@ -649,3 +658,31 @@ class TimelineWidget(QWidget):
         self._scroll_frames = 0
         self.update()
 
+    def _set_in_value(self, f: int):
+        s = max(0, min(f, self._end))
+        if s != self._start:
+            self._start = s
+            self.start_spin.setValue(s)
+            self.slider.setRange(self._start, self._end)
+            self.rangeChanged.emit(self._start, self._end)
+            self.update()
+
+    def _set_out_value(self, f: int):
+        e = max(self._start, f)
+        if e != self._end:
+            self._end = e
+            self.end_spin.setValue(e)
+            self.slider.setRange(self._start, self._end)
+            self.rangeChanged.emit(self._start, self._end)
+            self.update()
+
+    def _set_in_current(self):
+        self._set_in_value(self._current)
+
+    def _set_out_current(self):
+        self._set_out_value(self._current)
+
+    def _update_time_label(self):
+        self.time_label.setText(self._format_time(self._current))
+
+    # options menu removed per new UX
