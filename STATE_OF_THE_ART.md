@@ -2,7 +2,7 @@
 
 ## Objectif de l'application
 
-L'application "Borne and the Bayrou - Disco MIX" est un outil d'animation 2D basé sur des marionnettes (puppets). Il permet de charger des personnages définis dans des fichiers SVG, de les manipuler, de créer des animations fluides via un système d'images clés (keyframes) et de sauvegarder le travail.
+L'application "Borne and the Bayrou - Disco MIX" est un outil de composition et d'animation 2D basé sur des marionnettes (puppets). Il permet de charger des personnages (SVG), de les manipuler, de gérer plusieurs objets dans une scène, de créer des animations via un système d'images clés (keyframes) et de sauvegarder le projet.
 
 ## Architecture
 
@@ -11,16 +11,17 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
 *   **`core/`**: Contient la logique métier.
     *   `puppet_model.py`: Définit la structure hiérarchique de la marionnette.
     *   `svg_loader.py`: Utilitaire pour charger et analyser les fichiers SVG.
-    *   `scene_model.py`: Gère l'état de la scène, y compris les marionnettes, les objets, la structure des keyframes et les paramètres de la timeline.
-    *   `puppet_piece.py`: Représente un membre de la marionnette dans la scène graphique, gérant sa rotation et ses interactions.
+    *   `scene_model.py`: Gère l'état complet de la scène : marionnettes, objets, keyframes, et paramètres globaux.
+    *   `puppet_piece.py`: Représente un membre de la marionnette dans la scène graphique.
 
 *   **`ui/`**: Contient les composants de l'interface utilisateur.
-    *   `main_window.py`: La fenêtre principale qui assemble tous les éléments.
+    *   `main_window.py`: La fenêtre principale qui assemble tous les éléments et gère l'essentiel des interactions.
+    *   `timeline_widget.py`: Un widget de timeline avancé et interactif.
+    *   `inspector_widget.py`: Un panneau pour lister, sélectionner et manipuler les objets de la scène.
     *   `ui_menu.py`: Fichier généré définissant la structure des menus.
-    *   `timeline_widget.py`: Le widget interactif pour la timeline, incluant le curseur, les boutons et l'affichage des keyframes.
 
 *   **`macronotron.py`**: Point d'entrée de l'application.
-*   **`assets/`**: Contient les ressources graphiques (SVG).
+*   **`assets/`**: Contient les ressources graphiques (SVG, images).
 *   **`tests/`**: Contient les tests unitaires.
 
 ## Dépendances
@@ -30,31 +31,47 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
 
 ## Fonctionnalités clés implémentées
 
-*   **Chargement de marionnettes SVG**: L'application décompose un SVG en membres de marionnette basés sur les groupes de calques.
-*   **Manipulation hiérarchique**: Les membres sont liés (parent-enfant). Déplacer un parent déplace ses enfants.
-*   **Timeline et Keyframing**: Une timeline interactive permet de définir et **supprimer** des keyframes pour sauvegarder la pose du pantin à un instant T.
-*   **Interpolation des mouvements**: L'application calcule et affiche de manière fluide les poses intermédiaires entre les keyframes, permettant une animation lisse.
-*   **Contrôles de Lecture Avancés**:
-    *   Un bouton Play/Pause permet de lire l'animation en temps réel.
-    *   La **vitesse de lecture (FPS)** est entièrement réglable.
-    *   Une **plage de lecture (Start/End)** peut être définie pour travailler en boucle sur des segments spécifiques de l'animation.
-*   **Visualisation et Ergonomie (UI/UX)**:
-    *   **Marqueurs de Keyframes**: Des marqueurs visuels clairs sont dessinés sur la timeline.
-    *   **Poignées de rotation basculables**: Les poignées pour la manipulation des membres peuvent être affichées ou masquées pour ne pas surcharger la vue.
-    *   **Timeline escamotable**: Le panneau de la timeline peut être masqué via le menu pour maximiser l'espace de travail sur la scène.
-    *   **Visualisation de la Scène**: La scène affiche désormais des **bordures visibles** et ses **dimensions en temps réel**.
-    *   **Contrôle du Zoom Avancé**: Le zoom/dézoom est possible avec **Ctrl + molette de la souris**, et le **niveau de zoom actuel est affiché** dans la barre de statut.
-    *   **Centrage de la Vue**: Une option permet de **centrer la vue sur le pantin**.
-    *   **Arrière-plan Personnalisable**: Possibilité de charger une **image d'arrière-plan** qui s'adapte automatiquement à la taille de la scène.
-*   **Sauvegarde et Chargement**: L'ensemble de la scène d'animation, y compris toutes les keyframes et les réglages de la timeline (FPS, plage de lecture), peut être sauvegardé dans un fichier `.json` et rechargé ultérieurement.
-    *   Les objets présents dans la scène sont également reconstruits lors du chargement du fichier.
+*   **Gestion de Scène Multi-Objets**:
+    *   Le modèle de scène peut gérer plusieurs marionnettes et objets (images, SVG) simultanément.
+    *   **Inspecteur d'objets**: Un panneau dédié permet de lister tous les éléments de la scène.
+    *   Il est possible de **sélectionner, dupliquer et supprimer** des marionnettes ou des objets via l'inspecteur.
+    *   **Mise à l'échelle** individuelle des objets et marionnettes.
+
+*   **Marionnettes et Animation**:
+    *   Chargement de marionnettes depuis des fichiers SVG.
+    *   Manipulation hiérarchique (les enfants suivent les parents).
+    *   Interpolation fluide des mouvements entre les keyframes pour une animation lisse.
+
+*   **Timeline Avancée**:
+    *   La timeline a été entièrement réécrite pour une expérience professionnelle.
+    *   **Zoom et Panoramique**: Navigation intuitive dans la timeline avec `Ctrl+Molette` pour le zoom et le clic molette pour le panoramique.
+    *   **HUD interactif**: Affiche en temps réel le numéro de l'image et le temps sous le curseur.
+    *   Gestion des keyframes sur une piste "Globale".
+    *   Contrôles de lecture complets (Play/Pause, Stop, Boucle).
+
+*   **Interface Utilisateur et Ergonomie (UI/UX) Améliorées**:
+    *   **Vue de la scène professionnelle**:
+        *   **Barre d'outils flottante (Overlay)** directement sur la vue pour un accès rapide au zoom, centrage, et affichage/masquage des poignées de rotation.
+        *   **Barre d'outils principale** pour les actions globales (gestion des panneaux, zoom).
+        *   Panoramique dans la vue avec le clic molette.
+    *   **Panneaux modulables (Docks)**: La Timeline et l'Inspecteur peuvent être affichés, masqués ou déplacés indépendamment (`F3`, `F4`).
+    *   **Poignées de rotation basculables** pour désencombrer la vue.
+    *   **Personnalisation de la scène**:
+        *   Définition de la taille (largeur/hauteur) de la scène.
+        *   Chargement d'une **image d'arrière-plan** qui s'adapte à la scène.
+
+*   **Sauvegarde et Chargement**:
+    *   L'ensemble de la scène (marionnettes, objets, keyframes, réglages) est sérialisé dans un fichier `.json`.
+    *   Le chargement d'un fichier restaure l'intégralité de l'état de la scène.
 
 ## État actuel et prochaines étapes possibles
 
-L'application est devenue un outil d'animation 2D fonctionnel et flexible, avec un workflow complet. Les prochaines étapes pourraient inclure :
+L'application a évolué d'un simple outil d'animation de marionnette à un **logiciel de composition de scène 2D fonctionnel et robuste**. L'interface a été professionnalisée et la gestion de plusieurs objets est désormais possible.
+
+Prochaines étapes :
 
 *   **Exportation d'animation**: Permettre d'exporter l'animation sous forme de séquence d'images ou de vidéo (GIF, MP4).
-*   **Système d'Undo/Redo**: Implémenter un historique des actions pour annuler et rétablir les modifications.
-*   **Gestion de plusieurs objets/marionnettes**: Améliorer l'interface pour gérer plusieurs éléments dans une même scène.
-*   **Modes d'interpolation**: Ajouter des courbes d'animation (ease-in, ease-out) pour des mouvements plus expressifs.
-*   **Amélioration de l'UI/UX**: Continuer à affiner l'interface, ajouter des raccourcis clavier et améliorer le retour visuel pour l'utilisateur.
+*   **Système d'Undo/Redo**: Implémenter un historique des actions.
+*   **Attachement d'objets**: Finaliser la fonctionnalité permettant d'attacher un objet à un membre de marionnette.
+*   **Modes d'interpolation**: Ajouter des courbes d'animation (ease-in, ease-out).
+*   **Timeline Multi-pistes**: Afficher et gérer des pistes de keyframes séparées pour chaque objet ou membre dans la timeline.

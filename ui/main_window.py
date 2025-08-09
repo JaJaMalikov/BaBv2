@@ -1,3 +1,5 @@
+import os
+import json
 from PySide6.QtWidgets import (
     QMainWindow,
     QGraphicsView,
@@ -15,8 +17,9 @@ from PySide6.QtWidgets import (
     QToolButton,
     QLabel,
     QHBoxLayout,
+    QFrame,
 )
-from PySide6.QtGui import QPainter, QPixmap, QAction, QColor, QPen, QIcon, QPainterPath
+from PySide6.QtGui import QPainter, QPixmap, QAction, QColor, QPen, QIcon
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtSvgWidgets import QGraphicsSvgItem
 
@@ -29,57 +32,47 @@ from ui.timeline_widget import TimelineWidget
 from ui.inspector_widget import InspectorWidget
 
 class ZoomableView(QGraphicsView):
-    """GraphicsView avec zoom au scroll et mini barre d'outils overlay.
-
-    L'overlay contient des contrôles essentiels (Zoom -, Zoom +, Fit, Center,
-    poignée de rotation) pour garder les outils accessibles sans empiéter sur
-    l'espace scénique.
-    """
-    def __init__(self, scene, parent=None):
+    def __init__(self, scene, main_window, parent=None):
         super().__init__(scene, parent)
-        self.main_window = None  # Will be set by MainWindow
+        self.main_window = main_window
         self._overlay = None
         self._zoom_label = None
         self._build_overlay()
 
     def _build_overlay(self):
-        # Overlay container (semi-transparent, coins arrondis)
         self._overlay = QWidget(self)
         self._overlay.setAttribute(Qt.WA_StyledBackground, True)
-        self._overlay.setStyleSheet(
-            "background: rgba(0,0,0,120); border-radius: 8px;"
-        )
+        self._overlay.setStyleSheet("background: rgba(0,0,0,120); border-radius: 8px;")
         lay = QHBoxLayout(self._overlay)
         lay.setContentsMargins(8, 6, 8, 6)
         lay.setSpacing(6)
 
         def make_btn(icon: QIcon | None, tooltip, cb):
             btn = QToolButton(self._overlay)
-            if icon is not None:
-                btn.setIcon(icon)
-                btn.setIconSize(self.devicePixelRatioF() and btn.iconSize() or btn.iconSize())
+            if icon: btn.setIcon(icon)
             btn.setToolTip(tooltip)
             btn.clicked.connect(cb)
-            btn.setStyleSheet(
-                "QToolButton { color: #E0E0E0; font-weight: 500; }"
-            )
+            btn.setStyleSheet("QToolButton { color: #E0E0E0; font-weight: 500; }")
             btn.setAutoRaise(True)
             return btn
 
-        # Icônes vectoriels simples
-        minus_btn = make_btn(self._icon_minus(), "Zoom arrière (Ctrl+Molette)", lambda: self.main_window and self.main_window.zoom(0.8))
-        plus_btn = make_btn(self._icon_plus(), "Zoom avant (Ctrl+Molette)", lambda: self.main_window and self.main_window.zoom(1.25))
-        fit_btn = make_btn(self._icon_fit(), "Ajuster à la scène", lambda: self.main_window and self.main_window.fit_to_view())
-        ctr_btn = make_btn(self._icon_center(), "Centrer sur la marionnette", lambda: self.main_window and self.main_window.center_on_puppet())
-        tog_btn = make_btn(self._icon_rotate(True), "Afficher les poignées de rotation", lambda: self.main_window and self.main_window.toggle_rotation_handles(True))
-        hid_btn = make_btn(self._icon_rotate(False), "Masquer les poignées de rotation", lambda: self.main_window and self.main_window.toggle_rotation_handles(False))
-        # Minimize/restore Timeline
-        # timeline minimize control removed per new UX
+        minus_btn = make_btn(self._icon_minus(), "Zoom arrière (Ctrl+Molette)", lambda: self.main_window.zoom(0.8))
+        plus_btn = make_btn(self._icon_plus(), "Zoom avant (Ctrl+Molette)", lambda: self.main_window.zoom(1.25))
+        fit_btn = make_btn(self._icon_fit(), "Ajuster à la scène", self.main_window.fit_to_view)
+        ctr_btn = make_btn(self._icon_center(), "Centrer sur la marionnette", self.main_window.center_on_puppet)
+        self.handles_btn = QToolButton(self._overlay)
+        self.handles_btn.setIcon(self._icon_rotate())
+        self.handles_btn.setToolTip("Afficher/Masquer les poignées de rotation")
+        self.handles_btn.setCheckable(True)
+        self.handles_btn.setChecked(False)
+        self.handles_btn.toggled.connect(self.main_window.toggle_rotation_handles)
+        self.handles_btn.setStyleSheet("QToolButton { color: #E0E0E0; font-weight: 500; }")
+        self.handles_btn.setAutoRaise(True)
 
         self._zoom_label = QLabel("100%", self._overlay)
         self._zoom_label.setStyleSheet("color: #CFCFCF; padding-left: 6px; padding-right: 2px;")
 
-        for w in (minus_btn, plus_btn, fit_btn, ctr_btn, tog_btn, hid_btn, self._zoom_label):
+        for w in (minus_btn, plus_btn, fit_btn, ctr_btn, self.handles_btn, self._zoom_label):
             lay.addWidget(w)
 
         self._position_overlay()
@@ -89,28 +82,20 @@ class ZoomableView(QGraphicsView):
         self._position_overlay()
 
     def _position_overlay(self):
-        if not self._overlay:
-            return
+        if not self._overlay: return
         margin = 10
-        ow = self._overlay.sizeHint().width()
-        oh = self._overlay.sizeHint().height()
-        # coin haut-gauche
-        self._overlay.setGeometry(margin, margin, ow, oh)
+        self._overlay.setGeometry(margin, margin, self._overlay.sizeHint().width(), self._overlay.sizeHint().height())
 
     def set_zoom_label(self, text: str):
-        if self._zoom_label:
-            self._zoom_label.setText(text)
+        if self._zoom_label: self._zoom_label.setText(text)
 
     def wheelEvent(self, event):
         if event.modifiers() == Qt.ControlModifier:
-            delta = event.angleDelta().y()
-            factor = 1.1 if delta > 0 else 1 / 1.1
-            if self.main_window:
-                self.main_window.zoom(factor)
+            factor = 1.1 if event.angleDelta().y() > 0 else 1 / 1.1
+            if self.main_window: self.main_window.zoom(factor)
         else:
             super().wheelEvent(event)
 
-    # Panning clic molette (manuel)
     def mousePressEvent(self, event):
         if event.button() == Qt.MiddleButton:
             self._panning = True
@@ -124,7 +109,7 @@ class ZoomableView(QGraphicsView):
         if getattr(self, "_panning", False):
             delta = event.position() - self._pan_start
             self._pan_start = event.position()
-            h = self.horizontalScrollBar(); v = self.verticalScrollBar()
+            h, v = self.horizontalScrollBar(), self.verticalScrollBar()
             h.setValue(h.value() - int(delta.x()))
             v.setValue(v.value() - int(delta.y()))
             event.accept()
@@ -139,94 +124,21 @@ class ZoomableView(QGraphicsView):
             return
         super().mouseReleaseEvent(event)
 
-    # Timeline minimize removed (two states only: shown/hidden via dock)
-
-    # -------- Icons drawing --------
     def _make_icon(self, draw_fn, size: int = 20) -> QIcon:
         pm = QPixmap(size, size)
         pm.fill(Qt.transparent)
         p = QPainter(pm)
         p.setRenderHint(QPainter.Antialiasing)
-        color = QColor('#E0E0E0')
-        p.setPen(QPen(color, 2, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
-        p.setBrush(Qt.NoBrush)
+        p.setPen(QPen(QColor('#E0E0E0'), 2, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
         draw_fn(p, size)
         p.end()
         return QIcon(pm)
 
-    def _icon_plus(self) -> QIcon:
-        def draw(p: QPainter, s: int):
-            c = s/2
-            r = s*0.35
-            p.drawLine(int(c-r), int(c), int(c+r), int(c))
-            p.drawLine(int(c), int(c-r), int(c), int(c+r))
-        return self._make_icon(draw)
-
-    def _icon_minus(self) -> QIcon:
-        def draw(p: QPainter, s: int):
-            c = s/2
-            r = s*0.35
-            p.drawLine(int(c-r), int(c), int(c+r), int(c))
-        return self._make_icon(draw)
-
-    def _icon_center(self) -> QIcon:
-        def draw(p: QPainter, s: int):
-            c = s/2
-            r = s*0.35
-            p.drawEllipse(int(c-r/2), int(c-r/2), int(r), int(r))
-            p.drawLine(int(c - r), int(c), int(c + r), int(c))
-            p.drawLine(int(c), int(c - r), int(c), int(c + r))
-        return self._make_icon(draw)
-
-    def _icon_fit(self) -> QIcon:
-        def draw(p: QPainter, s: int):
-            # four diagonal arrows pointing outwards
-            m = 4
-            # top-left
-            p.drawLine(m, m+6, m, m)
-            p.drawLine(m, m, m+6, m)
-            # top-right
-            p.drawLine(s-m-6, m, s-m, m)
-            p.drawLine(s-m, m, s-m, m+6)
-            # bottom-right
-            p.drawLine(s-m, s-m-6, s-m, s-m)
-            p.drawLine(s-m, s-m, s-m-6, s-m)
-            # bottom-left
-            p.drawLine(m+6, s-m, m, s-m)
-            p.drawLine(m, s-m, m, s-m-6)
-        return self._make_icon(draw)
-
-    def _icon_rotate(self, enabled: bool) -> QIcon:
-        def draw(p: QPainter, s: int):
-            c = s/2
-            r = s*0.32
-            path = QPainterPath()
-            path.moveTo(c + r, c)
-            path.arcTo(c - r, c - r, 2*r, 2*r, 0, 270)
-            p.drawPath(path)
-            # arrow head
-            p.drawLine(int(c + r*0.6), int(c - r*0.9), int(c + r), int(c))
-            p.drawLine(int(c + r*0.15), int(c - r*0.75), int(c + r), int(c))
-            if not enabled:
-                p.drawLine(int(c-r), int(c+r), int(c+r), int(c-r))
-        return self._make_icon(draw)
-
-    def _icon_minimize(self, minimized: bool) -> QIcon:
-        def draw(p: QPainter, s: int):
-            c = s/2
-            if minimized:
-                # up chevrons
-                p.drawLine(int(c-6), int(c+3), int(c), int(c-3))
-                p.drawLine(int(c), int(c-3), int(c+6), int(c+3))
-                p.drawLine(int(c-6), int(c+7), int(c), int(c+1))
-                p.drawLine(int(c), int(c+1), int(c+6), int(c+7))
-            else:
-                # down chevrons
-                p.drawLine(int(c-6), int(c-3), int(c), int(c+3))
-                p.drawLine(int(c), int(c+3), int(c+6), int(c-3))
-                p.drawLine(int(c-6), int(c+1), int(c), int(c+7))
-                p.drawLine(int(c), int(c+7), int(c+6), int(c+1))
-        return self._make_icon(draw)
+    def _icon_plus(self): return self._make_icon(lambda p, s: (p.drawLine(int(s/2-s*0.35), s//2, int(s/2+s*0.35), s//2), p.drawLine(s//2, int(s/2-s*0.35), s//2, int(s/2+s*0.35))))
+    def _icon_minus(self): return self._make_icon(lambda p, s: p.drawLine(int(s/2-s*0.35), s//2, int(s/2+s*0.35), s//2))
+    def _icon_center(self): return self._make_icon(lambda p, s: (p.drawEllipse(int(s/2-s*0.175), int(s/2-s*0.175), int(s*0.35), int(s*0.35)), p.drawLine(int(s*0.15), s//2, int(s*0.85), s//2), p.drawLine(s//2, int(s*0.15), s//2, int(s*0.85))))
+    def _icon_fit(self): return self._make_icon(lambda p, s: (p.drawLine(4, 10, 4, 4), p.drawLine(4, 4, 10, 4), p.drawLine(s-10, 4, s-4, 4), p.drawLine(s-4, 4, s-4, 10), p.drawLine(s-4, s-10, s-4, s-4), p.drawLine(s-4, s-4, s-10, s-4), p.drawLine(10, s-4, 4, s-4), p.drawLine(4, s-4, 4, s-10)))
+    def _icon_rotate(self): return self._make_icon(lambda p, s: (p.drawArc(int(s*0.18), int(s*0.18), int(s*0.64), int(s*0.64), 45*16, 270*16), p.drawLine(int(s*0.5), int(s*0.18), int(s*0.5-s*0.15), int(s*0.18+s*0.15)), p.drawLine(int(s*0.5), int(s*0.18), int(s*0.5+s*0.15), int(s*0.18+s*0.15))))
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -241,21 +153,16 @@ class MainWindow(QMainWindow):
         self.background_item = None
         self.puppet_scales = {}
         self.puppet_paths = {}
+        self.zoom_factor = 1.0
 
         self.scene = QGraphicsScene()
         self.scene.setSceneRect(0, 0, self.scene_model.scene_width, self.scene_model.scene_height)
         
-        self.view = ZoomableView(self.scene, self)
-        self.view.main_window = self # Set the reference to MainWindow
+        self.view = ZoomableView(self.scene, self, self)
         self.view.setRenderHint(QPainter.Antialiasing)
         self.view.setRenderHint(QPainter.SmoothPixmapTransform)
         self.view.setBackgroundBrush(QColor("#121212"))
-        try:
-            # Remove frame to maximize viewport; ignore if unavailable
-            from PySide6.QtWidgets import QFrame
-            self.view.setFrameShape(QFrame.NoFrame)
-        except Exception:
-            pass
+        self.view.setFrameShape(QFrame.NoFrame)
         self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.view.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
@@ -269,9 +176,6 @@ class MainWindow(QMainWindow):
         self.timeline_dock = QDockWidget("Timeline", self)
         self.timeline_dock.setObjectName("dock_timeline")
         self.timeline_widget = TimelineWidget()
-        # Assurer la visibilité des commandes (pas de mode compact par défaut)
-        if hasattr(self.timeline_widget, 'set_compact'):
-            self.timeline_widget.set_compact(False)
         self.timeline_dock.setWidget(self.timeline_widget)
         self.timeline_dock.setFeatures(QDockWidget.DockWidgetMovable | QDockWidget.DockWidgetClosable)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.timeline_dock)
@@ -280,7 +184,6 @@ class MainWindow(QMainWindow):
         self.inspector_dock.setObjectName("dock_inspector")
         self.inspector_widget = InspectorWidget(self)
         self.inspector_dock.setWidget(self.inspector_widget)
-        # Docké à droite, masqué par défaut (pas flottant)
         self.inspector_dock.setFeatures(QDockWidget.DockWidgetMovable | QDockWidget.DockWidgetClosable)
         self.addDockWidget(Qt.RightDockWidgetArea, self.inspector_dock)
         self.inspector_dock.hide()
@@ -291,41 +194,25 @@ class MainWindow(QMainWindow):
 
         self.setup_menus()
         self.connect_signals()
-        self._setup_scene_visuals() # Setup scene border and text
-
-        self.add_puppet("assets/manululu.svg", "manu")
-        self.inspector_widget.refresh()
-        self._update_timeline_ui_from_model()
-        # Fit au démarrage pour maximiser l'espace scénique
-        self.fit_to_view()
-        self._update_zoom_status() # Initial zoom status
-
-        # Barre d'outils principale (léger) pour accès rapide
+        self._setup_scene_visuals()
         self._build_main_toolbar()
-
-        # Stylesheet unifié (docks/toolbar/overlay)
         self._apply_unified_stylesheet()
 
+        # --- Startup Sequence ---
+        self.showMaximized()
+        self.import_scene("demo.json")
+
     def setup_menus(self):
-        self.ui.menuToggle_Inspector.clear()
-        self.ui.menuToggle_Inspector.addAction(self.inspector_dock.toggleViewAction())
-        self.ui.menuToggle_Timeline.clear()
-        self.ui.menuToggle_Timeline.addAction(self.timeline_dock.toggleViewAction())
+        self.ui.menuToggle_Inspector.clear(); self.ui.menuToggle_Inspector.addAction(self.inspector_dock.toggleViewAction())
+        self.ui.menuToggle_Timeline.clear(); self.ui.menuToggle_Timeline.addAction(self.timeline_dock.toggleViewAction())
         self.ui.menuToggle_Transformation.clear()
-        toggle_handles_action = QAction("Afficher les poignées", self, checkable=True)
-        toggle_handles_action.setChecked(False)
-        toggle_handles_action.toggled.connect(self.toggle_rotation_handles)
+        toggle_handles_action = QAction("Afficher les poignées", self, checkable=True); toggle_handles_action.setChecked(False); toggle_handles_action.toggled.connect(self.toggle_rotation_handles)
         self.ui.menuToggle_Transformation.addAction(toggle_handles_action)
 
-        # Raccourcis / tooltips modernes
-        self.ui.action_9.setShortcut("Ctrl+=")      # Zoom in
-        self.ui.action_9.setStatusTip("Zoom avant")
-        self.ui.action_10.setShortcut("Ctrl+-")     # Zoom out
-        self.ui.action_10.setStatusTip("Zoom arrière")
-        self.ui.actionFit.setShortcut("F")
-        self.ui.actionFit.setStatusTip("Adapter la scène à la vue")
-        self.ui.actionCenter.setShortcut("C")
-        self.ui.actionCenter.setStatusTip("Centrer sur la marionnette")
+        self.ui.action_9.setShortcut("Ctrl+="); self.ui.action_9.setStatusTip("Zoom avant")
+        self.ui.action_10.setShortcut("Ctrl+-"); self.ui.action_10.setStatusTip("Zoom arrière")
+        self.ui.actionFit.setShortcut("F"); self.ui.actionFit.setStatusTip("Adapter la scène à la vue")
+        self.ui.actionCenter.setShortcut("C"); self.ui.actionCenter.setStatusTip("Centrer sur la marionnette")
         self.inspector_dock.toggleViewAction().setShortcut("F4")
         self.timeline_dock.toggleViewAction().setShortcut("F3")
 
@@ -335,10 +222,8 @@ class MainWindow(QMainWindow):
         self.timeline_widget.frameChanged.connect(self.go_to_frame)
         self.timeline_widget.playClicked.connect(self.play_animation)
         self.timeline_widget.pauseClicked.connect(self.pause_animation)
-        if hasattr(self.timeline_widget, 'stopClicked'):
-            self.timeline_widget.stopClicked.connect(self.stop_animation)
-        if hasattr(self.timeline_widget, 'loopToggled'):
-            self.timeline_widget.loopToggled.connect(self._on_loop_toggled)
+        self.timeline_widget.stopClicked.connect(self.stop_animation)
+        self.timeline_widget.loopToggled.connect(self._on_loop_toggled)
         self.timeline_widget.fpsChanged.connect(self.set_fps)
         self.timeline_widget.rangeChanged.connect(self.set_range)
 
@@ -347,196 +232,110 @@ class MainWindow(QMainWindow):
         self.ui.actionTaille_Sc_ne.triggered.connect(self.set_scene_size)
         self.ui.actionBackground.triggered.connect(self.set_background)
 
-        # Zoom actions
-        self.zoom_factor = 1.0 # Initialize zoom_factor before connecting zoom actions
         self.ui.action_9.triggered.connect(lambda: self.zoom(1.25))
         self.ui.action_10.triggered.connect(lambda: self.zoom(0.8))
         self.ui.actionFit.triggered.connect(self.fit_to_view)
         self.ui.actionCenter.triggered.connect(self.center_on_puppet)
 
     def _build_main_toolbar(self):
-        tb = QToolBar("Outils", self)
-        tb.setObjectName("toolbar_main")
-        tb.setMovable(False)
-        tb.setFloatable(False)
-        tb.setToolButtonStyle(Qt.ToolButtonIconOnly)
-        tb.setIconSize(tb.iconSize())
-        # Actions clés, réutilise celles du menu
-        # Assigner des icônes aux actions si possible
-        self.ui.action_9.setIcon(self.view._icon_plus())
-        self.ui.action_10.setIcon(self.view._icon_minus())
-        self.ui.actionFit.setIcon(self.view._icon_fit())
-        self.ui.actionCenter.setIcon(self.view._icon_center())
-        tb.addAction(self.ui.action_9)      # Zoom +
-        tb.addAction(self.ui.action_10)     # Zoom -
-        tb.addAction(self.ui.actionFit)
-        tb.addAction(self.ui.actionCenter)
+        tb = QToolBar("Outils", self); tb.setObjectName("toolbar_main"); tb.setMovable(False); tb.setFloatable(False)
+        tb.setToolButtonStyle(Qt.ToolButtonIconOnly); tb.setIconSize(tb.iconSize())
+        self.ui.action_9.setIcon(self.view._icon_plus()); self.ui.action_10.setIcon(self.view._icon_minus())
+        self.ui.actionFit.setIcon(self.view._icon_fit()); self.ui.actionCenter.setIcon(self.view._icon_center())
+        for action in [self.ui.action_9, self.ui.action_10, self.ui.actionFit, self.ui.actionCenter]: tb.addAction(action)
         tb.addSeparator()
-        tb.addAction(self.inspector_dock.toggleViewAction())
-        tb.addAction(self.timeline_dock.toggleViewAction())
+        tb.addAction(self.inspector_dock.toggleViewAction()); tb.addAction(self.timeline_dock.toggleViewAction())
         self.addToolBar(Qt.TopToolBarArea, tb)
 
     def _apply_unified_stylesheet(self):
         self.setStyleSheet(
-            """
-            QDockWidget {
-                titlebar-close-icon: none;
-                titlebar-normal-icon: none;
-                background: #1E1E1E;
-                color: #E0E0E0;
-            }
-            QDockWidget::title {
-                background: #1B1B1B;
-                padding: 4px 8px;
-                border: 1px solid #2A2A2A;
-                color: #E0E0E0;
-            }
-            QToolBar {
-                background: #1B1B1B;
-                border-bottom: 1px solid #2A2A2A;
-                spacing: 4px;
-            }
-            QToolButton {
-                color: #E0E0E0;
-            }
-            QStatusBar {
-                background: #121212;
-                color: #CFCFCF;
-            }
-            """
-        )
+            """QDockWidget { titlebar-close-icon: none; titlebar-normal-icon: none; background: #1E1E1E; color: #E0E0E0; }
+               QDockWidget::title { background: #1B1B1B; padding: 4px 8px; border: 1px solid #2A2A2A; color: #E0E0E0; }
+               QToolBar { background: #1B1B1B; border-bottom: 1px solid #2A2A2A; spacing: 4px; }
+               QToolButton { color: #E0E0E0; }
+               QStatusBar { background: #121212; color: #CFCFCF; }""")
 
     def _setup_scene_visuals(self):
-        self.scene_border_item = QGraphicsRectItem()
-        self.scene_size_text_item = QGraphicsTextItem()
-        self.scene.addItem(self.scene_border_item)
-        self.scene.addItem(self.scene_size_text_item)
+        self.scene_border_item = QGraphicsRectItem(); self.scene_size_text_item = QGraphicsTextItem()
+        self.scene.addItem(self.scene_border_item); self.scene.addItem(self.scene_size_text_item)
         self._update_scene_visuals()
 
     def _update_scene_visuals(self):
         rect = self.scene.sceneRect()
-        pen = QPen(QColor(100, 100, 100), 2, Qt.DashLine)
-        self.scene_border_item.setPen(pen)
-        self.scene_border_item.setRect(rect)
-
-        width = self.scene_model.scene_width
-        height = self.scene_model.scene_height
-        self.scene_size_text_item.setPlainText(f"{width}x{height}")
-        self.scene_size_text_item.setDefaultTextColor(QColor(150, 150, 150))
+        self.scene_border_item.setPen(QPen(QColor(100, 100, 100), 2, Qt.DashLine)); self.scene_border_item.setRect(rect)
+        text = f"{self.scene_model.scene_width}x{self.scene_model.scene_height}"
+        self.scene_size_text_item.setPlainText(text); self.scene_size_text_item.setDefaultTextColor(QColor(150, 150, 150))
         text_rect = self.scene_size_text_item.boundingRect()
         self.scene_size_text_item.setPos(rect.right() - text_rect.width() - 10, rect.bottom() - text_rect.height() - 10)
 
     def _update_zoom_status(self):
         txt = f"Zoom: {self.zoom_factor:.0%}"
         self.statusBar().showMessage(txt)
-        # MàJ du label overlay dans la vue
-        if hasattr(self, 'view') and hasattr(self.view, 'set_zoom_label'):
-            self.view.set_zoom_label(f"{int(self.zoom_factor*100)}%")
+        if hasattr(self.view, 'set_zoom_label'): self.view.set_zoom_label(f"{int(self.zoom_factor*100)}%")
 
-    # -------------------------------------------------
-    # Timeline helpers
-    # -------------------------------------------------
-    # toggle_timeline_minimize removed
-
-    def zoom(self, factor):
-        self.view.scale(factor, factor)
-        self.zoom_factor *= factor
-        self._update_zoom_status()
-
-    def fit_to_view(self):
-        self.view.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
-        self.zoom_factor = self.view.transform().m11()
-        self._update_zoom_status()
-
-    def center_on_puppet(self):
-        puppet_root = self.graphics_items.get("manu:torse")
-        if puppet_root:
-            self.view.centerOn(puppet_root)
+    def zoom(self, factor): self.view.scale(factor, factor); self.zoom_factor *= factor; self._update_zoom_status()
+    def fit_to_view(self): self.view.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio); self.zoom_factor = self.view.transform().m11(); self._update_zoom_status()
+    def center_on_puppet(self): 
+        if (puppet_root := self.graphics_items.get("manu:torse")): self.view.centerOn(puppet_root)
 
     def set_scene_size(self):
         width, ok1 = QInputDialog.getInt(self, "Taille de la scène", "Largeur:", self.scene_model.scene_width, 1)
         if ok1:
             height, ok2 = QInputDialog.getInt(self, "Taille de la scène", "Hauteur:", self.scene_model.scene_height, 1)
             if ok2:
-                self.scene_model.scene_width = width
-                self.scene_model.scene_height = height
+                self.scene_model.scene_width = width; self.scene_model.scene_height = height
                 self.scene.setSceneRect(0, 0, width, height)
-                self._update_scene_visuals()
-                self._update_background()
-                self._update_zoom_status() # Update zoom status after scene size change
+                self._update_scene_visuals(); self._update_background(); self._update_zoom_status()
 
     def set_background(self):
         filePath, _ = QFileDialog.getOpenFileName(self, "Charger une image d'arrière-plan", "", "Images (*.png *.jpg *.jpeg)")
-        if filePath:
-            self.scene_model.background_path = filePath
-            self._update_background()
+        if filePath: self.scene_model.background_path = filePath; self._update_background()
 
     def _update_background(self):
-        if self.background_item:
-            self.scene.removeItem(self.background_item)
-            self.background_item = None
-        
-        if self.scene_model.background_path:
+        if self.background_item: self.scene.removeItem(self.background_item); self.background_item = None
+        if self.scene_model.background_path and os.path.exists(self.scene_model.background_path):
             pixmap = QPixmap(self.scene_model.background_path)
-            if not pixmap.isNull():
-                scaled_pixmap = pixmap.scaled(self.scene.sceneRect().size().toSize(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
-                self.background_item = QGraphicsPixmapItem(scaled_pixmap)
-                scene_rect = self.scene.sceneRect()
-                bg_rect = self.background_item.boundingRect()
-                self.background_item.setPos(scene_rect.center().x() - bg_rect.width()/2, scene_rect.center().y() - bg_rect.height()/2)
-                self.background_item.setZValue(-10000)
-                self.scene.addItem(self.background_item)
+            scaled_pixmap = pixmap.scaled(self.scene.sceneRect().size().toSize(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            self.background_item = QGraphicsPixmapItem(scaled_pixmap)
+            scene_rect = self.scene.sceneRect()
+            self.background_item.setPos(scene_rect.center() - self.background_item.boundingRect().center())
+            self.background_item.setZValue(-10000)
+            self.scene.addItem(self.background_item)
 
     def toggle_rotation_handles(self, visible):
         for item in self.graphics_items.values():
-            if isinstance(item, PuppetPiece):
-                item.set_handle_visibility(visible)
+            if isinstance(item, PuppetPiece): item.set_handle_visibility(visible)
 
     def save_scene(self):
         filePath, _ = QFileDialog.getSaveFileName(self, "Sauvegarder la scène", "", "JSON Files (*.json)")
-        if filePath:
-            self.export_scene(filePath)
+        if filePath: self.export_scene(filePath)
 
     def load_scene(self):
         filePath, _ = QFileDialog.getOpenFileName(self, "Charger une scène", "", "JSON Files (*.json)")
-        if filePath:
-            self.import_scene(filePath)
+        if filePath: self.import_scene(filePath)
 
-    def play_animation(self):
-        self.playback_timer.start()
-
-    def pause_animation(self):
-        self.playback_timer.stop()
-
+    def play_animation(self): self.playback_timer.start()
+    def pause_animation(self): self.playback_timer.stop()
     def stop_animation(self):
         self.playback_timer.stop()
-        start = self.scene_model.start_frame
-        self.timeline_widget.set_current_frame(start)
+        self.timeline_widget.set_current_frame(self.scene_model.start_frame)
 
     def next_frame(self):
-        current_frame = self.scene_model.current_frame
-        start_frame = self.scene_model.start_frame
-        end_frame = self.scene_model.end_frame
-        new_frame = current_frame + 1
-        if new_frame > end_frame:
-            if getattr(self, 'loop_enabled', True):
-                new_frame = start_frame
+        current = self.scene_model.current_frame
+        start, end = self.scene_model.start_frame, self.scene_model.end_frame
+        new_frame = current + 1
+        if new_frame > end:
+            if self.timeline_widget.loop_enabled:
+                new_frame = start
             else:
                 self.pause_animation()
-                self.timeline_widget.set_current_frame(end_frame)
+                self.timeline_widget.play_btn.setChecked(False)
                 return
         self.timeline_widget.set_current_frame(new_frame)
 
-    def _on_loop_toggled(self, enabled: bool):
-        self.loop_enabled = bool(enabled)
-
-    def set_fps(self, fps):
-        self.scene_model.fps = fps
-        self.playback_timer.setInterval(1000 // fps if fps > 0 else 0)
-
-    def set_range(self, start, end):
-        self.scene_model.start_frame = start
-        self.scene_model.end_frame = end
+    def _on_loop_toggled(self, enabled: bool): self.timeline_widget.loop_enabled = enabled
+    def set_fps(self, fps): self.scene_model.fps = fps; self.playback_timer.setInterval(1000 // fps if fps > 0 else 0)
+    def set_range(self, start, end): self.scene_model.start_frame = start; self.scene_model.end_frame = end
 
     def _update_timeline_ui_from_model(self):
         self.timeline_widget.fps_spinbox.setValue(self.scene_model.fps)
@@ -545,24 +344,20 @@ class MainWindow(QMainWindow):
         self.timeline_widget.slider.setRange(self.scene_model.start_frame, self.scene_model.end_frame)
 
     def add_puppet(self, file_path, puppet_name):
-        puppet = Puppet()
-        loader = SvgLoader(file_path)
-        renderer = loader.renderer
+        puppet = Puppet(); loader = SvgLoader(file_path); renderer = loader.renderer
         self.renderers[puppet_name] = renderer
         puppet.build_from_svg(loader, PARENT_MAP, PIVOT_MAP, Z_ORDER)
         self.scene_model.add_puppet(puppet_name, puppet)
         self.puppet_scales[puppet_name] = 1.0
         self.puppet_paths[puppet_name] = file_path
         self._add_puppet_graphics(puppet_name, puppet, file_path, renderer, loader)
-        if hasattr(self, "inspector_widget"):
-            self.inspector_widget.refresh()
+        if hasattr(self, "inspector_widget"): self.inspector_widget.refresh()
 
     def _add_puppet_graphics(self, puppet_name, puppet, file_path, renderer, loader):
         pieces = {}
         for name, member in puppet.members.items():
             offset_x, offset_y = loader.get_group_offset(name) or (0, 0)
-            pivot_x = member.pivot[0] - offset_x
-            pivot_y = member.pivot[1] - offset_y
+            pivot_x, pivot_y = member.pivot[0] - offset_x, member.pivot[1] - offset_y
             piece = PuppetPiece(file_path, name, pivot_x, pivot_y, renderer)
             piece.setZValue(member.z_order)
             pieces[name] = piece
@@ -576,97 +371,67 @@ class MainWindow(QMainWindow):
                 piece.set_parent_piece(parent_piece, member.rel_pos[0], member.rel_pos[1])
             else: # Root piece
                 offset_x, offset_y = loader.get_group_offset(name) or (0, 0)
-                pivot_x_local = member.pivot[0] - offset_x
-                pivot_y_local = member.pivot[1] - offset_y
-                final_x = scene_center.x() - pivot_x_local
-                final_y = scene_center.y() - pivot_y_local
+                final_x = scene_center.x() - (member.pivot[0] - offset_x)
+                final_y = scene_center.y() - (member.pivot[1] - offset_y)
                 piece.setPos(final_x, final_y)
                 piece.setFlag(QGraphicsItem.ItemIsMovable, True)
                 piece.setFlag(QGraphicsItem.ItemSendsGeometryChanges, True)
 
         for piece in pieces.values():
-            self.scene.addItem(piece)
-            self.scene.addItem(piece.pivot_handle)
-            if piece.rotation_handle:
-                self.scene.addItem(piece.rotation_handle)
+            self.scene.addItem(piece); self.scene.addItem(piece.pivot_handle)
+            if piece.rotation_handle: self.scene.addItem(piece.rotation_handle)
 
         for piece in pieces.values():
-            if piece.parent_piece:
-                piece.update_transform_from_parent()
-            else:
-                piece.update_handle_positions()
+            if piece.parent_piece: piece.update_transform_from_parent()
+            else: piece.update_handle_positions()
 
     def update_scene_from_model(self):
-        index = self.scene_model.current_frame
-        keyframes = self.scene_model.keyframes
-        if not keyframes:
-            return
+        index = self.scene_model.current_frame; keyframes = self.scene_model.keyframes
+        if not keyframes: return
 
-        prev_kf_index = -1
-        next_kf_index = -1
         sorted_indices = sorted(keyframes.keys())
-        for i in sorted_indices:
-            if i <= index:
-                prev_kf_index = i
-            if i > index:
-                next_kf_index = i
-                break
+        prev_kf_index = next((i for i in reversed(sorted_indices) if i <= index), -1)
+        next_kf_index = next((i for i in sorted_indices if i > index), -1)
 
         if prev_kf_index != -1 and next_kf_index != -1 and prev_kf_index != next_kf_index:
-            prev_kf = keyframes[prev_kf_index]
-            next_kf = keyframes[next_kf_index]
+            prev_kf, next_kf = keyframes[prev_kf_index], keyframes[next_kf_index]
             ratio = (index - prev_kf_index) / (next_kf_index - prev_kf_index)
-            for puppet_name, puppet in self.scene_model.puppets.items():
-                prev_pose = prev_kf.puppets.get(puppet_name, {})
-                next_pose = next_kf.puppets.get(puppet_name, {})
+            for name, puppet in self.scene_model.puppets.items():
+                prev_pose, next_pose = prev_kf.puppets.get(name, {}), next_kf.puppets.get(name, {})
                 for member_name in puppet.members:
-                    prev_state = prev_pose.get(member_name)
-                    next_state = next_pose.get(member_name)
-                    if not prev_state or not next_state:
-                        continue
-                    prev_rot = prev_state['rotation']
-                    next_rot = next_state['rotation']
-                    interp_rot = prev_rot + (next_rot - prev_rot) * ratio
-                    piece = self.graphics_items[f"{puppet_name}:{member_name}"]
+                    if not (prev_state := prev_pose.get(member_name)) or not (next_state := next_pose.get(member_name)): continue
+                    interp_rot = prev_state['rotation'] + (next_state['rotation'] - prev_state['rotation']) * ratio
+                    piece = self.graphics_items[f"{name}:{member_name}"]
                     piece.local_rotation = interp_rot
                     if not piece.parent_piece:
-                        prev_pos = prev_state['pos']
-                        next_pos = next_state['pos']
+                        prev_pos, next_pos = prev_state['pos'], next_state['pos']
                         interp_x = prev_pos[0] + (next_pos[0] - prev_pos[0]) * ratio
                         interp_y = prev_pos[1] + (next_pos[1] - prev_pos[1]) * ratio
                         piece.setPos(interp_x, interp_y)
         else:
             target_kf_index = prev_kf_index if prev_kf_index != -1 else next_kf_index
-            if target_kf_index == -1:
-                return
+            if target_kf_index == -1: return
             kf = keyframes[target_kf_index]
-            for puppet_name, puppet_state in kf.puppets.items():
-                for member_name, member_state in puppet_state.items():
-                    piece = self.graphics_items[f"{puppet_name}:{member_name}"]
+            for name, state in kf.puppets.items():
+                for member, member_state in state.items():
+                    piece = self.graphics_items[f"{name}:{member}"]
                     piece.local_rotation = member_state['rotation']
-                    if not piece.parent_piece:
-                        pos = member_state['pos']
-                        piece.setPos(pos[0], pos[1])
+                    if not piece.parent_piece: piece.setPos(*member_state['pos'])
 
-        for puppet_name, puppet in self.scene_model.puppets.items():
+        for puppet in self.scene_model.puppets.values():
             for root_member in puppet.get_root_members():
-                root_piece = self.graphics_items[f"{puppet_name}:{root_member.name}"]
+                root_piece = self.graphics_items[f"{next(iter(self.scene_model.puppets.keys()))}:{root_member.name}"]
                 root_piece.setRotation(root_piece.local_rotation)
-                for child in root_piece.children:
-                    child.update_transform_from_parent()
+                for child in root_piece.children: child.update_transform_from_parent()
 
     def add_keyframe(self, frame_index):
         kf = self.scene_model.add_keyframe(frame_index)
-        for puppet_name, puppet in self.scene_model.puppets.items():
+        for name, puppet in self.scene_model.puppets.items():
             puppet_state = {}
             for member_name in puppet.members:
-                item_key = f"{puppet_name}:{member_name}"
-                piece = self.graphics_items[item_key]
-                puppet_state[member_name] = {
-                    'rotation': piece.local_rotation,
-                    'pos': (piece.x(), piece.y())
-                }
-            kf.puppets[puppet_name] = puppet_state
+                piece = self.graphics_items[f"{name}:{member_name}"]
+                puppet_state[member_name] = {'rotation': piece.local_rotation, 'pos': (piece.x(), piece.y())}
+            kf.puppets[name] = puppet_state
         self.timeline_widget.add_keyframe_marker(frame_index)
 
     def delete_keyframe(self, frame_index):
@@ -679,109 +444,161 @@ class MainWindow(QMainWindow):
         self.update_scene_from_model()
 
     def export_scene(self, file_path):
-        self.scene_model.export_json(file_path)
+        # Ensure the last known state is in a keyframe if there are none
+        if not self.scene_model.keyframes:
+            self.add_keyframe(0)
+
+        puppets_data = {}
+        for name, puppet in self.scene_model.puppets.items():
+            root_piece = self.graphics_items.get(f"{name}:{puppet.get_root_members()[0].name}")
+            if root_piece:
+                puppets_data[name] = {
+                    "path": self.puppet_paths.get(name),
+                    "scale": self.puppet_scales.get(name, 1.0),
+                    "position": [root_piece.x(), root_piece.y()]
+                }
+
+        data = {
+            "settings": {
+                "start_frame": self.scene_model.start_frame,
+                "end_frame": self.scene_model.end_frame,
+                "fps": self.scene_model.fps,
+                "scene_width": self.scene_model.scene_width,
+                "scene_height": self.scene_model.scene_height,
+                "background_path": self.scene_model.background_path
+            },
+            "puppets_data": puppets_data,
+            "objects": {k: v.__dict__ for k, v in self.scene_model.objects.items()},
+            "keyframes": {
+                k: {"objects": v.objects, "puppets": v.puppets}
+                for k, v in self.scene_model.keyframes.items()
+            }
+        }
+        
+        try:
+            with open(file_path, "w") as f:
+                json.dump(data, f, indent=2)
+            print(f"Scene saved to {file_path}")
+        except (IOError, TypeError) as e:
+            print(f"Error saving scene: {e}")
+
+    def _create_blank_scene(self):
+        for name in list(self.scene_model.puppets.keys()): self.delete_puppet(name)
+        for name in list(self.scene_model.objects.keys()): self.delete_object(name)
+        self.renderers.clear()
+        self.graphics_items.clear()
+        self.scene_model.keyframes.clear()
+        self.timeline_widget.clear_keyframes()
+        self.add_puppet("assets/test_genou.svg", "manu")
+        self._update_timeline_ui_from_model()
+        self.inspector_widget.refresh()
 
     def import_scene(self, file_path):
-        self.scene_model.import_json(file_path)
-        self.timeline_widget.clear_keyframes()
-        for kf_index in self.scene_model.keyframes:
-            self.timeline_widget.add_keyframe_marker(kf_index)
-        self._update_timeline_ui_from_model()
-        self.scene.setSceneRect(0, 0, self.scene_model.scene_width, self.scene_model.scene_height)
-        self._update_background()
-        self.update_scene_from_model()
+        try:
+            with open(file_path, 'r') as f:
+                data = json.load(f)
+            
+            # Clear existing scene
+            for name in list(self.scene_model.puppets.keys()): self.delete_puppet(name)
+            for name in list(self.scene_model.objects.keys()): self.delete_object(name)
+            self.renderers.clear()
+            self.graphics_items.clear()
 
-    # -------------------------------------------------
-    # Inspector actions
-    # -------------------------------------------------
+            # Load settings
+            settings = data.get("settings", {})
+            self.scene_model.start_frame = settings.get("start_frame", 0)
+            self.scene_model.end_frame = settings.get("end_frame", 100)
+            self.scene_model.fps = settings.get("fps", 24)
+            self.scene_model.scene_width = settings.get("scene_width", 1920)
+            self.scene_model.scene_height = settings.get("scene_height", 1080)
+            self.scene_model.background_path = settings.get("background_path")
+
+            # Rebuild puppets
+            puppets_data = data.get("puppets_data", {})
+            for name, p_data in puppets_data.items():
+                puppet_path = p_data.get("path")
+                if puppet_path and os.path.exists(puppet_path):
+                    self.add_puppet(puppet_path, name)
+                    scale = p_data.get("scale", 1.0)
+                    if scale != 1.0:
+                        self.scale_puppet(name, scale)
+                        self.puppet_scales[name] = scale
+                    
+                    pos = p_data.get("position")
+                    root_member_name = self.scene_model.puppets[name].get_root_members()[0].name
+                    root_piece = self.graphics_items.get(f"{name}:{root_member_name}")
+                    if root_piece and pos:
+                        root_piece.setPos(pos[0], pos[1])
+
+            # Load keyframes
+            self.scene_model.keyframes.clear()
+            keyframes_data = data.get("keyframes", {})
+            for frame_idx, kf_data in keyframes_data.items():
+                kf = self.scene_model.add_keyframe(int(frame_idx))
+                kf.puppets = kf_data.get("puppets", {})
+                kf.objects = kf_data.get("objects", {})
+
+            self.timeline_widget.clear_keyframes()
+            for kf_index in self.scene_model.keyframes:
+                self.timeline_widget.add_keyframe_marker(kf_index)
+            
+            self._update_timeline_ui_from_model()
+            self.scene.setSceneRect(0, 0, self.scene_model.scene_width, self.scene_model.scene_height)
+            self._update_background()
+            self.go_to_frame(self.scene_model.start_frame)
+            self.inspector_widget.refresh()
+
+        except Exception as e:
+            print(f"Failed to load scene '{file_path}': {e}")
+            self._create_blank_scene()
+
     def scale_puppet(self, puppet_name, ratio):
         puppet = self.scene_model.puppets.get(puppet_name)
-        if not puppet:
-            return
+        if not puppet: return
         for member_name in puppet.members:
-            key = f"{puppet_name}:{member_name}"
-            piece = self.graphics_items.get(key)
-            if not piece:
-                continue
+            piece = self.graphics_items.get(f"{puppet_name}:{member_name}")
+            if not piece: continue
             piece.setScale(piece.scale() * ratio)
-            if piece.parent_piece:
-                rel_x, rel_y = piece.rel_to_parent
-                piece.rel_to_parent = (rel_x * ratio, rel_y * ratio)
+            if piece.parent_piece: piece.rel_to_parent = (piece.rel_to_parent[0] * ratio, piece.rel_to_parent[1] * ratio)
         for root_member in puppet.get_root_members():
-            root_piece = self.graphics_items.get(f"{puppet_name}:{root_member.name}")
-            if not root_piece:
-                continue
-            for child in root_piece.children:
-                child.update_transform_from_parent()
+            if (root_piece := self.graphics_items.get(f"{puppet_name}:{root_member.name}")):
+                for child in root_piece.children: child.update_transform_from_parent()
 
     def delete_puppet(self, puppet_name):
-        puppet = self.scene_model.puppets.get(puppet_name)
-        if not puppet:
-            return
-        for member_name in list(puppet.members.keys()):
-            key = f"{puppet_name}:{member_name}"
-            piece = self.graphics_items.pop(key, None)
-            if piece:
-                self.scene.removeItem(piece)
-                self.scene.removeItem(piece.pivot_handle)
-                if piece.rotation_handle:
-                    self.scene.removeItem(piece.rotation_handle)
-        self.scene_model.remove_puppet(puppet_name)
-        self.puppet_scales.pop(puppet_name, None)
-        self.puppet_paths.pop(puppet_name, None)
+        if (puppet := self.scene_model.puppets.get(puppet_name)):
+            for member_name in list(puppet.members.keys()):
+                if (piece := self.graphics_items.pop(f"{puppet_name}:{member_name}", None)):
+                    self.scene.removeItem(piece)
+                    if piece.pivot_handle: self.scene.removeItem(piece.pivot_handle)
+                    if piece.rotation_handle: self.scene.removeItem(piece.rotation_handle)
+            self.scene_model.remove_puppet(puppet_name)
+            self.puppet_scales.pop(puppet_name, None)
+            self.puppet_paths.pop(puppet_name, None)
 
     def duplicate_puppet(self, puppet_name):
-        path = self.puppet_paths.get(puppet_name)
-        if not path:
-            return
-        base = puppet_name
-        i = 1
-        while True:
-            new_name = f"{base}_{i}"
-            if new_name not in self.scene_model.puppets:
-                break
-            i += 1
+        if not (path := self.puppet_paths.get(puppet_name)): return
+        base = puppet_name; i = 1
+        while (new_name := f"{base}_{i}") in self.scene_model.puppets: i += 1
         self.add_puppet(path, new_name)
-        scale = self.puppet_scales.get(puppet_name, 1.0)
-        if scale != 1.0:
+        if (scale := self.puppet_scales.get(puppet_name, 1.0)) != 1.0:
             self.puppet_scales[new_name] = scale
             self.scale_puppet(new_name, scale)
 
     def delete_object(self, name):
-        item = self.graphics_items.pop(name, None)
-        if item:
-            self.scene.removeItem(item)
+        if (item := self.graphics_items.pop(name, None)): self.scene.removeItem(item)
         self.scene_model.remove_object(name)
 
     def duplicate_object(self, name):
-        obj = self.scene_model.objects.get(name)
-        if not obj:
-            return
-        base = name
-        i = 1
-        while True:
-            new_name = f"{base}_{i}"
-            if new_name not in self.scene_model.objects:
-                break
-            i += 1
-        new_obj = SceneObject(new_name, obj.obj_type, obj.file_path,
-                               x=obj.x + 10, y=obj.y + 10,
-                               rotation=obj.rotation, scale=obj.scale)
+        if not (obj := self.scene_model.objects.get(name)): return
+        base = name; i = 1
+        while (new_name := f"{base}_{i}") in self.scene_model.objects: i += 1
+        new_obj = SceneObject(new_name, obj.obj_type, obj.file_path, x=obj.x + 10, y=obj.y + 10, rotation=obj.rotation, scale=obj.scale)
         self.scene_model.add_object(new_obj)
         self._add_object_graphics(new_obj)
 
-    def _add_object_graphics(self, scene_object: SceneObject):
-        if scene_object.obj_type == "image":
-            pix = QPixmap(scene_object.file_path)
-            item = QGraphicsPixmapItem(pix)
-        elif scene_object.obj_type == "svg":
-            item = QGraphicsSvgItem(scene_object.file_path)
-        else:
-            return
-        item.setPos(scene_object.x, scene_object.y)
-        item.setRotation(scene_object.rotation)
-        item.setScale(scene_object.scale)
-        item.setFlag(QGraphicsItem.ItemIsMovable, True)
-        item.setFlag(QGraphicsItem.ItemIsSelectable, True)
+    def _add_object_graphics(self, obj: SceneObject):
+        item = QGraphicsPixmapItem(obj.file_path) if obj.obj_type == "image" else QGraphicsSvgItem(obj.file_path)
+        item.setPos(obj.x, obj.y); item.setRotation(obj.rotation); item.setScale(obj.scale)
+        item.setFlag(QGraphicsItem.ItemIsMovable, True); item.setFlag(QGraphicsItem.ItemIsSelectable, True)
         self.scene.addItem(item)
-        self.graphics_items[scene_object.name] = item
+        self.graphics_items[obj.name] = item
