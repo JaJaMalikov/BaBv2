@@ -150,6 +150,24 @@ class SceneModel:
         self.scene_height = settings.get("scene_height", 1080)
         self.background_path = settings.get("background_path", None)
 
+        # Recharge les objets de la scène
+        self.objects.clear()
+        objects_data = data.get("objects", {})
+        for name, obj_data in objects_data.items():
+            obj = SceneObject(
+                name=name,
+                obj_type=obj_data.get("obj_type"),
+                file_path=obj_data.get("file_path"),
+                x=obj_data.get("x", 0),
+                y=obj_data.get("y", 0),
+                rotation=obj_data.get("rotation", 0),
+                scale=obj_data.get("scale", 1.0),
+            )
+            attached_to = obj_data.get("attached_to")
+            if attached_to:
+                obj.attached_to = tuple(attached_to)
+            self.objects[name] = obj
+
         self.keyframes.clear()
 
         loaded_keyframes = data.get("keyframes", [])
@@ -160,7 +178,7 @@ class SceneModel:
                 new_kf.objects = kf_data.get("objects", {})
                 new_kf.puppets = kf_data.get("puppets", {})
                 self.keyframes[index] = new_kf
-        
+
         self.keyframes = dict(sorted(self.keyframes.items()))
 
 

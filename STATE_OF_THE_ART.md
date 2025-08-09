@@ -47,6 +47,7 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
     *   **Centrage de la Vue**: Une option permet de **centrer la vue sur le pantin**.
     *   **Arrière-plan Personnalisable**: Possibilité de charger une **image d'arrière-plan** qui s'adapte automatiquement à la taille de la scène.
 *   **Sauvegarde et Chargement**: L'ensemble de la scène d'animation, y compris toutes les keyframes et les réglages de la timeline (FPS, plage de lecture), peut être sauvegardé dans un fichier `.json` et rechargé ultérieurement.
+    *   Les objets présents dans la scène sont également reconstruits lors du chargement du fichier.
 
 ## État actuel et prochaines étapes possibles
 
