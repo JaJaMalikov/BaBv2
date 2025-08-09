@@ -21,6 +21,36 @@ class SceneObject:
     def detach(self):
         self.attached_to = None
 
+    def to_dict(self):
+        """Sérialise l'objet pour l'export JSON."""
+        return {
+            "name": self.name,
+            "obj_type": self.obj_type,
+            "file_path": self.file_path,
+            "x": self.x,
+            "y": self.y,
+            "rotation": self.rotation,
+            "scale": self.scale,
+            "attached_to": self.attached_to,
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        """Construit un ``SceneObject`` depuis une structure dict."""
+        obj = cls(
+            name=data.get("name"),
+            obj_type=data.get("obj_type"),
+            file_path=data.get("file_path"),
+            x=data.get("x", 0),
+            y=data.get("y", 0),
+            rotation=data.get("rotation", 0),
+            scale=data.get("scale", 1.0),
+        )
+        attached = data.get("attached_to")
+        if attached is not None:
+            obj.attached_to = tuple(attached)
+        return obj
+
 class Keyframe:
     """
     Snapshot de l'état de la scène à un temps donné
@@ -82,7 +112,7 @@ class SceneModel:
         
         # Snapshot de l'état des objets
         for name, obj in self.objects.items():
-            kf.objects[name] = obj.__dict__.copy()
+            kf.objects[name] = obj.to_dict()
 
         # Snapshot de l'état des marionnettes
         for puppet_name, puppet in self.puppets.items():
@@ -120,7 +150,7 @@ class SceneModel:
                 "background_path": self.background_path
             },
             "puppets": list(self.puppets.keys()),  # à affiner
-            "objects": {k: v.__dict__ for k, v in self.objects.items()},
+            "objects": {k: v.to_dict() for k, v in self.objects.items()},
             "keyframes": [
                 {
                     "index": kf.index,
@@ -154,18 +184,8 @@ class SceneModel:
         self.objects.clear()
         objects_data = data.get("objects", {})
         for name, obj_data in objects_data.items():
-            obj = SceneObject(
-                name=name,
-                obj_type=obj_data.get("obj_type"),
-                file_path=obj_data.get("file_path"),
-                x=obj_data.get("x", 0),
-                y=obj_data.get("y", 0),
-                rotation=obj_data.get("rotation", 0),
-                scale=obj_data.get("scale", 1.0),
-            )
-            attached_to = obj_data.get("attached_to")
-            if attached_to:
-                obj.attached_to = tuple(attached_to)
+            obj_data["name"] = name
+            obj = SceneObject.from_dict(obj_data)
             self.objects[name] = obj
 
         self.keyframes.clear()

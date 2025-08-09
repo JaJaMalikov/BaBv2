@@ -63,6 +63,7 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
 *   **Sauvegarde et Chargement**:
     *   L'ensemble de la scène (marionnettes, objets, keyframes, réglages) est sérialisé dans un fichier `.json`.
     *   Le chargement d'un fichier restaure l'intégralité de l'état de la scène.
+    *   La sérialisation des objets est désormais centralisée via `SceneObject.to_dict` / `SceneObject.from_dict` pour un export plus fiable.
 
 ## État actuel et prochaines étapes possibles
 
