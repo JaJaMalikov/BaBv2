@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QPainter, QPixmap, QAction, QColor, QPen
 from PySide6.QtCore import Qt, QTimer
+from PySide6.QtSvgWidgets import QGraphicsSvgItem
 
 from core.scene_model import SceneModel, SceneObject
 from core.puppet_piece import PuppetPiece
@@ -21,6 +22,7 @@ from core.puppet_model import Puppet, PARENT_MAP, PIVOT_MAP, Z_ORDER
 from core.svg_loader import SvgLoader
 from ui.ui_menu import Ui_MainWindow
 from ui.timeline_widget import TimelineWidget
+from ui.inspector_widget import InspectorWidget
 
 class ZoomableView(QGraphicsView):
     def __init__(self, scene, parent=None):
@@ -47,6 +49,8 @@ class MainWindow(QMainWindow):
         self.graphics_items = {}
         self.renderers = {}
         self.background_item = None
+        self.puppet_scales = {}
+        self.puppet_paths = {}
 
         self.scene = QGraphicsScene()
         self.scene.setSceneRect(0, 0, self.scene_model.scene_width, self.scene_model.scene_height)
@@ -66,7 +70,14 @@ class MainWindow(QMainWindow):
         self.timeline_widget = TimelineWidget()
         self.timeline_dock.setWidget(self.timeline_widget)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.timeline_dock)
-        
+
+        self.inspector_dock = QDockWidget("Inspector", self)
+        self.inspector_widget = InspectorWidget(self)
+        self.inspector_dock.setWidget(self.inspector_widget)
+        self.inspector_dock.setFloating(True)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.inspector_dock)
+        self.inspector_dock.hide()
+
         self.playback_timer = QTimer(self)
         self.playback_timer.timeout.connect(self.next_frame)
         self.set_fps(self.scene_model.fps)
@@ -76,11 +87,14 @@ class MainWindow(QMainWindow):
         self._setup_scene_visuals() # Setup scene border and text
 
         self.add_puppet("assets/manululu.svg", "manu")
+        self.inspector_widget.refresh()
         self._update_timeline_ui_from_model()
         self.center_on_puppet() # Center view on puppet at startup
         self._update_zoom_status() # Initial zoom status
 
     def setup_menus(self):
+        self.ui.menuToggle_Inspector.clear()
+        self.ui.menuToggle_Inspector.addAction(self.inspector_dock.toggleViewAction())
         self.ui.menuToggle_Timeline.clear()
         self.ui.menuToggle_Timeline.addAction(self.timeline_dock.toggleViewAction())
         self.ui.menuToggle_Transformation.clear()
@@ -233,7 +247,11 @@ class MainWindow(QMainWindow):
         self.renderers[puppet_name] = renderer
         puppet.build_from_svg(loader, PARENT_MAP, PIVOT_MAP, Z_ORDER)
         self.scene_model.add_puppet(puppet_name, puppet)
+        self.puppet_scales[puppet_name] = 1.0
+        self.puppet_paths[puppet_name] = file_path
         self._add_puppet_graphics(puppet_name, puppet, file_path, renderer, loader)
+        if hasattr(self, "inspector_widget"):
+            self.inspector_widget.refresh()
 
     def _add_puppet_graphics(self, puppet_name, puppet, file_path, renderer, loader):
         pieces = {}
@@ -368,3 +386,98 @@ class MainWindow(QMainWindow):
         self.scene.setSceneRect(0, 0, self.scene_model.scene_width, self.scene_model.scene_height)
         self._update_background()
         self.update_scene_from_model()
+
+    # -------------------------------------------------
+    # Inspector actions
+    # -------------------------------------------------
+    def scale_puppet(self, puppet_name, ratio):
+        puppet = self.scene_model.puppets.get(puppet_name)
+        if not puppet:
+            return
+        for member_name in puppet.members:
+            key = f"{puppet_name}:{member_name}"
+            piece = self.graphics_items.get(key)
+            if not piece:
+                continue
+            piece.setScale(piece.scale() * ratio)
+            if piece.parent_piece:
+                rel_x, rel_y = piece.rel_to_parent
+                piece.rel_to_parent = (rel_x * ratio, rel_y * ratio)
+        for root_member in puppet.get_root_members():
+            root_piece = self.graphics_items.get(f"{puppet_name}:{root_member.name}")
+            if not root_piece:
+                continue
+            for child in root_piece.children:
+                child.update_transform_from_parent()
+
+    def delete_puppet(self, puppet_name):
+        puppet = self.scene_model.puppets.get(puppet_name)
+        if not puppet:
+            return
+        for member_name in list(puppet.members.keys()):
+            key = f"{puppet_name}:{member_name}"
+            piece = self.graphics_items.pop(key, None)
+            if piece:
+                self.scene.removeItem(piece)
+                self.scene.removeItem(piece.pivot_handle)
+                if piece.rotation_handle:
+                    self.scene.removeItem(piece.rotation_handle)
+        self.scene_model.remove_puppet(puppet_name)
+        self.puppet_scales.pop(puppet_name, None)
+        self.puppet_paths.pop(puppet_name, None)
+
+    def duplicate_puppet(self, puppet_name):
+        path = self.puppet_paths.get(puppet_name)
+        if not path:
+            return
+        base = puppet_name
+        i = 1
+        while True:
+            new_name = f"{base}_{i}"
+            if new_name not in self.scene_model.puppets:
+                break
+            i += 1
+        self.add_puppet(path, new_name)
+        scale = self.puppet_scales.get(puppet_name, 1.0)
+        if scale != 1.0:
+            self.puppet_scales[new_name] = scale
+            self.scale_puppet(new_name, scale)
+
+    def delete_object(self, name):
+        item = self.graphics_items.pop(name, None)
+        if item:
+            self.scene.removeItem(item)
+        self.scene_model.remove_object(name)
+
+    def duplicate_object(self, name):
+        obj = self.scene_model.objects.get(name)
+        if not obj:
+            return
+        base = name
+        i = 1
+        while True:
+            new_name = f"{base}_{i}"
+            if new_name not in self.scene_model.objects:
+                break
+            i += 1
+        new_obj = SceneObject(new_name, obj.obj_type, obj.file_path,
+                               x=obj.x + 10, y=obj.y + 10,
+                               rotation=obj.rotation, scale=obj.scale)
+        self.scene_model.add_object(new_obj)
+        self._add_object_graphics(new_obj)
+
+    def _add_object_graphics(self, scene_object: SceneObject):
+        if scene_object.obj_type == "image":
+            pix = QPixmap(scene_object.file_path)
+            item = QGraphicsPixmapItem(pix)
+        elif scene_object.obj_type == "svg":
+            item = QGraphicsSvgItem(scene_object.file_path)
+        else:
+            return
+        item.setPos(scene_object.x, scene_object.y)
+        item.setRotation(scene_object.rotation)
+        item.setScale(scene_object.scale)
+        item.setFlag(QGraphicsItem.ItemIsMovable, True)
+        item.setFlag(QGraphicsItem.ItemIsSelectable, True)
+        self.scene.addItem(item)
+        self.graphics_items[scene_object.name] = item
