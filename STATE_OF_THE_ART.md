@@ -66,11 +66,14 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
     *   **Personnalisation de la scène**:
         *   Définition de la taille (largeur/hauteur) de la scène.
         *   Chargement d'une **image d'arrière-plan** qui s'adapte à la scène.
+    *   **Styles et constantes unifiés**:
+        *   Style des boutons factorisé dans `ui/styles.py` pour cohérence.
+        *   Chaîne MIME partagée (`LIB_MIME`) pour le glisser-déposer d'éléments.
 
 *   **Sauvegarde et Chargement**:
     *   L'ensemble de la scène (marionnettes, objets, keyframes, réglages) est sérialisé dans un fichier `.json`.
     *   Le chargement d'un fichier restaure l'intégralité de l'état de la scène.
-    *   Sérialisation des objets via `SceneObject.to_dict` / `SceneObject.from_dict` (incluant rotation/échelle/z et attachements) pour un export fiable.
+    *   Sérialisation centralisée via `SceneModel.to_dict` / `from_dict` (incluant objets et keyframes) pour un export fiable.
 
 ## État actuel et prochaines étapes possibles
 

@@ -32,6 +32,7 @@ from ui.icons import (
     icon_scene_size, icon_background, icon_library, icon_inspector, icon_timeline,
     icon_chevron_left, icon_chevron_right
 )
+from ui.styles import BUTTON_STYLE
 
 
 class MainWindow(QMainWindow):
@@ -156,29 +157,12 @@ class MainWindow(QMainWindow):
         icon_size = 32
         button_size = 36
 
-        button_style = f"""
-            QToolButton {{
-                background-color: transparent;
-                border: none;
-                padding: 2px;
-                color: #E0E0E0;
-            }}
-            QToolButton:checked {{
-                background-color: rgba(255, 255, 255, 25);
-                border-radius: 4px;
-            }}
-            QToolButton:hover {{
-                background-color: rgba(255, 255, 255, 40);
-                border-radius: 4px;
-            }}
-        """
-
         def make_btn(action: QAction, checkable=False):
             btn = QToolButton(self._main_tools_overlay)
             btn.setDefaultAction(action)
             btn.setIconSize(QSize(icon_size, icon_size))
             btn.setCheckable(checkable)
-            btn.setStyleSheet(button_style)
+            btn.setStyleSheet(BUTTON_STYLE)
             btn.setFixedSize(button_size, button_size)
             btn.setToolButtonStyle(Qt.ToolButtonIconOnly)
             btn.setAutoRaise(True)
@@ -336,11 +320,12 @@ class MainWindow(QMainWindow):
                     piece.local_rotation = member_state['rotation']
                     if not piece.parent_piece: piece.setPos(*member_state['pos'])
 
-        for puppet in self.scene_model.puppets.values():
+        for name, puppet in self.scene_model.puppets.items():
             for root_member in puppet.get_root_members():
-                root_piece = graphics_items[f"{next(iter(self.scene_model.puppets.keys()))}:{root_member.name}"]
+                root_piece = graphics_items[f"{name}:{root_member.name}"]
                 root_piece.setRotation(root_piece.local_rotation)
-                for child in root_piece.children: child.update_transform_from_parent()
+                for child in root_piece.children:
+                    child.update_transform_from_parent()
 
         def state_for(name: str):
             si = sorted(keyframes.keys())
@@ -391,13 +376,8 @@ class MainWindow(QMainWindow):
             self._suspend_item_updates = False
 
     def add_keyframe(self, frame_index):
-        kf = self.scene_model.add_keyframe(frame_index)
-        for name, puppet in self.scene_model.puppets.items():
-            puppet_state = {}
-            for member_name in puppet.members:
-                piece = self.object_manager.graphics_items[f"{name}:{member_name}"]
-                puppet_state[member_name] = {'rotation': piece.local_rotation, 'pos': (piece.x(), piece.y())}
-            kf.puppets[name] = puppet_state
+        states = self.object_manager.capture_puppet_states()
+        self.scene_model.add_keyframe(frame_index, states)
         self.timeline_widget.add_keyframe_marker(frame_index)
 
     def select_object_in_inspector(self, name: str):

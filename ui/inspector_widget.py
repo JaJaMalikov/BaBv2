@@ -107,7 +107,7 @@ class InspectorWidget(QWidget):
             # Sélectionner l'objet dans la scène
             for it in self.main_window.scene.selectedItems():
                 it.setSelected(False)
-            gi = self.main_window.graphics_items.get(name)
+            gi = self.main_window.object_manager.graphics_items.get(name)
             if gi and gi.isVisible():
                 gi.setSelected(True)
             # Pré-sélectionner les combos selon l'état à la frame courante
@@ -125,7 +125,7 @@ class InspectorWidget(QWidget):
                 self.attach_puppet_combo.setCurrentIndex(0)
                 self._refresh_attach_member_combo()
         else:
-            scale = self.main_window.puppet_scales.get(name, 1.0)
+            scale = self.main_window.object_manager.puppet_scales.get(name, 1.0)
             rot = 0.0
             z = 0
             # Rien à afficher pour les pantins
@@ -147,16 +147,16 @@ class InspectorWidget(QWidget):
             obj = self.main_window.scene_model.objects.get(name)
             if obj:
                 obj.scale = value
-                item = self.main_window.graphics_items.get(name)
+                item = self.main_window.object_manager.graphics_items.get(name)
                 if item:
                     item.setScale(value)
         else:
-            old = self.main_window.puppet_scales.get(name, 1.0)
+            old = self.main_window.object_manager.puppet_scales.get(name, 1.0)
             if value <= 0:
                 return
             ratio = value / old if old else value
-            self.main_window.puppet_scales[name] = value
-            self.main_window.scale_puppet(name, ratio)
+            self.main_window.object_manager.puppet_scales[name] = value
+            self.main_window.object_manager.scale_puppet(name, ratio)
 
     def _on_delete_clicked(self):
         typ, name = self._current_info()
@@ -164,9 +164,9 @@ class InspectorWidget(QWidget):
             return
         if typ == "object":
             # Suppression temporelle: à partir de la frame courante
-            self.main_window.delete_object_from_current_frame(name)
+            self.main_window.object_manager.delete_object_from_current_frame(name)
         else:
-            self.main_window.delete_puppet(name)
+            self.main_window.object_manager.delete_puppet(name)
         self.refresh()
 
     def _on_duplicate_clicked(self):
@@ -174,9 +174,9 @@ class InspectorWidget(QWidget):
         if not name:
             return
         if typ == "object":
-            self.main_window.duplicate_object(name)
+            self.main_window.object_manager.duplicate_object(name)
         else:
-            self.main_window.duplicate_puppet(name)
+            self.main_window.object_manager.duplicate_puppet(name)
         self.refresh()
 
     def _on_rotation_changed(self, value: float):
@@ -184,7 +184,7 @@ class InspectorWidget(QWidget):
         if typ != "object" or not name:
             return
         obj = self.main_window.scene_model.objects.get(name)
-        item = self.main_window.graphics_items.get(name)
+        item = self.main_window.object_manager.graphics_items.get(name)
         if obj and item:
             obj.rotation = value
             try:
@@ -198,7 +198,7 @@ class InspectorWidget(QWidget):
         if typ != "object" or not name:
             return
         obj = self.main_window.scene_model.objects.get(name)
-        item = self.main_window.graphics_items.get(name)
+        item = self.main_window.object_manager.graphics_items.get(name)
         if obj and item:
             obj.z = int(value)
             item.setZValue(int(value))
@@ -229,14 +229,14 @@ class InspectorWidget(QWidget):
         puppet = self.attach_puppet_combo.currentText()
         member = self.attach_member_combo.currentText()
         if puppet and member:
-            self.main_window.attach_object_to_member(name, puppet, member)
+            self.main_window.object_manager.attach_object_to_member(name, puppet, member)
             self._on_item_changed(self.list_widget.currentItem(), None)
 
     def _on_detach_clicked(self):
         typ, name = self._current_info()
         if typ != "object" or not name:
             return
-        self.main_window.detach_object(name)
+        self.main_window.object_manager.detach_object(name)
         self._on_item_changed(self.list_widget.currentItem(), None)
 
     # --- Helpers ---
