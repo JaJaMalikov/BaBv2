@@ -1,4 +1,5 @@
 from core.puppet_model import Puppet
+import copy
 
 class SceneObject:
     """
@@ -116,7 +117,7 @@ class SceneModel:
         for name, obj in self.objects.items():
             kf.objects[name] = obj.to_dict()
 
-        kf.puppets = puppet_states or {}
+        kf.puppets = copy.deepcopy(puppet_states) if puppet_states else {}
 
         self.keyframes = dict(sorted(self.keyframes.items()))
         return kf

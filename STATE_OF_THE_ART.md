@@ -75,6 +75,10 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
     *   Le chargement d'un fichier restaure l'intégralité de l'état de la scène.
     *   Sérialisation centralisée via `SceneModel.to_dict` / `from_dict` (incluant objets et keyframes) pour un export fiable.
 
+*   **Tests unitaires renforcés**:
+    *   Couverture accrue des opérations du modèle de scène (attachements, gestion des keyframes).
+    *   Validation des helpers du modèle de marionnette comme `compute_child_map`.
+
 ## État actuel et prochaines étapes possibles
 
 L'application a évolué d'un simple outil d'animation de marionnette à un **logiciel de composition de scène 2D fonctionnel et robuste**. L'interface a été professionnalisée et la gestion de plusieurs objets est désormais possible.

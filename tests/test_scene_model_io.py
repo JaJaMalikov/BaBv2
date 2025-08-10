@@ -1,6 +1,40 @@
 import json
 from core.scene_model import SceneModel, SceneObject
 
+
+def test_attach_detach_object():
+    scene = SceneModel()
+    obj = SceneObject("box", "image", "box.png")
+    scene.add_object(obj)
+
+    scene.attach_object("box", "p", "hand")
+    assert scene.objects["box"].attached_to == ("p", "hand")
+
+    scene.detach_object("box")
+    assert scene.objects["box"].attached_to is None
+
+
+def test_add_keyframe_snapshot_and_order():
+    scene = SceneModel()
+    obj = SceneObject("ball", "image", "ball.png", x=1)
+    scene.add_object(obj)
+
+    scene.add_keyframe(10)
+    obj.x = 5
+    scene.add_keyframe(0)
+
+    assert [kf.index for kf in scene.keyframes.values()] == [0, 10]
+    assert scene.keyframes[10].objects["ball"]["x"] == 1
+    assert scene.keyframes[0].objects["ball"]["x"] == 5
+
+
+def test_puppet_states_are_copied():
+    scene = SceneModel()
+    state = {"p": {"member": {"rot": 0}}}
+    kf = scene.add_keyframe(0, puppet_states=state)
+    state["p"]["member"]["rot"] = 90
+    assert kf.puppets["p"]["member"]["rot"] == 0
+
 def test_scene_object_roundtrip():
     obj = SceneObject("rock", "image", "rock.png", x=1, y=2, rotation=3, scale=0.5)
     obj.attach("p", "arm")
