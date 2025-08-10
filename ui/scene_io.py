@@ -1,38 +1,42 @@
 from __future__ import annotations
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from PySide6.QtWidgets import QFileDialog
 from PySide6.QtCore import QTimer
 
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 if TYPE_CHECKING:
     from .main_window import MainWindow
 
-def save_scene(win: MainWindow):
+def save_scene(win: 'MainWindow') -> None:
     """Opens a dialog to save the current scene to a JSON file."""
+    filePath: str
     filePath, _ = QFileDialog.getSaveFileName(win, "Sauvegarder la scène", "", "JSON Files (*.json)")
     if filePath:
         export_scene(win, filePath)
 
-def load_scene(win: MainWindow):
+def load_scene(win: 'MainWindow') -> None:
     """Opens a dialog to load a scene from a JSON file."""
+    filePath: str
     filePath, _ = QFileDialog.getOpenFileName(win, "Charger une scène", "", "JSON Files (*.json)")
     if filePath:
         import_scene(win, filePath)
 
-def export_scene(win: MainWindow, file_path: str):
+import logging # Added for error handling
+
+def export_scene(win: 'MainWindow', file_path: str) -> None:
     """Exports the current scene state to a JSON file."""
     if not win.scene_model.keyframes:
         win.add_keyframe(0)
 
-    puppets_data = {}
+    puppets_data: Dict[str, Dict[str, Any]] = {}
     for name, puppet in win.scene_model.puppets.items():
-        root_members = puppet.get_root_members()
+        root_members: List[Any] = puppet.get_root_members()
         if not root_members:
             continue
-        root_piece = win.object_manager.graphics_items.get(f"{name}:{root_members[0].name}")
+        root_piece: Optional[Any] = win.object_manager.graphics_items.get(f"{name}:{root_members[0].name}")
         if root_piece:
             puppets_data[name] = {
                 "path": win.object_manager.puppet_paths.get(name),
@@ -40,15 +44,15 @@ def export_scene(win: MainWindow, file_path: str):
                 "position": [root_piece.x(), root_piece.y()],
             }
 
-    data = win.scene_model.to_dict()
+    data: Dict[str, Any] = win.scene_model.to_dict()
     data["puppets_data"] = puppets_data
 
     try:
         with open(file_path, "w") as f:
             json.dump(data, f, indent=2)
-        print(f"Scene saved to {file_path}")
+        logging.info(f"Scene saved to {file_path}")
     except (IOError, TypeError) as e:
-        print(f"Error saving scene: {e}")
+        logging.error(f"Error saving scene: {e}")
 
 def import_scene(win: MainWindow, file_path: str):
     """Imports a scene from a JSON file, rebuilding the entire scene state."""
@@ -99,7 +103,7 @@ def import_scene(win: MainWindow, file_path: str):
         print(f"Failed to load scene '{file_path}': {e}")
         create_blank_scene(win)
 
-def create_blank_scene(win: MainWindow, add_default_puppet: bool = True):
+def create_blank_scene(win: 'MainWindow', add_default_puppet: bool = True) -> None:
     """Clears the scene and optionally adds a default puppet."""
     for name in list(win.scene_model.puppets.keys()): win.object_manager.delete_puppet(name)
     for name in list(win.scene_model.objects.keys()): win.object_manager.delete_object(name)
@@ -108,6 +112,6 @@ def create_blank_scene(win: MainWindow, add_default_puppet: bool = True):
     win.scene_model.keyframes.clear()
     win.timeline_widget.clear_keyframes()
     if add_default_puppet:
-        win.object_manager.add_puppet("assets/pantins/manululu.svg", "manu")
+        win.object_manager.add_puppet("assets/pantins/manu.svg", "manu")
     win.playback_handler.update_timeline_ui_from_model()
     win.inspector_widget.refresh()

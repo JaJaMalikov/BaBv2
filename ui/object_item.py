@@ -1,3 +1,4 @@
+import logging
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QGraphicsPixmapItem, QGraphicsItem
 from PySide6.QtSvgWidgets import QGraphicsSvgItem
@@ -34,8 +35,8 @@ class _ObjectItemMixin:
                     # Sync selection with inspector
                     if change == QGraphicsItem.ItemSelectedHasChanged and bool(value):
                         mw.select_object_in_inspector(name)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.error(f"Error in itemChange for {name}: {e}")
         return super().itemChange(change, value)
 
 

@@ -1,4 +1,7 @@
+import logging
 from core.puppet_model import Puppet
+from typing import Dict, Any
+
 
 class SceneObject:
     """
@@ -57,11 +60,13 @@ class SceneObject:
 class Keyframe:
     """
     Snapshot de l'état de la scène à un temps donné
+    objects: Dict[str, Dict[str, Any]] - name -> état (position, rotation, scale, attachment, etc.)
+    puppets: Dict[str, Dict[str, Dict[str, Any]]] - puppet_name -> { member_name -> { rot: ..., pos: ...} }
     """
-    def __init__(self, index):
-        self.index = index
-        self.objects = {}  # name -> état (position, rotation, scale, attachment, etc.)
-        self.puppets = {} # puppet_name -> { member_name -> { rot: ..., pos: ...} }
+    def __init__(self, index: int) -> None:
+        self.index: int = index
+        self.objects: Dict[str, Dict[str, Any]] = {}
+        self.puppets: Dict[str, Dict[str, Dict[str, Any]]] = {}
 
 class SceneModel:
     def __init__(self):
@@ -191,7 +196,7 @@ class SceneModel:
             with open(file_path, "r") as f:
                 data = json.load(f)
         except (IOError, json.JSONDecodeError) as e:
-            print(f"Erreur lors du chargement du fichier : {e}")
+            logging.error(f"Erreur lors du chargement du fichier : {e}")
             return
         self.from_dict(data)
 

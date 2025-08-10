@@ -1,6 +1,8 @@
+from typing import Dict, List, Optional, Tuple
 from core.svg_loader import SvgLoader
 
-PARENT_MAP = {
+
+PARENT_MAP: Dict[str, Optional[str]] = {
     "torse": None,
     "cou": "torse",
     "tete": "cou",
@@ -25,12 +27,12 @@ PARENT_MAP = {
     "hanche_gauche": "torse",
     "cuisse_gauche": "hanche_gauche",
     "genou_gauche": "cuisse_gauche",
-    "tibia_gauche": "genou_gauche",
+    "tibia_gauche": "cuisse_gauche",
     "cheville_gauche": "tibia_gauche",
     "pied_gauche": "cheville_gauche",
 }
 
-PIVOT_MAP = {
+PIVOT_MAP: Dict[str, str] = {
     "tete": "cou",
     "haut_bras_droite": "epaule_droite",
     "avant_bras_droite": "coude_droite",
@@ -46,7 +48,7 @@ PIVOT_MAP = {
     "pied_gauche": "cheville_gauche"
 }
 
-Z_ORDER = {
+Z_ORDER: Dict[str, int] = {
     "torse": 0,  
     "cou": -1,
     "tete": -1,
@@ -73,8 +75,8 @@ Z_ORDER = {
 }
 
 
-def compute_child_map(parent_map):
-    child_map = {}
+def compute_child_map(parent_map: Dict[str, Optional[str]]) -> Dict[str, List[str]]:
+    child_map: Dict[str, List[str]] = {}
     for child, parent in parent_map.items():
         if parent:
             child_map.setdefault(parent, []).append(child)
@@ -91,36 +93,36 @@ HANDLE_EXCEPTION = {
 
 
 class PuppetMember:
-    def __init__(self, name, parent=None, pivot=(0, 0), bbox=(0, 0, 0, 0), z_order=0):
-        self.name = name
-        self.parent = parent
-        self.children = []
-        self.pivot = pivot
-        self.bbox = bbox
-        self.z_order = z_order
-        self.rel_pos = (0, 0)
+    def __init__(self, name: str, parent: Optional['PuppetMember'] = None, pivot: Tuple[float, float] = (0.0, 0.0), bbox: Tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0), z_order: int = 0):
+        self.name: str = name
+        self.parent: Optional['PuppetMember'] = parent
+        self.children: List['PuppetMember'] = []
+        self.pivot: Tuple[float, float] = pivot
+        self.bbox: Tuple[float, float, float, float] = bbox
+        self.z_order: int = z_order
+        self.rel_pos: Tuple[float, float] = (0.0, 0.0)
 
-    def add_child(self, child):
+    def add_child(self, child: 'PuppetMember') -> None:
         self.children.append(child)
         child.parent = self
         child.rel_pos = (child.pivot[0] - self.pivot[0], child.pivot[1] - self.pivot[1])
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<{self.name} pivot={self.pivot} z={self.z_order}>"
 
 
 class Puppet:
-    def __init__(self):
-        self.members = {}
-        self.child_map = {}
+    def __init__(self) -> None:
+        self.members: Dict[str, PuppetMember] = {}
+        self.child_map: Dict[str, List[str]] = {}
 
-    def build_from_svg(self, svg_loader, parent_map, pivot_map=None, z_order_map=None):
+    def build_from_svg(self, svg_loader: 'SvgLoader', parent_map: Dict[str, Optional[str]], pivot_map: Optional[Dict[str, str]] = None, z_order_map: Optional[Dict[str, int]] = None) -> None:
         self.child_map = compute_child_map(parent_map)
         groups = svg_loader.get_groups()
         for group_id in groups:
             if group_id not in parent_map:
                     continue
-            bbox = svg_loader.get_group_bounding_box(group_id) or (0, 0, 0, 0)
+            bbox = svg_loader.get_group_bounding_box(group_id) or (0.0, 0.0, 0.0, 0.0)
             pivot_group = pivot_map[group_id] if pivot_map and group_id in pivot_map else group_id
             pivot = svg_loader.get_pivot(pivot_group)
             z_order = z_order_map.get(group_id, 0) if z_order_map else 0
@@ -131,26 +133,26 @@ class Puppet:
             if child_member and parent_member:
                 parent_member.add_child(child_member)
 
-    def get_root_members(self):
+    def get_root_members(self) -> List[PuppetMember]:
         return [m for m in self.members.values() if m.parent is None]
 
-    def get_first_child_pivot(self, name):
+    def get_first_child_pivot(self, name: str) -> Tuple[float, float]:
         child_names = self.child_map.get(name, [])
         if child_names:
             target_member = self.members.get(child_names[0])
             if target_member:
                 return target_member.pivot
-        return None, None
+        return (0.0, 0.0) # Return a default tuple of floats
 
-    def get_handle_target_pivot(self, name):
-        # Gère d'abord les exceptions, sinon prend le premier enfant
+    def get_handle_target_pivot(self, name: str) -> Tuple[float, float]:
+        # Gère d\'abord les exceptions, sinon prend le premier enfant
         if name in HANDLE_EXCEPTION:
             target_member = self.members.get(HANDLE_EXCEPTION[name])
             if target_member:
                 return target_member.pivot
         return self.get_first_child_pivot(name)
 
-    def print_hierarchy(self, member=None, indent=""):
+    def print_hierarchy(self, member: Optional[PuppetMember] = None, indent: str = "") -> None:
         if member is None:
             for root in self.get_root_members():
                 self.print_hierarchy(root, indent)
@@ -160,13 +162,14 @@ class Puppet:
                 self.print_hierarchy(child, indent + "  ")
 
 
-def validate_svg_structure(svg_loader, parent_map, pivot_map):
-    groups_in_svg = set(svg_loader.get_groups())
-    groups_in_map = set(parent_map.keys())
-    pivots_in_map = set(pivot_map.values())
-    missing_in_svg = groups_in_map - groups_in_svg
-    extra_in_svg = groups_in_svg - groups_in_map
-    pivots_missing = pivots_in_map - groups_in_svg
+
+def validate_svg_structure(svg_loader: 'SvgLoader', parent_map: Dict[str, Optional[str]], pivot_map: Dict[str, str]) -> None:
+    groups_in_svg: set[str] = set(svg_loader.get_groups())
+    groups_in_map: set[str] = set(parent_map.keys())
+    pivots_in_map: set[str] = set(pivot_map.values())
+    missing_in_svg: set[str] = groups_in_map - groups_in_svg
+    extra_in_svg: set[str] = groups_in_svg - groups_in_map
+    pivots_missing: set[str] = pivots_in_map - groups_in_svg
 
     print("\n--- Audit Structure SVG ---")
     if missing_in_svg:
@@ -182,11 +185,11 @@ def validate_svg_structure(svg_loader, parent_map, pivot_map):
     print("-----------------------------\n")
 
 
-def main():
-    svg_path = "assets/manululu.svg"
-    loader = SvgLoader(svg_path)
+def main() -> None:
+    svg_path: str = "assets/manululu.svg"
+    loader: SvgLoader = SvgLoader(svg_path)
     validate_svg_structure(loader, PARENT_MAP, PIVOT_MAP)
-    puppet = Puppet()
+    puppet: Puppet = Puppet()
     puppet.build_from_svg(loader, PARENT_MAP, PIVOT_MAP, Z_ORDER)
     print("Hiérarchie des membres (z-order inclus) :")
     puppet.print_hierarchy()
