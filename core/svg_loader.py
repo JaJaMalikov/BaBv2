@@ -121,7 +121,8 @@ def translate_path(d, dx, dy):
     Décale toutes les coordonnées d'un path SVG.
     """
     def repl(match):
-        nums = match.group(0).strip().split()
+        original = match.group(0)
+        nums = original.strip().split()
         new_nums = []
         for i, n in enumerate(nums):
             try:
@@ -133,6 +134,7 @@ def translate_path(d, dx, dy):
                 new_nums.append(str(num))
             except ValueError:
                 new_nums.append(n)
-        return " ".join(new_nums)
+        trailing = original[len(original.rstrip()):]
+        return " ".join(new_nums) + trailing
 
     return _COORD_PATTERN.sub(repl, d)

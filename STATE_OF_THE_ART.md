@@ -75,6 +75,10 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
     *   Le chargement d'un fichier restaure l'intégralité de l'état de la scène.
     *   Sérialisation centralisée via `SceneModel.to_dict` / `from_dict` (incluant objets et keyframes) pour un export fiable.
 
+*   **Qualité et Tests**:
+    *   Corrections dans `SvgLoader.translate_path` pour préserver la structure des chemins SVG.
+    *   Ajout de tests unitaires couvrant les attachements et keyframes du `SceneModel`, les utilitaires de `SvgLoader` et les pivots du `Puppet`.
+
 ## État actuel et prochaines étapes possibles
 
 L'application a évolué d'un simple outil d'animation de marionnette à un **logiciel de composition de scène 2D fonctionnel et robuste**. L'interface a été professionnalisée et la gestion de plusieurs objets est désormais possible.
