@@ -253,7 +253,9 @@ class MainWindow(QMainWindow):
         self.timeline_dock.visibilityChanged.connect(lambda _: self.ensure_fit())
         self.timeline_dock.topLevelChanged.connect(lambda _: self.ensure_fit())
         self.ensure_fit()
-        self.import_scene("demo.json")
+        # Load a minimal default scene using repo-relative assets so tests don't
+        # rely on developer specific absolute paths.
+        self._create_blank_scene()
         self.ensure_fit()
         self.scene.selectionChanged.connect(self._on_scene_selection_changed)
 
@@ -613,7 +615,9 @@ class MainWindow(QMainWindow):
         self.graphics_items.clear()
         self.scene_model.keyframes.clear()
         self.timeline_widget.clear_keyframes()
-        self.add_puppet("assets/test_genou.svg", "manu")
+        # Use the repository's sample puppet asset. The previous path pointed to
+        # a non-existent file which caused KeyError in tests.
+        self.add_puppet("assets/pantins/manululu.svg", "manu")
         self._update_timeline_ui_from_model()
         self.inspector_widget.refresh()
 
