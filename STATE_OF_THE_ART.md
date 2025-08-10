@@ -18,6 +18,7 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
     *   `main_window.py`: La fenêtre principale qui assemble tous les éléments et gère l'essentiel des interactions.
     *   `timeline_widget.py`: Un widget de timeline avancé et interactif.
     *   `inspector_widget.py`: Un panneau pour lister, sélectionner et manipuler les objets de la scène.
+    *   `library_widget.py`: Panneau « Bibliothèques » listant les ressources importables.
     *   `ui_menu.py`: Fichier généré définissant la structure des menus.
 
 *   **`macronotron.py`**: Point d'entrée de l'application.
@@ -33,9 +34,15 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
 
 *   **Gestion de Scène Multi-Objets**:
     *   Le modèle de scène peut gérer plusieurs marionnettes et objets (images, SVG) simultanément.
-    *   **Inspecteur d'objets**: Un panneau dédié permet de lister tous les éléments de la scène.
-    *   Il est possible de **sélectionner, dupliquer et supprimer** des marionnettes ou des objets via l'inspecteur.
-    *   **Mise à l'échelle** individuelle des objets et marionnettes.
+    *   **Inspecteur d'objets**:
+        - Liste marionnettes et objets, synchro de sélection scène ↔ inspecteur.
+        - Actions: sélectionner, dupliquer, suppression temporelle depuis la frame courante.
+        - Contrôles objet: échelle, rotation (autour du centre), z-order.
+        - Attachements: lier/détacher un objet à un membre de marionnette (suivi des mouvements).
+    *   **Bibliothèques (nouveau)**:
+        - Catégories: `assets/background`, `assets/objets`, `assets/pantins`.
+        - Import par glisser-déposer vers la scène ou clic droit « Ajouter à la scène ».
+        - Vignettes (PNG/JPG/SVG) et infobulles chemin.
 
 *   **Marionnettes et Animation**:
     *   Chargement de marionnettes depuis des fichiers SVG.
@@ -46,7 +53,7 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
     *   La timeline a été entièrement réécrite pour une expérience professionnelle.
     *   **Zoom et Panoramique**: Navigation intuitive dans la timeline avec `Ctrl+Molette` pour le zoom et le clic molette pour le panoramique.
     *   **HUD interactif**: Affiche en temps réel le numéro de l'image et le temps sous le curseur.
-    *   Gestion des keyframes sur une piste "Globale".
+    *   Gestion des keyframes sur une piste "Globale" et spinboxes In/Out dans la barre d'outils.
     *   Contrôles de lecture complets (Play/Pause, Stop, Boucle).
 
 *   **Interface Utilisateur et Ergonomie (UI/UX) Améliorées**:
@@ -63,7 +70,7 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
 *   **Sauvegarde et Chargement**:
     *   L'ensemble de la scène (marionnettes, objets, keyframes, réglages) est sérialisé dans un fichier `.json`.
     *   Le chargement d'un fichier restaure l'intégralité de l'état de la scène.
-    *   La sérialisation des objets est désormais centralisée via `SceneObject.to_dict` / `SceneObject.from_dict` pour un export plus fiable.
+    *   Sérialisation des objets via `SceneObject.to_dict` / `SceneObject.from_dict` (incluant rotation/échelle/z et attachements) pour un export fiable.
 
 ## État actuel et prochaines étapes possibles
 

@@ -30,6 +30,8 @@ from core.svg_loader import SvgLoader
 from ui.ui_menu import Ui_MainWindow
 from ui.timeline_widget import TimelineWidget
 from ui.inspector_widget import InspectorWidget
+from ui.library_widget import LibraryWidget
+from ui.object_item import ObjectPixmapItem, ObjectSvgItem
 
 class ZoomableView(QGraphicsView):
     def __init__(self, scene, main_window, parent=None):
@@ -37,7 +39,11 @@ class ZoomableView(QGraphicsView):
         self.main_window = main_window
         self._overlay = None
         self._zoom_label = None
+        self._did_initial_fit = False
         self._build_overlay()
+        # Enable drag & drop from library onto the scene
+        self.setAcceptDrops(True)
+        self.viewport().setAcceptDrops(True)
 
     def _build_overlay(self):
         self._overlay = QWidget(self)
@@ -80,6 +86,11 @@ class ZoomableView(QGraphicsView):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self._position_overlay()
+        # Fit once when the view has a real size
+        if not self._did_initial_fit and self.width() > 0 and self.height() > 0:
+            self._did_initial_fit = True
+            if self.main_window:
+                self.main_window.fit_to_view()
 
     def _position_overlay(self):
         if not self._overlay: return
@@ -140,6 +151,31 @@ class ZoomableView(QGraphicsView):
     def _icon_fit(self): return self._make_icon(lambda p, s: (p.drawLine(4, 10, 4, 4), p.drawLine(4, 4, 10, 4), p.drawLine(s-10, 4, s-4, 4), p.drawLine(s-4, 4, s-4, 10), p.drawLine(s-4, s-10, s-4, s-4), p.drawLine(s-4, s-4, s-10, s-4), p.drawLine(10, s-4, 4, s-4), p.drawLine(4, s-4, 4, s-10)))
     def _icon_rotate(self): return self._make_icon(lambda p, s: (p.drawArc(int(s*0.18), int(s*0.18), int(s*0.64), int(s*0.64), 45*16, 270*16), p.drawLine(int(s*0.5), int(s*0.18), int(s*0.5-s*0.15), int(s*0.18+s*0.15)), p.drawLine(int(s*0.5), int(s*0.18), int(s*0.5+s*0.15), int(s*0.18+s*0.15))))
 
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasFormat('application/x-bab-item'):
+            event.acceptProposedAction()
+        else:
+            super().dragEnterEvent(event)
+
+    def dragMoveEvent(self, event):
+        if event.mimeData().hasFormat('application/x-bab-item'):
+            event.acceptProposedAction()
+        else:
+            super().dragMoveEvent(event)
+
+    def dropEvent(self, event):
+        if event.mimeData().hasFormat('application/x-bab-item'):
+            try:
+                import json
+                data = bytes(event.mimeData().data('application/x-bab-item')).decode('utf-8')
+                payload = json.loads(data)
+                self.main_window.handle_library_drop(payload, event.position())
+            except Exception as e:
+                print(f"Drop failed: {e}")
+            event.acceptProposedAction()
+        else:
+            super().dropEvent(event)
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -154,6 +190,7 @@ class MainWindow(QMainWindow):
         self.puppet_scales = {}
         self.puppet_paths = {}
         self.zoom_factor = 1.0
+        self._suspend_item_updates = False
 
         self.scene = QGraphicsScene()
         self.scene.setSceneRect(0, 0, self.scene_model.scene_width, self.scene_model.scene_height)
@@ -188,6 +225,14 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.RightDockWidgetArea, self.inspector_dock)
         self.inspector_dock.hide()
 
+        self.library_dock = QDockWidget("Bibliothèques", self)
+        self.library_dock.setObjectName("dock_library")
+        self.library_widget = LibraryWidget(root_dir=os.getcwd())
+        self.library_widget.addRequested.connect(self._add_library_item_to_scene)
+        self.library_dock.setWidget(self.library_widget)
+        self.library_dock.setFeatures(QDockWidget.DockWidgetMovable | QDockWidget.DockWidgetClosable)
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.library_dock)
+
         self.playback_timer = QTimer(self)
         self.playback_timer.timeout.connect(self.next_frame)
         self.set_fps(self.scene_model.fps)
@@ -200,7 +245,23 @@ class MainWindow(QMainWindow):
 
         # --- Startup Sequence ---
         self.showMaximized()
+        # Show useful docks by default
+        self.inspector_dock.show()
+        self.library_dock.show()
+        self.timeline_dock.show()
+        # Keep view framing consistent when toggling timeline
+        self.timeline_dock.visibilityChanged.connect(lambda _: self.ensure_fit())
+        self.timeline_dock.topLevelChanged.connect(lambda _: self.ensure_fit())
+        self.ensure_fit()
         self.import_scene("demo.json")
+        self.ensure_fit()
+        self.scene.selectionChanged.connect(self._on_scene_selection_changed)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        # Plusieurs ticks pour garantir le layout final (docks, timeline)
+        QTimer.singleShot(0, self.fit_to_view)
+        QTimer.singleShot(50, self.fit_to_view)
 
     def setup_menus(self):
         self.ui.menuToggle_Inspector.clear(); self.ui.menuToggle_Inspector.addAction(self.inspector_dock.toggleViewAction())
@@ -220,6 +281,9 @@ class MainWindow(QMainWindow):
         self.timeline_widget.addKeyframeClicked.connect(self.add_keyframe)
         self.timeline_widget.deleteKeyframeClicked.connect(self.delete_keyframe)
         self.timeline_widget.frameChanged.connect(self.go_to_frame)
+        # Resynchroniser l'Inspector sur les changements de frame
+        if hasattr(self, 'inspector_widget'):
+            self.timeline_widget.frameChanged.connect(self.inspector_widget.sync_with_frame)
         self.timeline_widget.playClicked.connect(self.play_animation)
         self.timeline_widget.pauseClicked.connect(self.pause_animation)
         self.timeline_widget.stopClicked.connect(self.stop_animation)
@@ -244,7 +308,7 @@ class MainWindow(QMainWindow):
         self.ui.actionFit.setIcon(self.view._icon_fit()); self.ui.actionCenter.setIcon(self.view._icon_center())
         for action in [self.ui.action_9, self.ui.action_10, self.ui.actionFit, self.ui.actionCenter]: tb.addAction(action)
         tb.addSeparator()
-        tb.addAction(self.inspector_dock.toggleViewAction()); tb.addAction(self.timeline_dock.toggleViewAction())
+        tb.addAction(self.library_dock.toggleViewAction()); tb.addAction(self.inspector_dock.toggleViewAction()); tb.addAction(self.timeline_dock.toggleViewAction())
         self.addToolBar(Qt.TopToolBarArea, tb)
 
     def _apply_unified_stylesheet(self):
@@ -274,7 +338,15 @@ class MainWindow(QMainWindow):
         if hasattr(self.view, 'set_zoom_label'): self.view.set_zoom_label(f"{int(self.zoom_factor*100)}%")
 
     def zoom(self, factor): self.view.scale(factor, factor); self.zoom_factor *= factor; self._update_zoom_status()
-    def fit_to_view(self): self.view.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio); self.zoom_factor = self.view.transform().m11(); self._update_zoom_status()
+    def fit_to_view(self):
+        self.view.resetTransform()
+        self.view.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
+        self.zoom_factor = self.view.transform().m11()
+        self._update_zoom_status()
+
+    def ensure_fit(self):
+        for delay in (0, 60, 150, 300):
+            QTimer.singleShot(delay, self.fit_to_view)
     def center_on_puppet(self): 
         if (puppet_root := self.graphics_items.get("manu:torse")): self.view.centerOn(puppet_root)
 
@@ -424,6 +496,58 @@ class MainWindow(QMainWindow):
                 root_piece.setRotation(root_piece.local_rotation)
                 for child in root_piece.children: child.update_transform_from_parent()
 
+        # Apply object states for current frame (no interpolation for now)
+        def state_for(name: str):
+            si = sorted(keyframes.keys())
+            prev = next((i for i in reversed(si) if i <= index and name in keyframes[i].objects), None)
+            if prev is None: return None
+            return keyframes[prev].objects.get(name)
+
+        self._suspend_item_updates = True
+        try:
+            for name, base_obj in self.scene_model.objects.items():
+                st = state_for(name)
+                gi = self.graphics_items.get(name)
+                if st is None:
+                    if gi:
+                        gi.setSelected(False)
+                        gi.setVisible(False)
+                    continue
+                # ensure exists
+                if gi is None:
+                    # create from base object but apply state
+                    tmp = SceneObject(name, st.get('obj_type', base_obj.obj_type), st.get('file_path', base_obj.file_path),
+                                      x=st.get('x', base_obj.x), y=st.get('y', base_obj.y), rotation=st.get('rotation', base_obj.rotation),
+                                      scale=st.get('scale', base_obj.scale), z=st.get('z', getattr(base_obj, 'z', 0)))
+                    self._add_object_graphics(tmp)
+                    gi = self.graphics_items.get(name)
+                if gi:
+                    gi.setVisible(True)
+                    gi.setPos(st.get('x', gi.x()), st.get('y', gi.y()))
+                    gi.setRotation(st.get('rotation', gi.rotation()))
+                    gi.setScale(st.get('scale', gi.scale()))
+                    gi.setZValue(st.get('z', int(gi.zValue())))
+                    # Attachment
+                    attached = st.get('attached_to', None)
+                    if attached:
+                        try:
+                            puppet_name, member_name = attached
+                            parent_piece = self.graphics_items.get(f"{puppet_name}:{member_name}")
+                            if parent_piece and gi.parentItem() is not parent_piece:
+                                scene_pt = gi.mapToScene(gi.transformOriginPoint())
+                                gi.setParentItem(parent_piece)
+                                local_pt = parent_piece.mapFromScene(scene_pt)
+                                gi.setPos(local_pt - gi.transformOriginPoint())
+                        except Exception:
+                            pass
+                    else:
+                        if gi.parentItem() is not None:
+                            scene_pt = gi.mapToScene(gi.transformOriginPoint())
+                            gi.setParentItem(None)
+                            gi.setPos(scene_pt - gi.transformOriginPoint())
+        finally:
+            self._suspend_item_updates = False
+
     def add_keyframe(self, frame_index):
         kf = self.scene_model.add_keyframe(frame_index)
         for name, puppet in self.scene_model.puppets.items():
@@ -468,7 +592,7 @@ class MainWindow(QMainWindow):
                 "background_path": self.scene_model.background_path
             },
             "puppets_data": puppets_data,
-            "objects": {k: v.__dict__ for k, v in self.scene_model.objects.items()},
+            "objects": {k: v.to_dict() for k, v in self.scene_model.objects.items()},
             "keyframes": {
                 k: {"objects": v.objects, "puppets": v.puppets}
                 for k, v in self.scene_model.keyframes.items()
@@ -512,7 +636,6 @@ class MainWindow(QMainWindow):
             self.scene_model.scene_width = settings.get("scene_width", 1920)
             self.scene_model.scene_height = settings.get("scene_height", 1080)
             self.scene_model.background_path = settings.get("background_path")
-
             # Rebuild puppets
             puppets_data = data.get("puppets_data", {})
             for name, p_data in puppets_data.items():
@@ -529,6 +652,18 @@ class MainWindow(QMainWindow):
                     root_piece = self.graphics_items.get(f"{name}:{root_member_name}")
                     if root_piece and pos:
                         root_piece.setPos(pos[0], pos[1])
+
+            # Rebuild objects
+            self.scene_model.objects.clear()
+            objects_data = data.get("objects", {})
+            for name, obj_data in objects_data.items():
+                try:
+                    obj_data["name"] = name
+                    obj = SceneObject.from_dict(obj_data)
+                    self.scene_model.add_object(obj)
+                    # Ne pas créer d'items graphiques ici; ils seront créés/apply via update_scene_from_model()
+                except Exception as e:
+                    print(f"Failed to load object '{name}': {e}")
 
             # Load keyframes
             self.scene_model.keyframes.clear()
@@ -547,6 +682,8 @@ class MainWindow(QMainWindow):
             self._update_background()
             self.go_to_frame(self.scene_model.start_frame)
             self.inspector_widget.refresh()
+            # Recalage après import pour garantir l'application des états
+            QTimer.singleShot(0, lambda: self.go_to_frame(self.scene_model.current_frame or self.scene_model.start_frame))
 
         except Exception as e:
             print(f"Failed to load scene '{file_path}': {e}")
@@ -592,13 +729,187 @@ class MainWindow(QMainWindow):
         if not (obj := self.scene_model.objects.get(name)): return
         base = name; i = 1
         while (new_name := f"{base}_{i}") in self.scene_model.objects: i += 1
-        new_obj = SceneObject(new_name, obj.obj_type, obj.file_path, x=obj.x + 10, y=obj.y + 10, rotation=obj.rotation, scale=obj.scale)
+        new_obj = SceneObject(new_name, obj.obj_type, obj.file_path, x=obj.x + 10, y=obj.y + 10, rotation=obj.rotation, scale=obj.scale, z=getattr(obj, 'z', 0))
         self.scene_model.add_object(new_obj)
         self._add_object_graphics(new_obj)
 
     def _add_object_graphics(self, obj: SceneObject):
-        item = QGraphicsPixmapItem(obj.file_path) if obj.obj_type == "image" else QGraphicsSvgItem(obj.file_path)
-        item.setPos(obj.x, obj.y); item.setRotation(obj.rotation); item.setScale(obj.scale)
+        if obj.obj_type == "image":
+            item = ObjectPixmapItem(obj.file_path)
+        else:
+            item = ObjectSvgItem(obj.file_path)
+        item.set_context(self, obj.name)
+        self._suspend_item_updates = True
+        try:
+            item.setPos(obj.x, obj.y)
+            item.setRotation(obj.rotation)
+            item.setScale(obj.scale)
+        finally:
+            self._suspend_item_updates = False
+        try:
+            item.setTransformOriginPoint(item.boundingRect().center())
+        except Exception:
+            pass
+        try:
+            item.setZValue(getattr(obj, 'z', 0))
+        except Exception:
+            pass
         item.setFlag(QGraphicsItem.ItemIsMovable, True); item.setFlag(QGraphicsItem.ItemIsSelectable, True)
         self.scene.addItem(item)
         self.graphics_items[obj.name] = item
+
+    # --- Attachment helpers for objects ---
+    def attach_object_to_member(self, obj_name: str, puppet_name: str, member_name: str):
+        obj = self.scene_model.objects.get(obj_name)
+        item = self.graphics_items.get(obj_name)
+        parent_piece = self.graphics_items.get(f"{puppet_name}:{member_name}")
+        if not obj or not item or not parent_piece:
+            return
+        # Conserver la position visuelle du point d'origine lors du re-parentage
+        self._suspend_item_updates = True
+        try:
+            scene_pt = item.mapToScene(item.transformOriginPoint())
+            item.setParentItem(parent_piece)
+            local_pt = parent_piece.mapFromScene(scene_pt)
+            item.setPos(local_pt - item.transformOriginPoint())
+        finally:
+            self._suspend_item_updates = False
+        obj.attach(puppet_name, member_name)
+        # Persist in current keyframe if exists
+        kf = self.scene_model.keyframes.get(self.scene_model.current_frame)
+        if kf is not None:
+            kf.objects[obj_name] = obj.to_dict()
+
+    def detach_object(self, obj_name: str):
+        obj = self.scene_model.objects.get(obj_name)
+        item = self.graphics_items.get(obj_name)
+        if not obj or not item:
+            return
+        self._suspend_item_updates = True
+        try:
+            scene_pt = item.mapToScene(item.transformOriginPoint())
+            item.setParentItem(None)
+            item.setPos(scene_pt - item.transformOriginPoint())
+        finally:
+            self._suspend_item_updates = False
+        obj.detach()
+        kf = self.scene_model.keyframes.get(self.scene_model.current_frame)
+        if kf is not None:
+            kf.objects[obj_name] = obj.to_dict()
+
+    # -----------------------------
+    # Library integration
+    # -----------------------------
+    def _unique_object_name(self, base: str) -> str:
+        name = base
+        i = 1
+        while name in self.scene_model.objects:
+            name = f"{base}_{i}"
+            i += 1
+        return name
+
+    def _unique_puppet_name(self, base: str) -> str:
+        name = base
+        i = 1
+        while name in self.scene_model.puppets:
+            name = f"{base}_{i}"
+            i += 1
+        return name
+
+    def _create_object_from_file(self, file_path: str, scene_pos=None):
+        ext = os.path.splitext(file_path)[1].lower()
+        if ext in ('.png', '.jpg', '.jpeg'):
+            obj_type = 'image'
+        elif ext == '.svg':
+            obj_type = 'svg'
+        else:
+            print(f"Unsupported object file type: {ext}")
+            return None
+        base = os.path.splitext(os.path.basename(file_path))[0]
+        name = self._unique_object_name(base)
+        if scene_pos is None:
+            c = self.scene.sceneRect().center()
+            x, y = c.x(), c.y()
+        else:
+            # Qt6: event.position() returns QPointF
+            x, y = float(scene_pos.x()), float(scene_pos.y())
+        obj = SceneObject(name, obj_type, file_path, x=x, y=y, rotation=0, scale=1.0, z=0)
+        self.scene_model.add_object(obj)
+        self._add_object_graphics(obj)
+        # Enregistrer l'état à la frame courante
+        cur = self.scene_model.current_frame
+        if cur not in self.scene_model.keyframes:
+            self.add_keyframe(cur)
+        kf = self.scene_model.keyframes.get(cur)
+        if kf is not None:
+            kf.objects[name] = obj.to_dict()
+        if hasattr(self, "inspector_widget"): self.inspector_widget.refresh()
+        return name
+
+    def _add_library_item_to_scene(self, payload: dict):
+        self._add_library_payload(payload, scene_pos=None)
+
+    def handle_library_drop(self, payload: dict, pos):
+        # Map from viewport pos to scene coords
+        scene_pt = self.view.mapToScene(pos.toPoint())
+        self._add_library_payload(payload, scene_pos=scene_pt)
+
+    def _add_library_payload(self, payload: dict, scene_pos):
+        kind = payload.get('kind')
+        path = payload.get('path')
+        if not kind or not path:
+            return
+        if kind == 'background':
+            self.scene_model.background_path = path
+            self._update_background()
+        elif kind == 'object':
+            self._create_object_from_file(path, scene_pos)
+        elif kind == 'puppet':
+            base = os.path.splitext(os.path.basename(path))[0]
+            name = self._unique_puppet_name(base)
+            self.add_puppet(path, name)
+            if scene_pos is not None:
+                try:
+                    root_member_name = self.scene_model.puppets[name].get_root_members()[0].name
+                    root_piece = self.graphics_items.get(f"{name}:{root_member_name}")
+                    if root_piece:
+                        root_piece.setPos(scene_pos.x(), scene_pos.y())
+                except Exception as e:
+                    print(f"Positioning puppet failed: {e}")
+        else:
+            print(f"Unknown library kind: {kind}")
+
+    def delete_object_from_current_frame(self, name: str):
+        # Ensure a keyframe exists at current frame
+        cur = self.scene_model.current_frame
+        if cur not in self.scene_model.keyframes:
+            self.add_keyframe(cur)
+        # Remove object from all keyframes >= current
+        for fr, kf in list(self.scene_model.keyframes.items()):
+            if fr >= cur and name in kf.objects:
+                del kf.objects[name]
+        # Hide now
+        if (gi := self.graphics_items.get(name)):
+            gi.setVisible(False)
+
+    # -----------------------------
+    # Selection sync
+    # -----------------------------
+    def select_object_in_inspector(self, name: str):
+        if not hasattr(self, 'inspector_widget') or not self.inspector_widget:
+            return
+        lw = self.inspector_widget.list_widget
+        for i in range(lw.count()):
+            it = lw.item(i)
+            typ, nm = it.data(Qt.UserRole)
+            if typ == 'object' and nm == name:
+                lw.setCurrentItem(it)
+                break
+
+    def _on_scene_selection_changed(self):
+        for item in self.scene.selectedItems():
+            # Try match object names only
+            for name, gi in self.graphics_items.items():
+                if gi is item and name in self.scene_model.objects:
+                    self.select_object_in_inspector(name)
+                    return
