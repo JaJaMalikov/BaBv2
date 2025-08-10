@@ -5,11 +5,11 @@
     "fps": 24,
     "scene_width": 1536,
     "scene_height": 1024,
-    "background_path": "/home/jaja/Documents/BaBv2-dev/assets/background/bureaumanu.png"
+    "background_path": "assets/background/bureaumanu.png"
   },
   "puppets_data": {
-    "manululu": {
-      "path": "/home/jaja/Documents/BaBv2-dev/assets/pantins/manululu.svg",
+    "manu": {
+      "path": "assets/pantins/manululu.svg",
       "scale": 1.7000000000000006,
       "position": [
         733.7880184331794,
@@ -21,7 +21,7 @@
     "faucille": {
       "name": "faucille",
       "obj_type": "svg",
-      "file_path": "/home/jaja/Documents/BaBv2-dev/assets/objets/faucille.svg",
+      "file_path": "assets/objets/faucille.svg",
       "x": -53.11834575226072,
       "y": 1855.5236605692148,
       "rotation": 53.0,
@@ -36,20 +36,20 @@
         "faucille": {
           "name": "faucille",
           "obj_type": "svg",
-          "file_path": "/home/jaja/Documents/BaBv2-dev/assets/objets/faucille.svg",
+          "file_path": "assets/objets/faucille.svg",
           "x": -137.80803141944125,
           "y": -151.45820976041506,
           "rotation": 53.0,
           "scale": 0.6000000000000001,
           "z": 3,
           "attached_to": [
-            "manululu",
+            "manu",
             "main_droite"
           ]
         }
       },
       "puppets": {
-        "manululu": {
+        "manu": {
           "tete": {
             "rotation": 0.0,
             "pos": [
@@ -247,20 +247,20 @@
         "faucille": {
           "name": "faucille",
           "obj_type": "svg",
-          "file_path": "/home/jaja/Documents/BaBv2-dev/assets/objets/faucille.svg",
+          "file_path": "assets/objets/faucille.svg",
           "x": -137.80803141944125,
           "y": -151.45820976041506,
           "rotation": 53.0,
           "scale": 0.6000000000000001,
           "z": 3,
           "attached_to": [
-            "manululu",
+            "manu",
             "main_droite"
           ]
         }
       },
       "puppets": {
-        "manululu": {
+        "manu": {
           "tete": {
             "rotation": 0.0,
             "pos": [
@@ -458,20 +458,20 @@
         "faucille": {
           "name": "faucille",
           "obj_type": "svg",
-          "file_path": "/home/jaja/Documents/BaBv2-dev/assets/objets/faucille.svg",
+          "file_path": "assets/objets/faucille.svg",
           "x": -142.56511373069452,
           "y": -149.90515078951898,
           "rotation": 53.0,
           "scale": 0.6000000000000001,
           "z": 3,
           "attached_to": [
-            "manululu",
+            "manu",
             "main_droite"
           ]
         }
       },
       "puppets": {
-        "manululu": {
+        "manu": {
           "tete": {
             "rotation": 0.0,
             "pos": [
@@ -669,20 +669,20 @@
         "faucille": {
           "name": "faucille",
           "obj_type": "svg",
-          "file_path": "/home/jaja/Documents/BaBv2-dev/assets/objets/faucille.svg",
+          "file_path": "assets/objets/faucille.svg",
           "x": -142.56511373069452,
           "y": -149.90515078951898,
           "rotation": 53.0,
           "scale": 0.6000000000000001,
           "z": 3,
           "attached_to": [
-            "manululu",
+            "manu",
             "main_droite"
           ]
         }
       },
       "puppets": {
-        "manululu": {
+        "manu": {
           "tete": {
             "rotation": 0.0,
             "pos": [
@@ -880,7 +880,7 @@
         "faucille": {
           "name": "faucille",
           "obj_type": "svg",
-          "file_path": "/home/jaja/Documents/BaBv2-dev/assets/objets/faucille.svg",
+          "file_path": "assets/objets/faucille.svg",
           "x": -53.11834575226072,
           "y": 1855.5236605692148,
           "rotation": 53.0,
@@ -890,7 +890,7 @@
         }
       },
       "puppets": {
-        "manululu": {
+        "manu": {
           "tete": {
             "rotation": 0.0,
             "pos": [
