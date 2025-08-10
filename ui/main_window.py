@@ -10,13 +10,11 @@ from PySide6.QtWidgets import (
     QInputDialog,
     QGraphicsRectItem,
     QGraphicsTextItem,
-    QToolButton,
     QFrame,
     QStyle,
-    QHBoxLayout,
 )
 from PySide6.QtGui import QPainter, QPixmap, QAction, QColor, QPen
-from PySide6.QtCore import Qt, QTimer, QPointF, QSize
+from PySide6.QtCore import Qt, QTimer, QPointF
 
 from core.scene_model import SceneModel, SceneObject
 from core.puppet_piece import PuppetPiece
@@ -26,13 +24,10 @@ from ui.library_widget import LibraryWidget
 from ui.zoomable_view import ZoomableView
 from ui.playback_handler import PlaybackHandler
 from ui.object_manager import ObjectManager
-from ui.draggable_widget import DraggableOverlay
 import ui.scene_io as scene_io
 from ui.icons import (
     icon_scene_size, icon_background, icon_library, icon_inspector, icon_timeline,
-    icon_chevron_left, icon_chevron_right
 )
-from ui.styles import BUTTON_STYLE
 
 
 class MainWindow(QMainWindow):
@@ -90,7 +85,15 @@ class MainWindow(QMainWindow):
         self.playback_handler = PlaybackHandler(self.scene_model, self.timeline_widget, self.inspector_widget, self)
 
         self._create_actions()
-        self._build_main_tools_overlay()
+        self.view.build_main_tools_overlay([
+            self.save_action,
+            self.load_action,
+            self.scene_size_action,
+            self.background_action,
+            self.library_dock.toggleViewAction(),
+            self.inspector_dock.toggleViewAction(),
+            self.timeline_dock.toggleViewAction(),
+        ])
         self.connect_signals()
         self._setup_scene_visuals()
         self._apply_unified_stylesheet()
@@ -110,7 +113,7 @@ class MainWindow(QMainWindow):
     def showEvent(self, event):
         super().showEvent(event)
         QTimer.singleShot(0, self.fit_to_view)
-        QTimer.singleShot(50, self.fit_to_view)
+        QTimer.singleShot(100, self.fit_to_view)
 
     def _create_actions(self):
         style = self.style()
@@ -147,67 +150,6 @@ class MainWindow(QMainWindow):
         # Library signals
         self.library_widget.addRequested.connect(self.object_manager._add_library_item_to_scene)
 
-    def _build_main_tools_overlay(self):
-        self._main_tools_overlay = DraggableOverlay(self.view)
-        
-        self.main_tools_layout = QHBoxLayout(self._main_tools_overlay)
-        self.main_tools_layout.setContentsMargins(4, 4, 4, 4)
-        self.main_tools_layout.setSpacing(2)
-
-        icon_size = 32
-        button_size = 36
-
-        def make_btn(action: QAction, checkable=False):
-            btn = QToolButton(self._main_tools_overlay)
-            btn.setDefaultAction(action)
-            btn.setIconSize(QSize(icon_size, icon_size))
-            btn.setCheckable(checkable)
-            btn.setStyleSheet(BUTTON_STYLE)
-            btn.setFixedSize(button_size, button_size)
-            btn.setToolButtonStyle(Qt.ToolButtonIconOnly)
-            btn.setAutoRaise(True)
-            return btn
-
-        collapse_btn = make_btn(QAction(icon_chevron_left(), "Replier/Déplier", self), checkable=True)
-        collapse_btn.setChecked(True)
-        
-        # Build buttons from actions
-        save_btn = make_btn(self.save_action)
-        load_btn = make_btn(self.load_action)
-        scene_size_btn = make_btn(self.scene_size_action)
-        background_btn = make_btn(self.background_action)
-        
-        library_toggle_btn = make_btn(self.library_dock.toggleViewAction(), checkable=True)
-        inspector_toggle_btn = make_btn(self.inspector_dock.toggleViewAction(), checkable=True)
-        timeline_toggle_btn = make_btn(self.timeline_dock.toggleViewAction(), checkable=True)
-
-        # Set initial checked state for dock toggles
-        library_toggle_btn.setChecked(self.library_dock.isVisible())
-        inspector_toggle_btn.setChecked(self.inspector_dock.isVisible())
-        timeline_toggle_btn.setChecked(self.timeline_dock.isVisible())
-
-        # Connect dock visibility changes to button checked state
-        self.library_dock.visibilityChanged.connect(library_toggle_btn.setChecked)
-        self.inspector_dock.visibilityChanged.connect(inspector_toggle_btn.setChecked)
-        self.timeline_dock.visibilityChanged.connect(timeline_toggle_btn.setChecked)
-
-        self.main_tool_buttons = [save_btn, load_btn, scene_size_btn, background_btn, 
-                    library_toggle_btn, inspector_toggle_btn, timeline_toggle_btn]
-
-        def toggle_main_tools_collapse(checked):
-            icon = icon_chevron_left() if checked else icon_chevron_right()
-            collapse_btn.setIcon(icon)
-            for w in self.main_tool_buttons:
-                w.setVisible(checked)
-            self._main_tools_overlay.adjustSize()
-
-        collapse_btn.toggled.connect(toggle_main_tools_collapse)
-
-        self.main_tools_layout.addWidget(collapse_btn)
-        for w in self.main_tool_buttons:
-            self.main_tools_layout.addWidget(w)
-
-        self._main_tools_overlay.move(10, 60)
 
     def _apply_unified_stylesheet(self):
         self.setStyleSheet(
@@ -271,12 +213,14 @@ class MainWindow(QMainWindow):
             self.background_item = None
         if self.scene_model.background_path and Path(self.scene_model.background_path).exists():
             pixmap = QPixmap(self.scene_model.background_path)
-            scaled_pixmap = pixmap.scaled(self.scene.sceneRect().size().toSize(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            self.background_item = QGraphicsPixmapItem(scaled_pixmap)
-            scene_rect = self.scene.sceneRect()
-            self.background_item.setPos(scene_rect.center() - self.background_item.boundingRect().center())
+            self.scene_model.scene_width = pixmap.width()
+            self.scene_model.scene_height = pixmap.height()
+            self.scene.setSceneRect(0, 0, pixmap.width(), pixmap.height())
+            self._update_scene_visuals()
+            self.background_item = QGraphicsPixmapItem(pixmap)
             self.background_item.setZValue(-10000)
             self.scene.addItem(self.background_item)
+            self.fit_to_view()
 
     def toggle_rotation_handles(self, visible):
         for item in self.object_manager.graphics_items.values():

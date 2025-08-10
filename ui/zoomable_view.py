@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
     QToolButton,
     QLabel,
 )
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QAction
 from PySide6.QtCore import Qt, Signal, QPointF, QSize
 
 from ui.draggable_widget import DraggableOverlay
@@ -27,6 +27,7 @@ class ZoomableView(QGraphicsView):
     def __init__(self, scene, parent=None):
         super().__init__(scene, parent)
         self._overlay = None
+        self._main_tools_overlay = None
         self._did_initial_fit = False
         self._build_overlay()
         self.setAcceptDrops(True)
@@ -83,12 +84,58 @@ class ZoomableView(QGraphicsView):
             w.setVisible(checked)
         self._overlay.adjustSize()
 
+    def build_main_tools_overlay(self, actions):
+        """Create the main tools overlay using provided QActions."""
+        self._main_tools_overlay = DraggableOverlay(self)
+
+        self.main_tools_layout = QHBoxLayout(self._main_tools_overlay)
+        self.main_tools_layout.setContentsMargins(4, 4, 4, 4)
+        self.main_tools_layout.setSpacing(2)
+
+        icon_size = 32
+        button_size = 36
+
+        def make_btn(action: QAction, checkable=False):
+            btn = QToolButton(self._main_tools_overlay)
+            btn.setDefaultAction(action)
+            btn.setIconSize(QSize(icon_size, icon_size))
+            btn.setCheckable(checkable)
+            btn.setStyleSheet(BUTTON_STYLE)
+            btn.setFixedSize(button_size, button_size)
+            btn.setToolButtonStyle(Qt.ToolButtonIconOnly)
+            btn.setAutoRaise(True)
+            return btn
+
+        collapse_action = QAction(icon_chevron_left(), "Replier/Déplier", self)
+        collapse_btn = make_btn(collapse_action, checkable=True)
+        collapse_btn.setChecked(True)
+
+        self.main_tool_buttons = []
+        for act in actions:
+            btn = make_btn(act, checkable=act.isCheckable())
+            self.main_tool_buttons.append(btn)
+
+        def toggle_main_tools_collapse(checked):
+            icon = icon_chevron_left() if checked else icon_chevron_right()
+            collapse_btn.setIcon(icon)
+            for w in self.main_tool_buttons:
+                w.setVisible(checked)
+            self._main_tools_overlay.adjustSize()
+
+        collapse_btn.toggled.connect(toggle_main_tools_collapse)
+
+        self.main_tools_layout.addWidget(collapse_btn)
+        for w in self.main_tool_buttons:
+            self.main_tools_layout.addWidget(w)
+
+        self._main_tools_overlay.move(10, 60)
+
     def set_zoom_label(self, text: str):
         if self._zoom_label: self._zoom_label.setText(text)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        if not self._did_initial_fit and self.width() > 0 and self.height() > 0:
+        if not self._did_initial_fit and self.isVisible() and self.width() > 0 and self.height() > 0:
             self._did_initial_fit = True
             self.fit_requested.emit()
 
