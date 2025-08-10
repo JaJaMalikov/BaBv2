@@ -100,6 +100,20 @@ class ObjectManager:
             self.puppet_scales[new_name] = scale
             self.scale_puppet(new_name, scale)
 
+    def capture_puppet_states(self):
+        states = {}
+        for name, puppet in self.scene_model.puppets.items():
+            puppet_state = {}
+            for member_name in puppet.members:
+                piece = self.graphics_items.get(f"{name}:{member_name}")
+                if piece:
+                    puppet_state[member_name] = {
+                        'rotation': piece.local_rotation,
+                        'pos': (piece.x(), piece.y()),
+                    }
+            states[name] = puppet_state
+        return states
+
     def delete_object(self, name):
         if (item := self.graphics_items.pop(name, None)): self.scene.removeItem(item)
         self.scene_model.remove_object(name)

@@ -1,5 +1,4 @@
 import os
-
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
 from PySide6.QtWidgets import QApplication, QGraphicsItem
@@ -24,9 +23,10 @@ def app():
 def test_hierarchy_and_pivot(app):
     window = MainWindow()
 
-    upper = window.graphics_items["manu:haut_bras_droite"]
-    elbow = window.graphics_items["manu:coude_droite"]
-    forearm = window.graphics_items["manu:avant_bras_droite"]
+    gis = window.object_manager.graphics_items
+    upper = gis["manu:haut_bras_droite"]
+    elbow = gis["manu:coude_droite"]
+    forearm = gis["manu:avant_bras_droite"]
 
     # Vérifie la hiérarchie logique sans impact sur l'affichage
     assert forearm.parent_piece is elbow
@@ -51,8 +51,9 @@ def test_hierarchy_and_pivot(app):
 
 def test_puppet_translation(app):
     window = MainWindow()
-    torso = window.graphics_items["manu:torse"]
-    hand = window.graphics_items["manu:main_droite"]
+    gis = window.object_manager.graphics_items
+    torso = gis["manu:torse"]
+    hand = gis["manu:main_droite"]
 
     # Le torse doit être déplaçable
     assert torso.flags() & QGraphicsItem.ItemIsMovable

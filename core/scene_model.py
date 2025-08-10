@@ -72,8 +72,8 @@ class SceneModel:
         self.start_frame = 0
         self.end_frame = 100
         self.fps = 24
-        self.scene_width = 1536
-        self.scene_height = 1024
+        self.scene_width = 1920
+        self.scene_height = 1080
         self.background_path = None
 
     # -----------------------------
@@ -107,26 +107,17 @@ class SceneModel:
     # -----------------------------
     # KEYFRAMES ET TIMELINE
     # -----------------------------
-    def add_keyframe(self, index):
+    def add_keyframe(self, index, puppet_states=None):
         kf = self.keyframes.get(index)
         if not kf:
             kf = Keyframe(index)
             self.keyframes[index] = kf
-        
-        # Snapshot de l'état des objets
+
         for name, obj in self.objects.items():
             kf.objects[name] = obj.to_dict()
 
-        # Snapshot de l'état des marionnettes
-        for puppet_name, puppet in self.puppets.items():
-            puppet_state = {}
-            for member_name, member in puppet.members.items():
-                # Note: On a besoin d'un moyen de récupérer les `PuppetPiece` graphiques
-                # pour avoir leur état actuel. Ceci sera géré dans la MainWindow.
-                pass
-            kf.puppets[puppet_name] = puppet_state
+        kf.puppets = puppet_states or {}
 
-        # Trier les keyframes par index pour la lecture
         self.keyframes = dict(sorted(self.keyframes.items()))
         return kf
 
@@ -141,30 +132,58 @@ class SceneModel:
     # -----------------------------
     # IMPORT/EXPORT
     # -----------------------------
-    def export_json(self, file_path):
-        import json
-        data = {
+    def to_dict(self):
+        return {
             "settings": {
                 "start_frame": self.start_frame,
                 "end_frame": self.end_frame,
                 "fps": self.fps,
                 "scene_width": self.scene_width,
                 "scene_height": self.scene_height,
-                "background_path": self.background_path
+                "background_path": self.background_path,
             },
-            "puppets": list(self.puppets.keys()),  # à affiner
+            "puppets": list(self.puppets.keys()),
             "objects": {k: v.to_dict() for k, v in self.objects.items()},
             "keyframes": [
                 {
                     "index": kf.index,
                     "objects": kf.objects,
-                    "puppets": kf.puppets
+                    "puppets": kf.puppets,
                 }
                 for kf in self.keyframes.values()
-            ]
+            ],
         }
+
+    def from_dict(self, data):
+        settings = data.get("settings", {})
+        self.start_frame = settings.get("start_frame", 0)
+        self.end_frame = settings.get("end_frame", 100)
+        self.fps = settings.get("fps", 24)
+        self.scene_width = settings.get("scene_width", 1920)
+        self.scene_height = settings.get("scene_height", 1080)
+        self.background_path = settings.get("background_path")
+
+        self.objects.clear()
+        for name, obj_data in data.get("objects", {}).items():
+            obj_data["name"] = name
+            self.objects[name] = SceneObject.from_dict(obj_data)
+
+        self.keyframes.clear()
+        for kf_data in data.get("keyframes", []):
+            index = kf_data.get("index")
+            if index is None:
+                continue
+            new_kf = Keyframe(index)
+            new_kf.objects = kf_data.get("objects", {})
+            new_kf.puppets = kf_data.get("puppets", {})
+            self.keyframes[index] = new_kf
+
+        self.keyframes = dict(sorted(self.keyframes.items()))
+
+    def export_json(self, file_path):
+        import json
         with open(file_path, "w") as f:
-            json.dump(data, f, indent=2)
+            json.dump(self.to_dict(), f, indent=2)
 
     def import_json(self, file_path):
         import json
@@ -174,33 +193,5 @@ class SceneModel:
         except (IOError, json.JSONDecodeError) as e:
             print(f"Erreur lors du chargement du fichier : {e}")
             return
-
-        settings = data.get("settings", {})
-        self.start_frame = settings.get("start_frame", 0)
-        self.end_frame = settings.get("end_frame", 100)
-        self.fps = settings.get("fps", 24)
-        self.scene_width = settings.get("scene_width", 1920)
-        self.scene_height = settings.get("scene_height", 1080)
-        self.background_path = settings.get("background_path", None)
-
-        # Recharge les objets de la scène
-        self.objects.clear()
-        objects_data = data.get("objects", {})
-        for name, obj_data in objects_data.items():
-            obj_data["name"] = name
-            obj = SceneObject.from_dict(obj_data)
-            self.objects[name] = obj
-
-        self.keyframes.clear()
-
-        loaded_keyframes = data.get("keyframes", [])
-        for kf_data in loaded_keyframes:
-            index = kf_data.get("index")
-            if index is not None:
-                new_kf = Keyframe(index)
-                new_kf.objects = kf_data.get("objects", {})
-                new_kf.puppets = kf_data.get("puppets", {})
-                self.keyframes[index] = new_kf
-
-        self.keyframes = dict(sorted(self.keyframes.items()))
+        self.from_dict(data)
 

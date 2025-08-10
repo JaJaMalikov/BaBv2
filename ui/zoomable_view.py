@@ -11,9 +11,11 @@ from PySide6.QtCore import Qt, Signal, QPointF, QSize
 
 from ui.draggable_widget import DraggableOverlay
 from ui.icons import (
-    icon_plus, icon_minus, icon_fit, icon_rotate, 
+    icon_plus, icon_minus, icon_fit, icon_rotate,
     icon_chevron_left, icon_chevron_right
 )
+from ui.styles import BUTTON_STYLE
+from ui.library_widget import LIB_MIME
 
 
 class ZoomableView(QGraphicsView):
@@ -40,31 +42,15 @@ class ZoomableView(QGraphicsView):
         icon_size = 32
         button_size = 36
 
-        button_style = f"""
-            QToolButton {{
-                background-color: transparent;
-                border: none;
-                padding: 2px;
-            }}
-            QToolButton:checked {{
-                background-color: rgba(255, 255, 255, 25);
-                border-radius: 4px;
-            }}
-            QToolButton:hover {{
-                background-color: rgba(255, 255, 255, 40);
-                border-radius: 4px;
-            }}
-        """
-
         def make_btn(icon: QIcon | None, tooltip, cb=None, checkable=False):
             btn = QToolButton(self._overlay)
-            if icon: 
+            if icon:
                 btn.setIcon(icon)
                 btn.setIconSize(QSize(icon_size, icon_size))
             btn.setToolTip(tooltip)
             if cb: btn.clicked.connect(cb)
             btn.setCheckable(checkable)
-            btn.setStyleSheet(button_style)
+            btn.setStyleSheet(BUTTON_STYLE)
             btn.setFixedSize(button_size, button_size)
             btn.setAutoRaise(True)
             return btn
@@ -142,21 +128,21 @@ class ZoomableView(QGraphicsView):
         super().mouseReleaseEvent(event)
 
     def dragEnterEvent(self, event):
-        if event.mimeData().hasFormat('application/x-bab-item'):
+        if event.mimeData().hasFormat(LIB_MIME):
             event.acceptProposedAction()
         else:
             super().dragEnterEvent(event)
 
     def dragMoveEvent(self, event):
-        if event.mimeData().hasFormat('application/x-bab-item'):
+        if event.mimeData().hasFormat(LIB_MIME):
             event.acceptProposedAction()
         else:
             super().dragMoveEvent(event)
 
     def dropEvent(self, event):
-        if event.mimeData().hasFormat('application/x-bab-item'):
+        if event.mimeData().hasFormat(LIB_MIME):
             try:
-                data = bytes(event.mimeData().data('application/x-bab-item')).decode('utf-8')
+                data = bytes(event.mimeData().data(LIB_MIME)).decode('utf-8')
                 payload = json.loads(data)
                 self.item_dropped.emit(payload, event.position())
             except Exception as e:

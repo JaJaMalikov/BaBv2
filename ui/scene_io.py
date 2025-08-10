@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 from PySide6.QtWidgets import QFileDialog
 from PySide6.QtCore import QTimer
 
-from core.scene_model import SceneObject
 
 if TYPE_CHECKING:
     from .main_window import MainWindow
@@ -31,32 +30,19 @@ def export_scene(win: MainWindow, file_path: str):
     puppets_data = {}
     for name, puppet in win.scene_model.puppets.items():
         root_members = puppet.get_root_members()
-        if not root_members: continue
+        if not root_members:
+            continue
         root_piece = win.object_manager.graphics_items.get(f"{name}:{root_members[0].name}")
         if root_piece:
             puppets_data[name] = {
                 "path": win.object_manager.puppet_paths.get(name),
                 "scale": win.object_manager.puppet_scales.get(name, 1.0),
-                "position": [root_piece.x(), root_piece.y()]
+                "position": [root_piece.x(), root_piece.y()],
             }
 
-    data = {
-        "settings": {
-            "start_frame": win.scene_model.start_frame,
-            "end_frame": win.scene_model.end_frame,
-            "fps": win.scene_model.fps,
-            "scene_width": win.scene_model.scene_width,
-            "scene_height": win.scene_model.scene_height,
-            "background_path": win.scene_model.background_path
-        },
-        "puppets_data": puppets_data,
-        "objects": {k: v.to_dict() for k, v in win.scene_model.objects.items()},
-        "keyframes": {
-            k: {"objects": v.objects, "puppets": v.puppets}
-            for k, v in win.scene_model.keyframes.items()
-        }
-    }
-    
+    data = win.scene_model.to_dict()
+    data["puppets_data"] = puppets_data
+
     try:
         with open(file_path, "w") as f:
             json.dump(data, f, indent=2)
@@ -72,13 +58,7 @@ def import_scene(win: MainWindow, file_path: str):
         
         create_blank_scene(win, add_default_puppet=False)
 
-        settings = data.get("settings", {})
-        win.scene_model.start_frame = settings.get("start_frame", 0)
-        win.scene_model.end_frame = settings.get("end_frame", 100)
-        win.scene_model.fps = settings.get("fps", 24)
-        win.scene_model.scene_width = settings.get("scene_width", 1920)
-        win.scene_model.scene_height = settings.get("scene_height", 1080)
-        win.scene_model.background_path = settings.get("background_path")
+        win.scene_model.from_dict(data)
 
         puppets_data = data.get("puppets_data", {})
         for name, p_data in puppets_data.items():
@@ -97,22 +77,11 @@ def import_scene(win: MainWindow, file_path: str):
                     if root_piece and pos:
                         root_piece.setPos(pos[0], pos[1])
 
-        win.scene_model.objects.clear()
-        objects_data = data.get("objects", {})
-        for name, obj_data in objects_data.items():
+        for obj in win.scene_model.objects.values():
             try:
-                obj_data["name"] = name
-                obj = SceneObject.from_dict(obj_data)
-                win.scene_model.add_object(obj)
+                win.object_manager._add_object_graphics(obj)
             except Exception as e:
-                print(f"Failed to load object '{name}': {e}")
-
-        win.scene_model.keyframes.clear()
-        keyframes_data = data.get("keyframes", {})
-        for frame_idx, kf_data in keyframes_data.items():
-            kf = win.scene_model.add_keyframe(int(frame_idx))
-            kf.puppets = kf_data.get("puppets", {})
-            kf.objects = kf_data.get("objects", {})
+                print(f"Failed to create graphics for '{obj.name}': {e}")
 
         win.timeline_widget.clear_keyframes()
         for kf_index in win.scene_model.keyframes:
@@ -123,7 +92,7 @@ def import_scene(win: MainWindow, file_path: str):
         win._update_background()
         win.timeline_widget.set_current_frame(win.scene_model.start_frame)
         win.inspector_widget.refresh()
-        
+
         QTimer.singleShot(0, lambda: win.timeline_widget.set_current_frame(win.scene_model.current_frame or win.scene_model.start_frame))
 
     except Exception as e:
