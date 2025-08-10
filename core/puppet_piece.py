@@ -2,29 +2,52 @@ import math
 
 from PySide6.QtWidgets import QGraphicsEllipseItem, QGraphicsSceneMouseEvent, QGraphicsItem
 from PySide6.QtSvgWidgets import QGraphicsSvgItem
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QBrush, QPen
+from PySide6.QtCore import Qt, QPointF
+from PySide6.QtGui import QBrush, QPen, QColor
 
+# --- Constantes ---
+PIVOT_KEYWORDS = ["coude", "genou", "hanche", "epaule", "cheville", "poignet", "cou"]
+HANDLE_Z_VALUE = 1000
+PIVOT_Z_VALUE = 999
 
 class RotationHandle(QGraphicsEllipseItem):
-    def __init__(self, parent):
+    def __init__(self, piece):
         super().__init__(-10, -10, 20, 20)
-        self.setParentItem(parent)
-        self.parent = parent
+        self.piece = piece
         self.setBrush(QBrush(Qt.transparent))
         self.setPen(QPen(Qt.transparent))
-        self.setFlag(QGraphicsEllipseItem.ItemIsMovable)
+        self.setFlag(QGraphicsItem.ItemIsMovable)
+        self.setZValue(HANDLE_Z_VALUE)
+        self.start_angle = 0
+        self.start_rotation = 0
 
-    def mouseMoveEvent(self, event: QGraphicsSceneMouseEvent):
-        if not self.parent:
-            return
-        pivot_in_scene = self.parent.mapToScene(self.parent.transformOriginPoint())
+    def mousePressEvent(self, event: QGraphicsSceneMouseEvent):
+        pivot_in_scene = self.piece.mapToScene(self.piece.transformOriginPoint())
         mouse_in_scene = event.scenePos()
         vector = mouse_in_scene - pivot_in_scene
-        angle_in_scene = math.degrees(math.atan2(vector.y(), vector.x()))
-        parent_rotation = self.parent.parent_piece.rotation() if self.parent.parent_piece else 0
-        self.parent.rotate_piece(angle_in_scene - parent_rotation)
+        self.start_angle = math.degrees(math.atan2(vector.y(), vector.x()))
+        self.start_rotation = self.piece.local_rotation
+        super().mousePressEvent(event)
 
+    def mouseMoveEvent(self, event: QGraphicsSceneMouseEvent):
+        pivot_in_scene = self.piece.mapToScene(self.piece.transformOriginPoint())
+        mouse_in_scene = event.scenePos()
+        vector = mouse_in_scene - pivot_in_scene
+        current_angle = math.degrees(math.atan2(vector.y(), vector.x()))
+        delta = current_angle - self.start_angle
+        self.piece.rotate_piece(self.start_rotation + delta)
+
+    def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent):
+        self.start_angle = 0
+        self.start_rotation = 0
+        super().mouseReleaseEvent(event)
+
+class PivotHandle(QGraphicsEllipseItem):
+    def __init__(self):
+        super().__init__(-5, -5, 10, 10)
+        self.setBrush(QBrush(Qt.transparent))
+        self.setPen(QPen(Qt.transparent))
+        self.setZValue(PIVOT_Z_VALUE)
 
 class PuppetPiece(QGraphicsSvgItem):
     def __init__(
@@ -33,8 +56,6 @@ class PuppetPiece(QGraphicsSvgItem):
         name: str,
         pivot_x: float = 0.0,
         pivot_y: float = 0.0,
-        target_pivot_x: float = None,
-        target_pivot_y: float = None,
         renderer=None,
         grid=None
     ):
@@ -49,47 +70,65 @@ class PuppetPiece(QGraphicsSvgItem):
         self.name = name
         self.pivot_x = float(pivot_x)
         self.pivot_y = float(pivot_y)
-        self.target_pivot_x = float(target_pivot_x) if target_pivot_x is not None else None
-        self.target_pivot_y = float(target_pivot_y) if target_pivot_y is not None else None
         self.grid = grid
         self.setTransformOriginPoint(self.pivot_x, self.pivot_y)
 
-        # Chaînage logique sans dépendre de QGraphicsItem
         self.parent_piece = None
         self.children = []
         self.rel_to_parent = (0.0, 0.0)
         self.local_rotation = 0.0
 
-        # Handle aligné dans l'axe du segment
-        if name not in ["main_droite", "main_gauche"]:
+        if "_droite" in name:
+            self.handle_color = QColor(255, 70, 70, 150)
+        elif "_gauche" in name:
+            self.handle_color = QColor(70, 255, 70, 150)
+        else:
+            self.handle_color = QColor(255, 200, 70, 150)
+
+        self.pivot_handle = PivotHandle()
+        if not any(keyword in name for keyword in PIVOT_KEYWORDS):
             self.rotation_handle = RotationHandle(self)
-            if self.target_pivot_x is not None and self.target_pivot_y is not None:
-                dx = self.target_pivot_x - self.pivot_x
-                dy = self.target_pivot_y - self.pivot_y
-                norm = (dx ** 2 + dy ** 2) ** 0.5 or 1
-                offset = 30  # distance (pixels) du pivot
-                handle_x = self.pivot_x + dx / norm * offset
-                handle_y = self.pivot_y + dy / norm * offset
+            brect = self.boundingRect()
+            if self.name == "torse":
+                self.handle_local_pos = QPointF(brect.center().x(), brect.center().y() - 40)
             else:
-                handle_x = self.pivot_x + 30
-                handle_y = self.pivot_y
-            self.rotation_handle.setPos(handle_x, handle_y)
+                self.handle_local_pos = brect.center()
         else:
             self.rotation_handle = None
 
+    def set_handle_visibility(self, visible):
+        pen_color = QColor(255, 255, 255, 180)
+        if visible:
+            self.pivot_handle.setBrush(QBrush(QColor(70, 200, 255, 180)))
+            self.pivot_handle.setPen(QPen(pen_color, 1))
+        else:
+            self.pivot_handle.setBrush(QBrush(Qt.transparent))
+            self.pivot_handle.setPen(QPen(Qt.transparent))
+
+        if self.rotation_handle:
+            if visible:
+                self.rotation_handle.setBrush(QBrush(self.handle_color))
+                self.rotation_handle.setPen(QPen(pen_color, 1.5))
+            else:
+                self.rotation_handle.setBrush(QBrush(Qt.transparent))
+                self.rotation_handle.setPen(QPen(Qt.transparent))
+
+    def update_handle_positions(self):
+        pivot_pos = self.mapToScene(self.pivot_x, self.pivot_y)
+        self.pivot_handle.setPos(pivot_pos)
+        if self.rotation_handle:
+            handle_pos = self.mapToScene(self.handle_local_pos)
+            self.rotation_handle.setPos(handle_pos)
+        for child in self.children:
+            child.update_handle_positions()
+
     def itemChange(self, change, value):
-        # Magnétisme à la grille
         if change == QGraphicsItem.ItemPositionChange and self.scene() and self.grid:
             return self.grid.snap_to_grid(value)
         if change == QGraphicsItem.ItemPositionHasChanged:
+            self.update_handle_positions()
             for child in self.children:
                 child.update_transform_from_parent()
-        # Z-value du handle quand l'item change de Z
-        if change == QGraphicsItem.ItemZValueHasChanged and self.rotation_handle:
-            self.rotation_handle.setZValue(value + 1)
-        # Z-value du handle quand la pièce est ajoutée à la scène
-        if change == QGraphicsItem.ItemSceneHasChanged and self.rotation_handle:
-            self.rotation_handle.setZValue(self.zValue() + 1)
         return super().itemChange(change, value)
 
     def set_parent_piece(self, parent, rel_x=0.0, rel_y=0.0):
@@ -115,6 +154,7 @@ class PuppetPiece(QGraphicsSvgItem):
         scene_y = parent_pivot.y() + rotated_dy
         self.setPos(scene_x - self.pivot_x, scene_y - self.pivot_y)
         self.setRotation(parent_rotation + self.local_rotation)
+        self.update_handle_positions()
         for child in self.children:
             child.update_transform_from_parent()
 
@@ -124,5 +164,6 @@ class PuppetPiece(QGraphicsSvgItem):
             self.update_transform_from_parent()
         else:
             self.setRotation(self.local_rotation)
-            for child in self.children:
-                child.update_transform_from_parent()
+            self.update_handle_positions()
+        for child in self.children:
+            child.update_transform_from_parent()
