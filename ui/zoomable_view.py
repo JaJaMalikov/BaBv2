@@ -76,12 +76,83 @@ class ZoomableView(QGraphicsView):
 
         self._overlay.move(10, 10)
 
+    def _build_main_tools_overlay(self, main_window):
+        self._main_tools_overlay = DraggableOverlay(self)
+
+        self.main_tools_layout = QHBoxLayout(self._main_tools_overlay)
+        self.main_tools_layout.setContentsMargins(4, 4, 4, 4)
+        self.main_tools_layout.setSpacing(2)
+
+        icon_size = 32
+        button_size = 36
+
+        def make_btn(action, checkable=False):
+            btn = QToolButton(self._main_tools_overlay)
+            btn.setDefaultAction(action)
+            btn.setIconSize(QSize(icon_size, icon_size))
+            btn.setCheckable(checkable)
+            btn.setStyleSheet(BUTTON_STYLE)
+            btn.setFixedSize(button_size, button_size)
+            btn.setToolButtonStyle(Qt.ToolButtonIconOnly)
+            btn.setAutoRaise(True)
+            return btn
+
+        self.main_collapse_btn = QToolButton(self._main_tools_overlay)
+        self.main_collapse_btn.setIcon(icon_chevron_left())
+        self.main_collapse_btn.setCheckable(True)
+        self.main_collapse_btn.setChecked(True)
+        self.main_collapse_btn.setStyleSheet(BUTTON_STYLE)
+        self.main_collapse_btn.setFixedSize(button_size, button_size)
+        self.main_collapse_btn.setAutoRaise(True)
+        self.main_collapse_btn.toggled.connect(self.toggle_main_tools_collapse)
+
+        save_btn = make_btn(main_window.save_action)
+        load_btn = make_btn(main_window.load_action)
+        scene_size_btn = make_btn(main_window.scene_size_action)
+        background_btn = make_btn(main_window.background_action)
+
+        library_toggle_btn = make_btn(main_window.library_dock.toggleViewAction(), checkable=True)
+        inspector_toggle_btn = make_btn(main_window.inspector_dock.toggleViewAction(), checkable=True)
+        timeline_toggle_btn = make_btn(main_window.timeline_dock.toggleViewAction(), checkable=True)
+
+        library_toggle_btn.setChecked(main_window.library_dock.isVisible())
+        inspector_toggle_btn.setChecked(main_window.inspector_dock.isVisible())
+        timeline_toggle_btn.setChecked(main_window.timeline_dock.isVisible())
+
+        main_window.library_dock.visibilityChanged.connect(library_toggle_btn.setChecked)
+        main_window.inspector_dock.visibilityChanged.connect(inspector_toggle_btn.setChecked)
+        main_window.timeline_dock.visibilityChanged.connect(timeline_toggle_btn.setChecked)
+
+        self.main_tool_buttons = [
+            save_btn,
+            load_btn,
+            scene_size_btn,
+            background_btn,
+            library_toggle_btn,
+            inspector_toggle_btn,
+            timeline_toggle_btn,
+        ]
+
+        self.main_tools_layout.addWidget(self.main_collapse_btn)
+        for w in self.main_tool_buttons:
+            self.main_tools_layout.addWidget(w)
+
+        self._main_tools_overlay.move(10, 60)
+
     def toggle_overlay_collapse(self, checked):
         icon = icon_chevron_left() if checked else icon_chevron_right()
         self.collapse_btn.setIcon(icon)
         for w in self.tool_widgets:
             w.setVisible(checked)
         self._overlay.adjustSize()
+
+    def toggle_main_tools_collapse(self, checked):
+        icon = icon_chevron_left() if checked else icon_chevron_right()
+        self.main_collapse_btn.setIcon(icon)
+        for w in getattr(self, "main_tool_buttons", []):
+            w.setVisible(checked)
+        if hasattr(self, "_main_tools_overlay"):
+            self._main_tools_overlay.adjustSize()
 
     def set_zoom_label(self, text: str):
         if self._zoom_label: self._zoom_label.setText(text)

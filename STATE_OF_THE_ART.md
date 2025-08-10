@@ -59,13 +59,13 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
 *   **Interface Utilisateur et Ergonomie (UI/UX) Améliorées**:
     *   **Vue de la scène professionnelle**:
         *   **Barre d'outils flottante (Overlay)** directement sur la vue pour un accès rapide au zoom, centrage, et affichage/masquage des poignées de rotation.
-        *   **Barre d'outils principale** pour les actions globales (gestion des panneaux, zoom).
+        *   **Barre d'outils principale rétractable** regroupée avec la barre d'outils flottante.
         *   Panoramique dans la vue avec le clic molette.
     *   **Panneaux modulables (Docks)**: La Timeline et l'Inspecteur peuvent être affichés, masqués ou déplacés indépendamment (`F3`, `F4`).
     *   **Poignées de rotation basculables** pour désencombrer la vue.
     *   **Personnalisation de la scène**:
         *   Définition de la taille (largeur/hauteur) de la scène.
-        *   Chargement d'une **image d'arrière-plan** qui s'adapte à la scène.
+        *   Chargement d'une **image d'arrière-plan** qui redimensionne automatiquement la scène.
     *   **Styles et constantes unifiés**:
         *   Style des boutons factorisé dans `ui/styles.py` pour cohérence.
         *   Chaîne MIME partagée (`LIB_MIME`) pour le glisser-déposer d'éléments.
