@@ -5,7 +5,7 @@ class SceneObject:
     Un objet générique de la scène (image, SVG, décor, etc.)
     Peut être libre ou attaché à un membre de pantin.
     """
-    def __init__(self, name, obj_type, file_path, x=0, y=0, rotation=0, scale=1.0):
+    def __init__(self, name, obj_type, file_path, x=0, y=0, rotation=0, scale=1.0, z=0):
         self.name = name
         self.obj_type = obj_type  # "image", "svg", "puppet"
         self.file_path = file_path
@@ -13,6 +13,7 @@ class SceneObject:
         self.y = y
         self.rotation = rotation
         self.scale = scale
+        self.z = z
         self.attached_to = None  # ("puppet_name", "member_name") ou None
 
     def attach(self, puppet_name, member_name):
@@ -31,6 +32,7 @@ class SceneObject:
             "y": self.y,
             "rotation": self.rotation,
             "scale": self.scale,
+            "z": self.z,
             "attached_to": self.attached_to,
         }
 
@@ -45,6 +47,7 @@ class SceneObject:
             y=data.get("y", 0),
             rotation=data.get("rotation", 0),
             scale=data.get("scale", 1.0),
+            z=data.get("z", 0),
         )
         attached = data.get("attached_to")
         if attached is not None:
@@ -200,5 +203,4 @@ class SceneModel:
                 self.keyframes[index] = new_kf
 
         self.keyframes = dict(sorted(self.keyframes.items()))
-
 

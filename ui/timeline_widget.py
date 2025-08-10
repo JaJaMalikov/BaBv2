@@ -82,11 +82,14 @@ class TimelineWidget(QWidget):
         self.fps_label = QLabel("FPS:")
         self.fps_spin = QSpinBox(); self.fps_spin.setRange(1, 240); self.fps_spin.setValue(24); self.fps_spin.valueChanged.connect(self.fpsChanged.emit)
 
-        for w in [self.time_label, self.frame_spin, self.fps_label, self.fps_spin]:
+        self.in_label = QLabel("In:")
+        self.out_label = QLabel("Out:")
+        self.start_spin = QSpinBox(); self.end_spin = QSpinBox()
+        self.start_spin.setRange(0, 999999); self.end_spin.setRange(0, 999999)
+        for w in [self.time_label, self.frame_spin, self.fps_label, self.fps_spin, self.in_label, self.start_spin, self.out_label, self.end_spin]:
             bar.addWidget(w)
 
         self.slider = QSlider(Qt.Horizontal); self.slider.setVisible(False)
-        self.start_spin = QSpinBox(); self.end_spin = QSpinBox()
         self.fps_spinbox = self.fps_spin
         self.start_frame_spinbox = self.start_spin
         self.end_frame_spinbox = self.end_spin
