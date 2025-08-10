@@ -249,7 +249,7 @@ class ObjectManager:
 
         if kind == 'background':
             self.scene_model.background_path = path
-            self.win._update_background()
+            self.win._update_background(adjust_scene=True)
         elif kind == 'object':
             self._create_object_from_file(path, scene_pos)
         elif kind == 'puppet':

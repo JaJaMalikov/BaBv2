@@ -6,8 +6,8 @@ from PySide6.QtWidgets import (
     QToolButton,
     QLabel,
 )
-from PySide6.QtGui import QIcon
-from PySide6.QtCore import Qt, Signal, QPointF, QSize
+from PySide6.QtGui import QIcon, QAction
+from PySide6.QtCore import Qt, Signal, QPointF, QSize, QTimer
 
 from ui.draggable_widget import DraggableOverlay
 from ui.icons import (
@@ -27,10 +27,13 @@ class ZoomableView(QGraphicsView):
     def __init__(self, scene, parent=None):
         super().__init__(scene, parent)
         self._overlay = None
-        self._did_initial_fit = False
         self._build_overlay()
         self.setAcceptDrops(True)
         self.viewport().setAcceptDrops(True)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        QTimer.singleShot(0, self.fit_requested.emit)
 
     def _build_overlay(self):
         self._overlay = DraggableOverlay(self)
@@ -76,6 +79,81 @@ class ZoomableView(QGraphicsView):
 
         self._overlay.move(10, 10)
 
+    def build_main_tools_overlay(
+        self,
+        save_action,
+        load_action,
+        scene_size_action,
+        background_action,
+        library_dock,
+        inspector_dock,
+        timeline_dock,
+    ):
+        self._main_tools_overlay = DraggableOverlay(self)
+
+        layout = QHBoxLayout(self._main_tools_overlay)
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setSpacing(2)
+
+        icon_size = 32
+        button_size = 36
+
+        def make_btn(action, checkable=False):
+            btn = QToolButton(self._main_tools_overlay)
+            btn.setDefaultAction(action)
+            btn.setIconSize(QSize(icon_size, icon_size))
+            btn.setCheckable(checkable)
+            btn.setStyleSheet(BUTTON_STYLE)
+            btn.setFixedSize(button_size, button_size)
+            btn.setToolButtonStyle(Qt.ToolButtonIconOnly)
+            btn.setAutoRaise(True)
+            return btn
+
+        collapse_btn = make_btn(QAction(icon_chevron_left(), "Replier/Déplier", self), checkable=True)
+        collapse_btn.setChecked(True)
+
+        save_btn = make_btn(save_action)
+        load_btn = make_btn(load_action)
+        scene_size_btn = make_btn(scene_size_action)
+        background_btn = make_btn(background_action)
+
+        library_toggle_btn = make_btn(library_dock.toggleViewAction(), checkable=True)
+        inspector_toggle_btn = make_btn(inspector_dock.toggleViewAction(), checkable=True)
+        timeline_toggle_btn = make_btn(timeline_dock.toggleViewAction(), checkable=True)
+
+        library_toggle_btn.setChecked(library_dock.isVisible())
+        inspector_toggle_btn.setChecked(inspector_dock.isVisible())
+        timeline_toggle_btn.setChecked(timeline_dock.isVisible())
+
+        library_dock.visibilityChanged.connect(library_toggle_btn.setChecked)
+        inspector_dock.visibilityChanged.connect(inspector_toggle_btn.setChecked)
+        timeline_dock.visibilityChanged.connect(timeline_toggle_btn.setChecked)
+
+        self._main_tool_buttons = [
+            save_btn,
+            load_btn,
+            scene_size_btn,
+            background_btn,
+            library_toggle_btn,
+            inspector_toggle_btn,
+            timeline_toggle_btn,
+        ]
+
+        def toggle_main_collapse(checked):
+            icon = icon_chevron_left() if checked else icon_chevron_right()
+            collapse_btn.setIcon(icon)
+            for w in self._main_tool_buttons:
+                w.setVisible(checked)
+            self._main_tools_overlay.adjustSize()
+
+        collapse_btn.toggled.connect(toggle_main_collapse)
+
+        layout.addWidget(collapse_btn)
+        for w in self._main_tool_buttons:
+            layout.addWidget(w)
+
+        self._main_tools_overlay.move(10, 60)
+
     def toggle_overlay_collapse(self, checked):
         icon = icon_chevron_left() if checked else icon_chevron_right()
         self.collapse_btn.setIcon(icon)
@@ -88,9 +166,6 @@ class ZoomableView(QGraphicsView):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        if not self._did_initial_fit and self.width() > 0 and self.height() > 0:
-            self._did_initial_fit = True
-            self.fit_requested.emit()
 
     def wheelEvent(self, event):
         if event.modifiers() == Qt.ControlModifier:
