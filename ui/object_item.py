@@ -1,4 +1,3 @@
-from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QGraphicsPixmapItem, QGraphicsItem
 from PySide6.QtSvgWidgets import QGraphicsSvgItem
