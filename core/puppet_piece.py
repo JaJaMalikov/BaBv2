@@ -62,7 +62,6 @@ class PuppetPiece(QGraphicsSvgItem):
         pivot_x: float = 0.0,
         pivot_y: float = 0.0,
         renderer: Optional[QSvgRenderer] = None,
-        grid: Any = None # Assuming grid is an object with snap_to_grid method
     ) -> None:
         if renderer is not None:
             super().__init__()
@@ -75,7 +74,6 @@ class PuppetPiece(QGraphicsSvgItem):
         self.name: str = name
         self.pivot_x: float = pivot_x
         self.pivot_y: float = pivot_y
-        self.grid: Any = grid
         self.setTransformOriginPoint(self.pivot_x, self.pivot_y)
 
         self.parent_piece: Optional['PuppetPiece'] = None
@@ -129,8 +127,6 @@ class PuppetPiece(QGraphicsSvgItem):
             child.update_handle_positions()
 
     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: Any) -> Any:
-        if change == QGraphicsItem.ItemPositionChange and self.scene() and self.grid:
-            return self.grid.snap_to_grid(value)
         if change == QGraphicsItem.ItemPositionHasChanged:
             self.update_handle_positions()
             for child in self.children:

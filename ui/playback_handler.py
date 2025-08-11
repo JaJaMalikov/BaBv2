@@ -14,6 +14,7 @@ class PlaybackHandler(QObject):
     """
     frame_update_requested = Signal()
     keyframe_add_requested = Signal(int)
+    snapshot_requested = Signal(int)
 
     def __init__(self, scene_model: SceneModel, timeline_widget: TimelineWidget, inspector_widget: InspectorWidget, parent: Optional[QObject] = None) -> None:
         super().__init__(parent)
@@ -79,6 +80,9 @@ class PlaybackHandler(QObject):
         self.scene_model.end_frame = end
 
     def go_to_frame(self, frame_index: int):
+        # Request a snapshot of the current frame before changing, but only if it is a keyframe
+        if self.scene_model.current_frame in self.scene_model.keyframes:
+            self.snapshot_requested.emit(self.scene_model.current_frame)
         self.scene_model.go_to_frame(frame_index)
         self.frame_update_requested.emit()
 

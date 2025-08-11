@@ -23,3 +23,13 @@ def icon_background(): return make_icon(lambda p, s: (p.drawRect(4, 8, s-8, s-12
 def icon_library(): return make_icon(lambda p, s: (p.drawRect(6, 4, 4, s-8), p.drawRect(12, 4, 4, s-8)))
 def icon_inspector(): return make_icon(lambda p, s: (p.drawEllipse(4, 4, s//2, s//2), p.drawLine(s//2 + 2, s//2 + 2, s-4, s-4)))
 def icon_timeline(): return make_icon(lambda p, s: (p.drawRect(4, s//2 - 4, s-8, 8), p.drawLine(8, s//2 - 4, 8, s//2 + 4), p.drawLine(s-8, s//2 - 4, s-8, s//2 + 4), p.drawLine(s//2, s//2 - 4, s//2, s//2 + 4)))
+
+def icon_onion():
+    def _draw(p: QPainter, s: int):
+        pen = QPen(QColor('#E0E0E0'), 2, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+        p.setPen(pen)
+        # Three layered ovals to symbolize onion skin
+        p.drawEllipse(int(s*0.18), int(s*0.30), int(s*0.48), int(s*0.32))
+        p.drawEllipse(int(s*0.24), int(s*0.24), int(s*0.52), int(s*0.40))
+        p.drawEllipse(int(s*0.12), int(s*0.22), int(s*0.50), int(s*0.36))
+    return make_icon(_draw)

@@ -1,4 +1,5 @@
 import logging
+import math
 from pathlib import Path
 from typing import Optional, Any, Dict, List, Tuple
 
@@ -19,6 +20,7 @@ from PySide6.QtWidgets import (
     QListWidgetItem, # Added
     QGraphicsItem
 )
+from PySide6.QtSvgWidgets import QGraphicsSvgItem
 from PySide6.QtGui import QPainter, QPixmap, QAction, QColor, QPen
 from PySide6.QtCore import Qt, QTimer, QEvent, QRectF, QPointF
 
@@ -58,6 +60,14 @@ class MainWindow(QMainWindow):
         self.view.setFrameShape(QFrame.NoFrame)
         self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.view.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+
+        # Onion skin settings
+        self.onion_enabled: bool = False
+        self.onion_prev_count: int = 2
+        self.onion_next_count: int = 1
+        self.onion_opacity_prev: float = 0.25
+        self.onion_opacity_next: float = 0.18
+        self._onion_items: List[QGraphicsItem] = []
 
         main_widget: QWidget = QWidget()
         layout: QVBoxLayout = QVBoxLayout(main_widget)
@@ -143,10 +153,12 @@ class MainWindow(QMainWindow):
         self.view.zoom_requested.connect(self.zoom)
         self.view.fit_requested.connect(self.fit_to_view)
         self.view.handles_toggled.connect(self.toggle_rotation_handles)
+        self.view.onion_toggled.connect(self.set_onion_enabled)
         self.view.item_dropped.connect(self.object_manager.handle_library_drop)
 
         # PlaybackHandler signals
-        self.playback_handler.frame_update_requested.connect(self.update_scene_from_model)
+        self.playback_handler.snapshot_requested.connect(self.object_manager.snapshot_current_frame)
+        self.playback_handler.frame_update_requested.connect(self._on_frame_update)
         self.playback_handler.keyframe_add_requested.connect(self.add_keyframe)
 
         # Library signals
@@ -245,10 +257,16 @@ class MainWindow(QMainWindow):
     def update_scene_from_model(self) -> None:
         index: int = self.scene_model.current_frame
         keyframes: Dict[int, Keyframe] = self.scene_model.keyframes
-        if not keyframes: return
+        if not keyframes:
+            return
 
         graphics_items: Dict[str, Any] = self.object_manager.graphics_items
+        logging.debug(f"update_scene_from_model: frame={index}, keyframes={list(keyframes.keys())}")
 
+        self._apply_puppet_states(graphics_items, keyframes, index)
+        self._apply_object_states(graphics_items, keyframes, index)
+
+    def _apply_puppet_states(self, graphics_items: Dict[str, Any], keyframes: Dict[int, Keyframe], index: int) -> None:
         sorted_indices: List[int] = sorted(keyframes.keys())
         prev_kf_index: int = next((i for i in reversed(sorted_indices) if i <= index), -1)
         next_kf_index: int = next((i for i in sorted(sorted_indices) if i > index), -1)
@@ -263,7 +281,8 @@ class MainWindow(QMainWindow):
                 for member_name in puppet.members:
                     prev_state: Optional[Dict[str, Any]] = prev_pose.get(member_name)
                     next_state: Optional[Dict[str, Any]] = next_pose.get(member_name)
-                    if not prev_state or not next_state: continue
+                    if not prev_state or not next_state:
+                        continue
                     interp_rot: float = prev_state['rotation'] + (next_state['rotation'] - prev_state['rotation']) * ratio
                     piece: PuppetPiece = graphics_items[f"{name}:{member_name}"]
                     piece.local_rotation = interp_rot
@@ -275,14 +294,17 @@ class MainWindow(QMainWindow):
                         piece.setPos(interp_x, interp_y)
         else:
             target_kf_index: int = prev_kf_index if prev_kf_index != -1 else next_kf_index
-            if target_kf_index == -1: return
+            if target_kf_index == -1:
+                return
             kf: Keyframe = keyframes[target_kf_index]
             for name, state in kf.puppets.items():
                 for member, member_state in state.items():
                     piece: PuppetPiece = graphics_items[f"{name}:{member}"]
                     piece.local_rotation = member_state['rotation']
-                    if not piece.parent_piece: piece.setPos(*member_state['pos'])
+                    if not piece.parent_piece:
+                        piece.setPos(*member_state['pos'])
 
+        # Propager transformations aux enfants
         for name, puppet in self.scene_model.puppets.items():
             for root_member in puppet.get_root_members():
                 root_piece: PuppetPiece = graphics_items[f"{name}:{root_member.name}"]
@@ -290,12 +312,18 @@ class MainWindow(QMainWindow):
                 for child in root_piece.children:
                     child.update_transform_from_parent()
 
-        def state_for(name: str) -> Optional[Dict[str, Any]]:
+    def _apply_object_states(self, graphics_items: Dict[str, Any], keyframes: Dict[int, Keyframe], index: int) -> None:
+        def state_for(obj_name: str) -> Optional[Dict[str, Any]]:
             si: List[int] = sorted(keyframes.keys())
-            prev: Optional[int] = next((i for i in reversed(si) if i <= index and name in keyframes[i].objects), None)
-            if prev is None: return None
-            return keyframes[prev].objects.get(name)
+            last_kf: Optional[int] = next((i for i in reversed(si) if i <= index), None)
+            if last_kf is not None and obj_name not in keyframes[last_kf].objects:
+                return None
+            prev_including: Optional[int] = next((i for i in reversed(si) if i <= index and obj_name in keyframes[i].objects), None)
+            if prev_including is None:
+                return None
+            return keyframes[prev_including].objects.get(obj_name)
 
+        updated: int = 0
         self._suspend_item_updates = True
         try:
             for name, base_obj in self.scene_model.objects.items():
@@ -307,40 +335,49 @@ class MainWindow(QMainWindow):
                         gi.setVisible(False)
                     continue
                 if gi is None:
-                    tmp: SceneObject = SceneObject(name, st.get('obj_type', base_obj.obj_type), st.get('file_path', base_obj.file_path),
-                                      x=st.get('x', base_obj.x), y=st.get('y', base_obj.y), rotation=st.get('rotation', base_obj.rotation),
-                                      scale=st.get('scale', base_obj.scale), z=st.get('z', getattr(base_obj, 'z', 0)))
+                    tmp: SceneObject = SceneObject(
+                        name,
+                        st.get('obj_type', base_obj.obj_type),
+                        st.get('file_path', base_obj.file_path),
+                        x=st.get('x', base_obj.x),
+                        y=st.get('y', base_obj.y),
+                        rotation=st.get('rotation', base_obj.rotation),
+                        scale=st.get('scale', base_obj.scale),
+                        z=st.get('z', getattr(base_obj, 'z', 0))
+                    )
                     self.object_manager._add_object_graphics(tmp)
                     gi = graphics_items.get(name)
                 if gi:
                     gi.setVisible(True)
-                    gi.setPos(st.get('x', gi.x()), st.get('y', gi.y()))
-                    gi.setRotation(st.get('rotation', gi.rotation()))
-                    gi.setScale(st.get('scale', gi.scale()))
-                    gi.setZValue(st.get('z', int(gi.zValue())))
                     attached: Optional[Tuple[str, str]] = st.get('attached_to', None)
                     if attached:
-                        try:
-                            puppet_name, member_name = attached
-                            parent_piece: Optional[PuppetPiece] = graphics_items.get(f"{puppet_name}:{member_name}")
-                            if parent_piece and gi.parentItem() is not parent_piece:
-                                scene_pt: QPointF = gi.mapToScene(gi.transformOriginPoint())
-                                gi.setParentItem(parent_piece)
-                                local_pt: QPointF = parent_piece.mapFromScene(scene_pt)
-                                gi.setPos(local_pt - gi.transformOriginPoint())
-                        except Exception as e:
-                            logging.error(f"Error attaching object {name} to puppet member: {e}")
+                        puppet_name, member_name = attached
+                        parent_piece: Optional[PuppetPiece] = graphics_items.get(f"{puppet_name}:{member_name}")
+                        # Always set the parent first, then apply the saved local transform
+                        if parent_piece is not None and gi.parentItem() is not parent_piece:
+                            gi.setParentItem(parent_piece)
+                        # Apply local coordinates from state (default to 0,0)
+                        gi.setPos(float(st.get('x', 0.0)), float(st.get('y', 0.0)))
                     else:
+                        # Ensure the item is in scene coordinates
                         if gi.parentItem() is not None:
-                            scene_pt: QPointF = gi.mapToScene(gi.transformOriginPoint())
                             gi.setParentItem(None)
-                            gi.setPos(scene_pt - gi.transformOriginPoint())
+                        gi.setPos(float(st.get('x', gi.x())), float(st.get('y', gi.y())))
+                    gi.setRotation(float(st.get('rotation', gi.rotation())))
+                    gi.setScale(float(st.get('scale', gi.scale())))
+                    gi.setZValue(int(st.get('z', int(gi.zValue()))))
+                    updated += 1
         finally:
             self._suspend_item_updates = False
+        logging.debug(f"Applied object states: {updated} updated/visible")
 
     def add_keyframe(self, frame_index: int) -> None:
-        states: Dict[str, Dict[str, Dict[str, Any]]] = self.object_manager.capture_puppet_states()
-        self.scene_model.add_keyframe(frame_index, states)
+        puppet_states: Dict[str, Dict[str, Dict[str, Any]]] = self.object_manager.capture_puppet_states()
+        self.scene_model.add_keyframe(frame_index, puppet_states)
+        # Overwrite objects with the on-screen capture so we don't serialize stale/global attachment
+        kf: Optional[Keyframe] = self.scene_model.keyframes.get(frame_index)
+        if kf is not None:
+            kf.objects = self.object_manager.capture_visible_object_states()
         self.timeline_widget.add_keyframe_marker(frame_index)
 
     def select_object_in_inspector(self, name: str) -> None:
@@ -362,3 +399,176 @@ class MainWindow(QMainWindow):
                 if gi is item and name in self.scene_model.objects:
                     self.select_object_in_inspector(name)
                     return
+    def _on_frame_update(self) -> None:
+        self.update_scene_from_model()
+        self.update_onion_skins()
+
+    def set_onion_enabled(self, enabled: bool) -> None:
+        self.onion_enabled = enabled
+        self.update_onion_skins()
+
+    def clear_onion_skins(self) -> None:
+        # Remove only root onion items to avoid Qt warnings when children lose their scene
+        for it in list(self._onion_items):
+            try:
+                if it and it.parentItem() is None and it.scene() is self.scene:
+                    self.scene.removeItem(it)
+            except Exception:
+                pass
+        self._onion_items.clear()
+
+    def update_onion_skins(self) -> None:
+        self.clear_onion_skins()
+        if not self.onion_enabled:
+            return
+        cur: int = self.scene_model.current_frame
+        # Previous frames
+        for k in range(1, self.onion_prev_count + 1):
+            idx = max(self.scene_model.start_frame, cur - k)
+            if idx == cur:
+                continue
+            self._add_onion_for_frame(idx, self.onion_opacity_prev, z_offset=-200)
+        # Next frames
+        for k in range(1, self.onion_next_count + 1):
+            idx = min(self.scene_model.end_frame, cur + k)
+            if idx == cur:
+                continue
+            self._add_onion_for_frame(idx, self.onion_opacity_next, z_offset=-300)
+
+    def _add_onion_for_frame(self, frame_index: int, opacity: float, z_offset: int = -200) -> None:
+        # Puppets only (first iteration): draw ghost poses based on last keyframe <= index
+        keyframes = self.scene_model.keyframes
+        if not keyframes:
+            return
+        sorted_indices: List[int] = sorted(keyframes.keys())
+        target_kf_index: Optional[int] = next((i for i in reversed(sorted_indices) if i <= frame_index), None)
+        if target_kf_index is None:
+            return
+        kf: Keyframe = keyframes[target_kf_index]
+        graphics_items: Dict[str, Any] = self.object_manager.graphics_items
+
+        # Clone puppets
+        clones_map: Dict[str, PuppetPiece] = {}
+        for puppet_name, puppet in self.scene_model.puppets.items():
+            puppet_state: Dict[str, Dict[str, Any]] = kf.puppets.get(puppet_name, {})
+            if not puppet_state:
+                continue
+            # Create clones for each member
+            clones: Dict[str, PuppetPiece] = {}
+            for member_name in puppet.members:
+                base_piece: PuppetPiece = graphics_items.get(f"{puppet_name}:{member_name}")
+                if not base_piece:
+                    continue
+                # Create lightweight clone sharing the renderer
+                clone: PuppetPiece = PuppetPiece("", member_name, base_piece.transformOriginPoint().x(), base_piece.transformOriginPoint().y(), renderer=self.object_manager.renderers.get(puppet_name))
+                clone.setOpacity(opacity)
+                clone.setZValue(base_piece.zValue() + z_offset)
+                clone.setFlag(QGraphicsItem.ItemIsSelectable, False)
+                clone.setFlag(QGraphicsItem.ItemIsMovable, False)
+                self.scene.addItem(clone)
+                self._onion_items.append(clone)
+                clones[member_name] = clone
+                clones_map[f"{puppet_name}:{member_name}"] = clone
+
+            # Position roots then propagate to children using base rel_to_parent
+            for root_member in puppet.get_root_members():
+                root_name = root_member.name
+                clone_root: Optional[PuppetPiece] = clones.get(root_name)
+                state = puppet_state.get(root_name)
+                if clone_root is None or state is None:
+                    continue
+                clone_root.setPos(*state.get('pos', (clone_root.x(), clone_root.y())))
+                clone_root.setRotation(state.get('rotation', 0.0))
+
+            # Recursive propagation
+            def propagate(member_name: str) -> None:
+                member_state = puppet_state.get(member_name, {})
+                base_piece: PuppetPiece = graphics_items.get(f"{puppet_name}:{member_name}")
+                clone_piece: PuppetPiece = clones.get(member_name)
+                if not base_piece or not clone_piece:
+                    return
+                for child in base_piece.children:
+                    child_clone: Optional[PuppetPiece] = clones.get(child.name)
+                    if child_clone is None:
+                        continue
+                    # Parent global rotation
+                    parent_rot: float = clone_piece.rotation()
+                    angle_rad: float = parent_rot * math.pi / 180.0
+                    dx, dy = child.rel_to_parent
+                    cos_a = math.cos(angle_rad)
+                    sin_a = math.sin(angle_rad)
+                    rotated_dx: float = dx * cos_a - dy * sin_a
+                    rotated_dy: float = dx * sin_a + dy * cos_a
+                    parent_pivot_scene: QPointF = clone_piece.mapToScene(clone_piece.transformOriginPoint())
+                    scene_x: float = parent_pivot_scene.x() + rotated_dx
+                    scene_y: float = parent_pivot_scene.y() + rotated_dy
+                    child_clone.setPos(scene_x - child_clone.transformOriginPoint().x(), scene_y - child_clone.transformOriginPoint().y())
+                    child_state = puppet_state.get(child.name, {})
+                    child_clone.setRotation(parent_rot + child_state.get('rotation', 0.0))
+                    propagate(child.name)
+
+            for root_member in puppet.get_root_members():
+                propagate(root_member.name)
+
+        # Clone objects state for this frame and attach to puppet clones if needed
+        def object_state_for(obj_name: str) -> Optional[Dict[str, Any]]:
+            si: List[int] = sorted(keyframes.keys())
+            last_kf: Optional[int] = next((i for i in reversed(si) if i <= frame_index), None)
+            if last_kf is not None and obj_name not in keyframes[last_kf].objects:
+                return None
+            prev_including: Optional[int] = next((i for i in reversed(si) if i <= frame_index and obj_name in keyframes[i].objects), None)
+            if prev_including is None:
+                return None
+            return keyframes[prev_including].objects.get(obj_name)
+
+        for name, base_obj in self.scene_model.objects.items():
+            st: Optional[Dict[str, Any]] = object_state_for(name)
+            if not st:
+                continue
+            try:
+                if st.get('obj_type') == 'image':
+                    pm = QPixmap(st.get('file_path', base_obj.file_path))
+                    item: QGraphicsItem = QGraphicsPixmapItem(pm)
+                else:
+                    item = QGraphicsSvgItem(st.get('file_path', base_obj.file_path))
+                # Avoid model feedback
+                item.setFlag(QGraphicsItem.ItemIsMovable, False)
+                item.setFlag(QGraphicsItem.ItemIsSelectable, False)
+                item.setOpacity(opacity)
+                # Transform origin for proper rotation
+                if hasattr(item, 'boundingRect') and not item.boundingRect().isEmpty():
+                    item.setTransformOriginPoint(item.boundingRect().center())
+                # Attachment to puppet clone if required
+                attached = st.get('attached_to')
+                if attached:
+                    try:
+                        puppet_name, member_name = attached
+                        parent_clone: Optional[PuppetPiece] = clones_map.get(f"{puppet_name}:{member_name}")
+                        if parent_clone is not None:
+                            item.setParentItem(parent_clone)
+                            # Local transform (relative to parent clone)
+                            item.setScale(st.get('scale', getattr(base_obj, 'scale', 1.0)))
+                            item.setRotation(st.get('rotation', getattr(base_obj, 'rotation', 0.0)))
+                            item.setZValue(st.get('z', getattr(base_obj, 'z', 0)) + z_offset)
+                            item.setPos(st.get('x', getattr(base_obj, 'x', 0.0)), st.get('y', getattr(base_obj, 'y', 0.0)))
+                            # Parent clone is already in scene; no need to add child explicitly
+                        else:
+                            # Fallback: place as free object in world
+                            item.setScale(st.get('scale', getattr(base_obj, 'scale', 1.0)))
+                            item.setRotation(st.get('rotation', getattr(base_obj, 'rotation', 0.0)))
+                            item.setZValue(st.get('z', getattr(base_obj, 'z', 0)) + z_offset)
+                            item.setPos(st.get('x', getattr(base_obj, 'x', 0.0)), st.get('y', getattr(base_obj, 'y', 0.0)))
+                            self.scene.addItem(item)
+                            self._onion_items.append(item)
+                    except Exception as e:
+                        logging.error(f"Onion attach failed for object {name}: {e}")
+                else:
+                    # Free object in world coordinates
+                    item.setScale(st.get('scale', getattr(base_obj, 'scale', 1.0)))
+                    item.setRotation(st.get('rotation', getattr(base_obj, 'rotation', 0.0)))
+                    item.setZValue(st.get('z', getattr(base_obj, 'z', 0)) + z_offset)
+                    item.setPos(st.get('x', getattr(base_obj, 'x', 0.0)), st.get('y', getattr(base_obj, 'y', 0.0)))
+                    self.scene.addItem(item)
+                    self._onion_items.append(item)
+            except Exception as e:
+                logging.error(f"Onion object clone failed for {name}: {e}")

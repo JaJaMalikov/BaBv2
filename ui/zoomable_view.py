@@ -13,7 +13,7 @@ from PySide6.QtCore import Qt, Signal, QPointF, QSize, QEvent
 
 from ui.draggable_widget import DraggableOverlay
 from ui.icons import (
-    icon_plus, icon_minus, icon_fit, icon_rotate,
+    icon_plus, icon_minus, icon_fit, icon_rotate, icon_onion,
     icon_chevron_left, icon_chevron_right
 )
 from ui.styles import BUTTON_STYLE
@@ -26,6 +26,7 @@ class ZoomableView(QGraphicsView):
     zoom_requested = Signal(float)
     fit_requested = Signal()
     handles_toggled = Signal(bool)
+    onion_toggled = Signal(bool)
     item_dropped = Signal(dict, QPointF)
 
     def __init__(self, scene: QGraphicsScene, parent: Optional[QWidget] = None) -> None:
@@ -71,10 +72,13 @@ class ZoomableView(QGraphicsView):
         self.handles_btn: QToolButton = make_btn(icon_rotate(), "Afficher/Masquer les poignées", checkable=True)
         self.handles_btn.toggled.connect(self.handles_toggled)
 
+        self.onion_btn: QToolButton = make_btn(icon_onion(), "Onion skin (fantômes)", checkable=True)
+        self.onion_btn.toggled.connect(self.onion_toggled)
+
         self._zoom_label: QLabel = QLabel("100%", self._overlay)
         self._zoom_label.setStyleSheet("color: #CFCFCF; padding: 2px 4px;")
 
-        self.tool_widgets: List[QWidget] = [self.zoom_out_btn, self.zoom_in_btn, self.fit_btn, self.handles_btn, self._zoom_label]
+        self.tool_widgets: List[QWidget] = [self.zoom_out_btn, self.zoom_in_btn, self.fit_btn, self.handles_btn, self.onion_btn, self._zoom_label]
         for w in self.tool_widgets:
             self.layout.addWidget(w)
 

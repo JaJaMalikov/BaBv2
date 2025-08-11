@@ -2,3 +2,5 @@
 pyproject.toml
 pyproject.toml.user
 pysidedploy.spec
+.pytest_cache/
+revue_de_code/

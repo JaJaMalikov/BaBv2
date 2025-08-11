@@ -63,6 +63,7 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
         *   Panoramique dans la vue avec le clic molette.
     *   **Panneaux modulables (Docks)**: La Timeline et l'Inspecteur peuvent être affichés, masqués ou déplacés indépendamment (`F3`, `F4`).
     *   **Poignées de rotation basculables** pour désencombrer la vue.
+    *   **Onion skinning (fantômes)**: affichage des poses des frames précédentes/suivantes en surimpression (toggle overlay).
     *   **Personnalisation de la scène**:
         *   Définition de la taille (largeur/hauteur) de la scène.
         *   Chargement d'une **image d'arrière-plan** qui redimensionne automatiquement la scène.
@@ -75,6 +76,12 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
     *   Le chargement d'un fichier restaure l'intégralité de l'état de la scène.
     *   Sérialisation centralisée via `SceneModel.to_dict` / `from_dict` (incluant objets et keyframes) pour un export fiable.
 
+## Mises à jour récentes
+
+- Correction du chargement JSON: `SceneModel.import_json` peuple désormais correctement le modèle via `from_dict` et retourne un booléen de succès.
+- Suppression temporelle des objets: la logique d'affichage considère désormais le dernier keyframe ≤ frame courante comme point de vérité. Si ce keyframe ne référence pas un objet, celui-ci est masqué à partir de cette frame (et jusqu'à ce qu'un nouveau keyframe le réintroduise). L’inspecteur se synchronise sur cette règle.
+- Nettoyage historique: retrait des vestiges `grid` / `snap_to_grid` dans `PuppetPiece` (non utilisés), sans impact sur le comportement actuel.
+
 ## État actuel et prochaines étapes possibles
 
 L'application a évolué d'un simple outil d'animation de marionnette à un **logiciel de composition de scène 2D fonctionnel et robuste**. L'interface a été professionnalisée et la gestion de plusieurs objets est désormais possible.
@@ -85,4 +92,13 @@ Prochaines étapes :
 *   **Système d'Undo/Redo**: Implémenter un historique des actions.
 *   **Attachement d'objets**: Finaliser la fonctionnalité permettant d'attacher un objet à un membre de marionnette.
 *   **Modes d'interpolation**: Ajouter des courbes d'animation (ease-in, ease-out).
+### Responsabilités I/O (clarification)
+
+- `core/scene_model.py`:
+  - Sérialise/désérialise l’état logique de la scène (réglages, objets, keyframes) via `to_dict` / `from_dict`.
+  - `import_json`/`export_json` lisent/écrivent ce même état logique.
+- `ui/scene_io.py`:
+  - Orchestration de la reconstitution graphique: recrée les éléments visuels (marionnettes, objets) dans la scène Qt, applique échelles/positions et synchronise la timeline.
+  - Enrichit le JSON avec `puppets_data` (chemins, échelles, position des racines) nécessaire à la reconstitution graphique.
+
 *   **Timeline Multi-pistes**: Afficher et gérer des pistes de keyframes séparées pour chaque objet ou membre dans la timeline.

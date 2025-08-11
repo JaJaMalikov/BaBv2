@@ -241,11 +241,16 @@ class InspectorWidget(QWidget):
 
     # --- Helpers ---
     def _attached_state_for_frame(self, obj_name: str):
-        """Retourne (puppet_name, member_name) attachés à la frame courante, sinon (None, None)."""
+        """Retourne (puppet_name, member_name) attachés à la frame courante, sinon (None, None).
+        Respecte la même politique de visibilité que la scène: si le keyframe le plus
+        récent ≤ frame ne contient pas l'objet, on considère l'objet masqué/détaché.
+        """
         mw = self.main_window
         idx = mw.scene_model.current_frame
-        # Chercher le dernier keyframe <= idx qui contient l'objet
         si = sorted(mw.scene_model.keyframes.keys())
+        last_kf = next((i for i in reversed(si) if i <= idx), None)
+        if last_kf is not None and obj_name not in mw.scene_model.keyframes[last_kf].objects:
+            return (None, None)
         prev = next((i for i in reversed(si) if i <= idx and obj_name in mw.scene_model.keyframes[i].objects), None)
         if prev is None:
             obj = mw.scene_model.objects.get(obj_name)

@@ -1,4 +1,3 @@
-import json
 from core.scene_model import SceneModel, SceneObject
 
 def test_scene_object_roundtrip():

@@ -195,8 +195,10 @@ class SceneModel:
         try:
             with open(file_path, "r") as f:
                 data = json.load(f)
+            # Peupler le modèle depuis les données chargées
+            self.from_dict(data)
+            return True
         except (IOError, json.JSONDecodeError) as e:
             logging.error(f"Erreur lors du chargement du fichier : {e}")
-            return
+            return False
         self.from_dict(data)
-

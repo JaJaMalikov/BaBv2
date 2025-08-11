@@ -180,7 +180,14 @@ class ObjectManager:
             item.setPos(local_pt - item.transformOriginPoint())
         finally:
             self.win._suspend_item_updates = False
+        # Persist local transform into the model
         obj.attach(puppet_name, member_name)
+        try:
+            obj.x = float(item.x()); obj.y = float(item.y())
+            obj.rotation = float(item.rotation()); obj.scale = float(item.scale())
+            obj.z = int(item.zValue())
+        except Exception:
+            pass
         kf: Optional[Keyframe] = self.scene_model.keyframes.get(self.scene_model.current_frame)
         if kf is not None:
             kf.objects[obj_name] = obj.to_dict()
@@ -190,6 +197,31 @@ class ObjectManager:
         item: Optional[QGraphicsItem] = self.graphics_items.get(obj_name)
         if not obj or not item:
             return
+        # Capture previous attachment to fix legacy keyframes with missing local coords
+        prev_attachment = getattr(obj, 'attached_to', None)
+        if prev_attachment is not None:
+            try:
+                # Item is currently attached: local x,y are meaningful
+                local_x, local_y = float(item.x()), float(item.y())
+                # For all keyframes up to current that reference this object with the same attachment,
+                # ensure they store the same local coords so they won't fall back to (0,0)
+                cur_idx: int = self.scene_model.current_frame
+                for idx, kf in list(self.scene_model.keyframes.items()):
+                    if idx <= cur_idx and obj_name in kf.objects:
+                        st = kf.objects[obj_name]
+                        if st.get('attached_to') == list(prev_attachment) or st.get('attached_to') == tuple(prev_attachment) or st.get('attached_to') == prev_attachment:
+                            # Only patch if missing or 0,0 to avoid overwriting intentional anim edits
+                            sx = st.get('x', 0.0); sy = st.get('y', 0.0)
+                            try:
+                                sx = float(sx); sy = float(sy)
+                            except Exception:
+                                sx, sy = 0.0, 0.0
+                            if (abs(sx) < 1e-9 and abs(sy) < 1e-9):
+                                st['x'] = local_x
+                                st['y'] = local_y
+                                kf.objects[obj_name] = st
+            except Exception:
+                pass
         self.win._suspend_item_updates = True
         try:
             scene_pt: QPointF = item.mapToScene(item.transformOriginPoint())
@@ -197,7 +229,14 @@ class ObjectManager:
             item.setPos(scene_pt - item.transformOriginPoint())
         finally:
             self.win._suspend_item_updates = False
+        # Persist world transform into the model
         obj.detach()
+        try:
+            obj.x = float(item.x()); obj.y = float(item.y())
+            obj.rotation = float(item.rotation()); obj.scale = float(item.scale())
+            obj.z = int(item.zValue())
+        except Exception:
+            pass
         kf: Optional[Keyframe] = self.scene_model.keyframes.get(self.scene_model.current_frame)
         if kf is not None:
             kf.objects[obj_name] = obj.to_dict()
@@ -243,12 +282,35 @@ class ObjectManager:
         obj: SceneObject = SceneObject(name, obj_type, file_path, x=x, y=y, rotation=0, scale=1.0, z=0)
         self.scene_model.add_object(obj)
         self._add_object_graphics(obj)
+        # Ensure a keyframe exists, then persist the on-screen state derived from the graphics item
         cur: int = self.scene_model.current_frame
         if cur not in self.scene_model.keyframes:
             self.win.add_keyframe(cur)
         kf: Optional[Keyframe] = self.scene_model.keyframes.get(cur)
-        if kf is not None:
-            kf.objects[name] = obj.to_dict()
+        gi: Optional[QGraphicsItem] = self.graphics_items.get(name)
+        if kf is not None and gi is not None:
+            # Determine attachment from parent
+            attached_to = None
+            parent = gi.parentItem()
+            if parent:
+                # Lookup owning puppet piece
+                for key, val in self.graphics_items.items():
+                    if val is parent and ":" in key:
+                        try:
+                            puppet_name, member_name = key.split(":", 1)
+                            attached_to = (puppet_name, member_name)
+                            break
+                        except Exception:
+                            pass
+            state: Dict[str, Any] = obj.to_dict()
+            try:
+                state["x"] = float(gi.x()); state["y"] = float(gi.y())
+                state["rotation"] = float(gi.rotation()); state["scale"] = float(gi.scale())
+                state["z"] = int(gi.zValue())
+            except Exception:
+                pass
+            state["attached_to"] = attached_to
+            kf.objects[name] = state
         if hasattr(self.win, "inspector_widget"): self.win.inspector_widget.refresh()
         return name
 
@@ -295,3 +357,54 @@ class ObjectManager:
         gi: Optional[QGraphicsItem] = self.graphics_items.get(name)
         if gi:
             gi.setVisible(False)
+
+    # --- Snapshot helpers ---
+    def capture_visible_object_states(self) -> Dict[str, Dict[str, Any]]:
+        """Capture the on-screen state for visible objects, including attachment derived from parentItem.
+        Uses local coords when attached and scene coords when free (consistent with runtime usage).
+        """
+        states: Dict[str, Dict[str, Any]] = {}
+        # Build a reverse map from PuppetPiece to (puppet, member)
+        piece_owner: Dict[QGraphicsItem, tuple[str, str]] = {}
+        for key, val in self.graphics_items.items():
+            if isinstance(val, PuppetPiece) and ":" in key:
+                try:
+                    puppet_name, member_name = key.split(":", 1)
+                    piece_owner[val] = (puppet_name, member_name)
+                except Exception:
+                    continue
+        for name, obj in self.scene_model.objects.items():
+            gi: Optional[QGraphicsItem] = self.graphics_items.get(name)
+            if gi and gi.isVisible():
+                parent = gi.parentItem()
+                attached_to = None
+                if parent in piece_owner:
+                    attached_to = piece_owner[parent]
+                data = obj.to_dict()
+                try:
+                    data["x"] = float(gi.x()); data["y"] = float(gi.y())
+                    data["rotation"] = float(gi.rotation()); data["scale"] = float(gi.scale())
+                    data["z"] = int(gi.zValue())
+                except Exception:
+                    pass
+                data["attached_to"] = attached_to
+                states[name] = data
+        return states
+
+    def snapshot_current_frame(self) -> None:
+        cur: int = self.scene_model.current_frame
+        puppet_states = self.capture_puppet_states()
+        obj_states = self.capture_visible_object_states()
+        kf: Optional[Keyframe] = self.scene_model.keyframes.get(cur)
+        if kf is None:
+            kf = Keyframe(cur)
+        kf.puppets = puppet_states
+        kf.objects = obj_states
+        self.scene_model.keyframes[cur] = kf
+        # Keep keyframes sorted
+        self.scene_model.keyframes = dict(sorted(self.scene_model.keyframes.items()))
+        # Ensure marker exists
+        try:
+            self.win.timeline_widget.add_keyframe_marker(cur)
+        except Exception:
+            pass
