@@ -21,6 +21,7 @@ class SvgLoader:
         self.root: ET.Element = self.tree.getroot()
         self.namespaces: Dict[str, str] = {"svg": "http://www.w3.org/2000/svg"}
         self.renderer: QSvgRenderer = QSvgRenderer(svg_path)
+        self._groups_cache: Optional[List[str]] = None
 
     def get_group_offset(self, group_id: str) -> Optional[Tuple[float, float]]:
         """Return the top-left coordinates of ``group_id``."""
@@ -32,11 +33,15 @@ class SvgLoader:
         return rect.left(), rect.top()
 
     def get_groups(self) -> List[str]:
+        """Return all group ids within the SVG, cached after first call."""
+        if self._groups_cache is not None:
+            return self._groups_cache
         groups: List[str] = []
         for elem in self.root.findall(".//svg:g", self.namespaces):
             group_id: Optional[str] = elem.attrib.get("id")
             if group_id:
                 groups.append(group_id)
+        self._groups_cache = groups
         return groups
 
     def get_group_bounding_box(self, group_id: str) -> Optional[Tuple[float, float, float, float]]:

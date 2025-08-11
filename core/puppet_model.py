@@ -1,4 +1,9 @@
+from __future__ import annotations
+
+from collections import defaultdict
+from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
+
 from core.svg_loader import SvgLoader
 
 
@@ -76,11 +81,12 @@ Z_ORDER: Dict[str, int] = {
 
 
 def compute_child_map(parent_map: Dict[str, Optional[str]]) -> Dict[str, List[str]]:
-    child_map: Dict[str, List[str]] = {}
+    """Build a mapping of parent → [children] for quick lookups."""
+    child_map: defaultdict[str, List[str]] = defaultdict(list)
     for child, parent in parent_map.items():
         if parent:
-            child_map.setdefault(parent, []).append(child)
-    return child_map
+            child_map[parent].append(child)
+    return dict(child_map)
 
 
 CHILD_MAP = compute_child_map(PARENT_MAP)
@@ -92,17 +98,17 @@ HANDLE_EXCEPTION = {
 }
 
 
+@dataclass
 class PuppetMember:
-    def __init__(self, name: str, parent: Optional['PuppetMember'] = None, pivot: Tuple[float, float] = (0.0, 0.0), bbox: Tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0), z_order: int = 0):
-        self.name: str = name
-        self.parent: Optional['PuppetMember'] = parent
-        self.children: List['PuppetMember'] = []
-        self.pivot: Tuple[float, float] = pivot
-        self.bbox: Tuple[float, float, float, float] = bbox
-        self.z_order: int = z_order
-        self.rel_pos: Tuple[float, float] = (0.0, 0.0)
+    name: str
+    parent: Optional["PuppetMember"] = None
+    pivot: Tuple[float, float] = (0.0, 0.0)
+    bbox: Tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0)
+    z_order: int = 0
+    rel_pos: Tuple[float, float] = field(default_factory=lambda: (0.0, 0.0))
+    children: List["PuppetMember"] = field(default_factory=list, init=False)
 
-    def add_child(self, child: 'PuppetMember') -> None:
+    def add_child(self, child: "PuppetMember") -> None:
         self.children.append(child)
         child.parent = self
         child.rel_pos = (child.pivot[0] - self.pivot[0], child.pivot[1] - self.pivot[1])

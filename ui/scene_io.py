@@ -85,7 +85,7 @@ def import_scene(win: MainWindow, file_path: str):
             try:
                 win.object_manager._add_object_graphics(obj)
             except Exception as e:
-                print(f"Failed to create graphics for '{obj.name}': {e}")
+                logging.error(f"Failed to create graphics for '{obj.name}': {e}")
 
         win.timeline_widget.clear_keyframes()
         for kf_index in win.scene_model.keyframes:
@@ -100,7 +100,7 @@ def import_scene(win: MainWindow, file_path: str):
         QTimer.singleShot(0, lambda: win.timeline_widget.set_current_frame(win.scene_model.current_frame or win.scene_model.start_frame))
 
     except Exception as e:
-        print(f"Failed to load scene '{file_path}': {e}")
+        logging.error(f"Failed to load scene '{file_path}': {e}")
         create_blank_scene(win)
 
 def create_blank_scene(win: 'MainWindow', add_default_puppet: bool = True) -> None:

@@ -5,7 +5,8 @@ from .puppet_model import Puppet, PuppetMember
 from .puppet_piece import PuppetPiece
 from .svg_loader import SvgLoader, translate_path
 
-__all__ = [
+# Using a tuple keeps the module export definition immutable.
+__all__ = (
     "SceneModel",
     "SceneObject",
     "Keyframe",
@@ -14,5 +15,5 @@ __all__ = [
     "PuppetPiece",
     "SvgLoader",
     "translate_path",
-]
+)
 

@@ -1,31 +1,32 @@
+from __future__ import annotations
+
 import logging
+from dataclasses import dataclass, field
+from typing import Dict, Any, Optional
+
 from core.puppet_model import Puppet
-from typing import Dict, Any
 
 
+@dataclass
 class SceneObject:
-    """
-    Un objet générique de la scène (image, SVG, décor, etc.)
-    Peut être libre ou attaché à un membre de pantin.
-    """
-    def __init__(self, name, obj_type, file_path, x=0, y=0, rotation=0, scale=1.0, z=0):
-        self.name = name
-        self.obj_type = obj_type  # "image", "svg", "puppet"
-        self.file_path = file_path
-        self.x = x
-        self.y = y
-        self.rotation = rotation
-        self.scale = scale
-        self.z = z
-        self.attached_to = None  # ("puppet_name", "member_name") ou None
+    """Représentation sérialisable d'un objet de la scène."""
+    name: str
+    obj_type: str
+    file_path: str
+    x: float = 0
+    y: float = 0
+    rotation: float = 0
+    scale: float = 1.0
+    z: int = 0
+    attached_to: Optional[tuple[str, str]] = None
 
-    def attach(self, puppet_name, member_name):
+    def attach(self, puppet_name: str, member_name: str) -> None:
         self.attached_to = (puppet_name, member_name)
 
-    def detach(self):
+    def detach(self) -> None:
         self.attached_to = None
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         """Sérialise l'objet pour l'export JSON."""
         return {
             "name": self.name,
@@ -40,7 +41,7 @@ class SceneObject:
         }
 
     @classmethod
-    def from_dict(cls, data):
+    def from_dict(cls, data: Dict[str, Any]) -> "SceneObject":
         """Construit un ``SceneObject`` depuis une structure dict."""
         obj = cls(
             name=data.get("name"),
@@ -57,16 +58,13 @@ class SceneObject:
             obj.attached_to = tuple(attached)
         return obj
 
+
+@dataclass
 class Keyframe:
-    """
-    Snapshot de l'état de la scène à un temps donné
-    objects: Dict[str, Dict[str, Any]] - name -> état (position, rotation, scale, attachment, etc.)
-    puppets: Dict[str, Dict[str, Dict[str, Any]]] - puppet_name -> { member_name -> { rot: ..., pos: ...} }
-    """
-    def __init__(self, index: int) -> None:
-        self.index: int = index
-        self.objects: Dict[str, Dict[str, Any]] = {}
-        self.puppets: Dict[str, Dict[str, Dict[str, Any]]] = {}
+    """Snapshot de l'état de la scène à un temps donné."""
+    index: int
+    objects: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    puppets: Dict[str, Dict[str, Dict[str, Any]]] = field(default_factory=dict)
 
 class SceneModel:
     def __init__(self):

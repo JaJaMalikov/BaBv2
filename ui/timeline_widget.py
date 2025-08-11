@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from bisect import bisect_left, bisect_right
 from typing import Optional, Set, Any, List
 
 from PySide6.QtCore import Qt, Signal, QRectF, QPointF, QRect, QEvent
@@ -173,22 +174,20 @@ class TimelineWidget(QWidget):
         self.stopClicked.emit()
 
     def _jump_prev_kf(self) -> None:
-        if not self._kfs: return
-        sorted_kfs: List[int] = sorted(list(self._kfs), reverse=True)
-        target: int = next((kf for kf in sorted_kfs if kf < self._current), -1)
-        if target != -1:
-            self.set_current_frame(target)
-        else: # wrap around
-            self.set_current_frame(sorted_kfs[0])
+        if not self._kfs:
+            return
+        sorted_kfs: List[int] = sorted(self._kfs)
+        idx = bisect_left(sorted_kfs, self._current)
+        target = sorted_kfs[idx - 1] if idx > 0 else sorted_kfs[-1]
+        self.set_current_frame(target)
 
     def _jump_next_kf(self) -> None:
-        if not self._kfs: return
-        sorted_kfs: List[int] = sorted(list(self._kfs))
-        target: int = next((kf for kf in sorted_kfs if kf > self._current), -1)
-        if target != -1:
-            self.set_current_frame(target)
-        else: # wrap around
-            self.set_current_frame(sorted_kfs[0])
+        if not self._kfs:
+            return
+        sorted_kfs: List[int] = sorted(self._kfs)
+        idx = bisect_right(sorted_kfs, self._current)
+        target = sorted_kfs[idx] if idx < len(sorted_kfs) else sorted_kfs[0]
+        self.set_current_frame(target)
 
     def _timeline_rect(self) -> QRect: return QRect(0, RULER_H, self.width(), TRACK_H)
     def _ruler_rect(self) -> QRect: return QRect(0, 0, self.width(), RULER_H)

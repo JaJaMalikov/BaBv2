@@ -60,8 +60,7 @@ class ObjectManager:
                 final_x: float = scene_center.x() - (member.pivot[0] - offset_x)
                 final_y: float = scene_center.y() - (member.pivot[1] - offset_y)
                 piece.setPos(final_x, final_y)
-                piece.setFlag(QGraphicsItem.ItemIsMovable, True)
-                piece.setFlag(QGraphicsItem.ItemSendsGeometryChanges, True)
+                piece.setFlags(QGraphicsItem.ItemIsMovable | QGraphicsItem.ItemSendsGeometryChanges)
 
         for piece in pieces.values():
             self.scene.addItem(piece); self.scene.addItem(piece.pivot_handle)
@@ -162,7 +161,7 @@ class ObjectManager:
             item.setZValue(getattr(obj, 'z', 0))
         except Exception as e:
             logging.error(f"Error setting Z-value for {obj.name}: {e}")
-        item.setFlag(QGraphicsItem.ItemIsMovable, True); item.setFlag(QGraphicsItem.ItemIsSelectable, True)
+        item.setFlags(QGraphicsItem.ItemIsMovable | QGraphicsItem.ItemIsSelectable)
         self.scene.addItem(item)
         self.graphics_items[obj.name] = item
 

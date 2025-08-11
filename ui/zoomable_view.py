@@ -172,7 +172,7 @@ class ZoomableView(QGraphicsView):
             self.fit_requested.emit()
 
     def wheelEvent(self, event: QWheelEvent) -> None:
-        if event.modifiers() == Qt.ControlModifier:
+        if event.modifiers() & Qt.ControlModifier:
             factor: float = 1.1 if event.angleDelta().y() > 0 else 1 / 1.1
             self.zoom_requested.emit(factor)
         else:

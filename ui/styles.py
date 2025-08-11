@@ -1,4 +1,7 @@
-BUTTON_STYLE = """
+from textwrap import dedent
+
+BUTTON_STYLE = dedent(
+    """
     QToolButton {
         background-color: transparent;
         border: none;
@@ -13,4 +16,5 @@ BUTTON_STYLE = """
         background-color: rgba(255, 255, 255, 40);
         border-radius: 4px;
     }
-"""
+    """
+)

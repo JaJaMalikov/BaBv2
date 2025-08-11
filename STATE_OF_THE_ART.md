@@ -81,6 +81,7 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
 - Correction du chargement JSON: `SceneModel.import_json` peuple désormais correctement le modèle via `from_dict` et retourne un booléen de succès.
 - Suppression temporelle des objets: la logique d'affichage considère désormais le dernier keyframe ≤ frame courante comme point de vérité. Si ce keyframe ne référence pas un objet, celui-ci est masqué à partir de cette frame (et jusqu'à ce qu'un nouveau keyframe le réintroduise). L’inspecteur se synchronise sur cette règle.
 - Nettoyage historique: retrait des vestiges `grid` / `snap_to_grid` dans `PuppetPiece` (non utilisés), sans impact sur le comportement actuel.
+- Optimisations internes: introduction de `dataclasses` pour les modèles de scène, mise en cache des icônes et des groupes SVG, améliorations des widgets (recherche binaire des keyframes, factorisation des signaux des docks, importations manquantes corrigées).
 
 ## État actuel et prochaines étapes possibles
 

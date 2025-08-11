@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import math
 
 from PySide6.QtWidgets import QGraphicsEllipseItem, QGraphicsSceneMouseEvent, QGraphicsItem
@@ -6,7 +8,8 @@ from PySide6.QtCore import Qt, QPointF
 from PySide6.QtGui import QBrush, QPen, QColor
 
 # --- Constantes ---
-PIVOT_KEYWORDS = ["coude", "genou", "hanche", "epaule", "cheville", "poignet", "cou"]
+# Using a tuple since the list is immutable at runtime
+PIVOT_KEYWORDS = ("coude", "genou", "hanche", "epaule", "cheville", "poignet", "cou")
 HANDLE_Z_VALUE = 1000
 PIVOT_Z_VALUE = 999
 

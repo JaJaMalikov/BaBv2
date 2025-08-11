@@ -2,6 +2,8 @@ from PySide6.QtWidgets import (
     QWidget, QListWidget, QListWidgetItem, QVBoxLayout, QHBoxLayout,
     QLabel, QDoubleSpinBox, QPushButton, QComboBox
 )
+from bisect import bisect_right
+
 from PySide6.QtCore import Qt
 
 class InspectorWidget(QWidget):
@@ -247,11 +249,17 @@ class InspectorWidget(QWidget):
         """
         mw = self.main_window
         idx = mw.scene_model.current_frame
-        si = sorted(mw.scene_model.keyframes.keys())
-        last_kf = next((i for i in reversed(si) if i <= idx), None)
+        sorted_idx = sorted(mw.scene_model.keyframes.keys())
+        pos = bisect_right(sorted_idx, idx)
+        last_kf = sorted_idx[pos - 1] if pos else None
         if last_kf is not None and obj_name not in mw.scene_model.keyframes[last_kf].objects:
             return (None, None)
-        prev = next((i for i in reversed(si) if i <= idx and obj_name in mw.scene_model.keyframes[i].objects), None)
+        prev = None
+        for i in range(pos - 1, -1, -1):
+            k = sorted_idx[i]
+            if obj_name in mw.scene_model.keyframes[k].objects:
+                prev = k
+                break
         if prev is None:
             obj = mw.scene_model.objects.get(obj_name)
             return obj.attached_to if obj and obj.attached_to else (None, None)

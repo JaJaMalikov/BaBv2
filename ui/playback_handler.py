@@ -54,11 +54,9 @@ class PlaybackHandler(QObject):
         self.timeline_widget.set_current_frame(self.scene_model.start_frame)
 
     def next_frame(self) -> None:
-        current: int = self.scene_model.current_frame
-        start: int
-        end: int
+        current = self.scene_model.current_frame
         start, end = self.scene_model.start_frame, self.scene_model.end_frame
-        new_frame: int = current + 1
+        new_frame = current + 1
         if new_frame > end:
             if self.timeline_widget.loop_enabled:
                 new_frame = start
