@@ -13,9 +13,8 @@ from PySide6.QtCore import Qt, Signal, QPointF, QSize, QEvent
 from ui.draggable_widget import DraggableOverlay
 from ui.icons import (
     icon_plus, icon_minus, icon_fit, icon_rotate, icon_onion,
-    icon_chevron_left, icon_chevron_right
+    icon_open_menu, icon_close_menu, icon_close_menu_inv
 )
-from ui.styles import BUTTON_STYLE
 from ui.library_widget import LIB_MIME
 
 
@@ -54,12 +53,11 @@ class ZoomableView(QGraphicsView):
             btn.setToolTip(tooltip)
             if cb: btn.clicked.connect(cb)
             btn.setCheckable(checkable)
-            btn.setStyleSheet(BUTTON_STYLE)
             btn.setFixedSize(button_size, button_size)
             btn.setAutoRaise(True)
             return btn
 
-        self.collapse_btn: QToolButton = make_btn(icon_chevron_left(), "Replier/Déplier le panneau", checkable=True)
+        self.collapse_btn: QToolButton = make_btn(icon_close_menu(), "Replier/Déplier le panneau", checkable=True)
         self.collapse_btn.setChecked(True)
         self.collapse_btn.toggled.connect(self.toggle_overlay_collapse)
         self.layout.addWidget(self.collapse_btn)
@@ -95,18 +93,16 @@ class ZoomableView(QGraphicsView):
             btn.setDefaultAction(action)
             btn.setIconSize(QSize(icon_size, icon_size))
             btn.setCheckable(checkable)
-            btn.setStyleSheet(BUTTON_STYLE)
             btn.setFixedSize(button_size, button_size)
             btn.setToolButtonStyle(Qt.ToolButtonIconOnly)
             btn.setAutoRaise(True)
             return btn
 
         self.main_collapse_btn: QToolButton = QToolButton(self._main_tools_overlay)
-        self.main_collapse_btn.setIcon(icon_chevron_left())
+        self.main_collapse_btn.setIcon(icon_close_menu_inv())
         self.main_collapse_btn.setIconSize(QSize(icon_size, icon_size))
         self.main_collapse_btn.setCheckable(True)
         self.main_collapse_btn.setChecked(True)
-        self.main_collapse_btn.setStyleSheet(BUTTON_STYLE)
         self.main_collapse_btn.setFixedSize(button_size, button_size)
         self.main_collapse_btn.setToolButtonStyle(Qt.ToolButtonIconOnly)
         self.main_collapse_btn.setAutoRaise(True)
@@ -135,26 +131,43 @@ class ZoomableView(QGraphicsView):
             timeline_toggle_btn,
         ]
 
-        self.main_tools_layout.addWidget(self.main_collapse_btn)
+        self.main_tools_layout.addStretch()
         for w in self.main_tool_buttons:
             self.main_tools_layout.addWidget(w)
+        self.main_tools_layout.addWidget(self.main_collapse_btn)
 
         self._main_tools_overlay.move(10, 60)
 
     def toggle_overlay_collapse(self, checked: bool) -> None:
-        icon: QIcon = icon_chevron_left() if checked else icon_chevron_right()
+        icon: QIcon = icon_close_menu() if checked else icon_open_menu()
         self.collapse_btn.setIcon(icon)
         for w in self.tool_widgets:
             w.setVisible(checked)
         self._overlay.adjustSize()
 
     def toggle_main_tools_collapse(self, checked: bool) -> None:
-        icon: QIcon = icon_chevron_left() if checked else icon_chevron_right()
+        icon: QIcon = icon_close_menu_inv() if checked else icon_open_menu()
         self.main_collapse_btn.setIcon(icon)
+
+        overlay = getattr(self, "_main_tools_overlay", None)
+        if not overlay:
+            return
+
+        # Store the position of the right edge before resizing
+        old_right_x = overlay.geometry().right()
+
+        # Hide/show the tool buttons
         for w in getattr(self, "main_tool_buttons", []):
             w.setVisible(checked)
-        if hasattr(self, "_main_tools_overlay"):
-            self._main_tools_overlay.adjustSize()
+
+        # Adjust the overlay's size to fit the new content
+        overlay.adjustSize()
+
+        # Calculate the new top-left x-position to keep the right edge stationary
+        new_x = old_right_x - overlay.width()
+
+        # Move the overlay to the new position
+        overlay.move(new_x, overlay.y())
 
     # Removed zoom label (cleaner overlay)
 

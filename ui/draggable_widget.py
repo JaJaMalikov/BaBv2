@@ -7,8 +7,6 @@ class DraggableOverlay(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAttribute(Qt.WA_StyledBackground, True)
-        # Red universe: subtle dark panel with red outline
-        self.setStyleSheet("background: rgba(16,8,8,160); border: 1px solid rgba(229,57,53,140); border-radius: 12px;")
         # Soft shadow for floating feel
         try:
             shadow = QGraphicsDropShadowEffect(self)
@@ -49,8 +47,6 @@ class PanelOverlay(DraggableOverlay):
     def __init__(self, parent=None, border_width: int = 12):
         super().__init__(parent)
         self._border_width = border_width
-        # Slightly stronger border for panels
-        self.setStyleSheet("background: rgba(16,8,8,168); border: 1px solid rgba(229,57,53,168); border-radius: 12px;")
 
     def _in_border(self, p: QPoint) -> bool:
         x, y = p.x(), p.y(); w, h = self.width(), self.height(); bw = self._border_width

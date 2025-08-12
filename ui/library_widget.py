@@ -3,43 +3,52 @@ from pathlib import Path
 from typing import Optional
 
 from PySide6.QtCore import Qt, QMimeData, QByteArray, Signal, QPoint, QSize
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QTreeWidget, QTreeWidgetItem, QMenu
-from PySide6.QtGui import QDrag, QIcon, QFont, QColor
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QListWidget, QListWidgetItem, QMenu, QTabWidget
+from PySide6.QtGui import QDrag, QIcon
 
+from .icons import get_icon
 
 LIB_MIME = "application/x-bab-item"
 
-
-class _DraggableTree(QTreeWidget):
+class _DraggableGrid(QListWidget):
     addRequested = Signal(dict)
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setHeaderHidden(True)
         self.setDragEnabled(True)
-        self.setDragDropMode(QTreeWidget.DragOnly)
-        self.setSelectionMode(QTreeWidget.SingleSelection)
+        self.setDragDropMode(QListWidget.DragOnly)
+        self.setSelectionMode(QListWidget.SingleSelection)
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self._open_context_menu)
+
+        # Grid / Icon settings
+        self.setViewMode(QListWidget.IconMode)
+        self.setResizeMode(QListWidget.Adjust)
+        self.setMovement(QListWidget.Static)
+        self.setIconSize(QSize(96, 96))
+        self.setGridSize(QSize(112, 120))
+        self.setWordWrap(True)
 
     def startDrag(self, supportedActions):
         item = self.currentItem()
         if not item:
             return
-        payload = item.data(0, Qt.UserRole)
+        payload = item.data(Qt.UserRole)
         if not payload:
             return
         drag = QDrag(self)
         mime = QMimeData()
         mime.setData(LIB_MIME, QByteArray(json.dumps(payload).encode("utf-8")))
-        drag.setMimeData(mime)
+        pixmap = item.icon().pixmap(self.iconSize())
+        drag.setPixmap(pixmap)
+        drag.setHotSpot(pixmap.rect().center())
         drag.exec(Qt.CopyAction)
 
     def _open_context_menu(self, pos: QPoint):
         item = self.itemAt(pos)
         if not item:
             return
-        payload = item.data(0, Qt.UserRole)
+        payload = item.data(Qt.UserRole)
         if not payload:
             return
         menu = QMenu(self)
@@ -51,12 +60,11 @@ class _DraggableTree(QTreeWidget):
     def mouseDoubleClickEvent(self, event):
         item = self.itemAt(event.position().toPoint())
         if item:
-            payload = item.data(0, Qt.UserRole)
+            payload = item.data(Qt.UserRole)
             if payload:
                 self.addRequested.emit(payload)
                 event.accept(); return
         super().mouseDoubleClickEvent(event)
-
 
 class LibraryWidget(QWidget):
     addRequested = Signal(dict)
@@ -64,59 +72,62 @@ class LibraryWidget(QWidget):
     def __init__(self, root_dir: Optional[str] = None, parent=None):
         super().__init__(parent)
         self.root_dir = Path(root_dir or ".").resolve()
-        lay = QVBoxLayout(self)
-        lay.setContentsMargins(6, 6, 6, 6)
-        # Card container for the tree
-        container = QWidget(self)
-        container.setProperty("role", "card")
-        clay = QVBoxLayout(container); clay.setContentsMargins(8, 8, 8, 8); clay.setSpacing(6)
-        self.tree = _DraggableTree(container)
-        self.tree.addRequested.connect(self.addRequested)
-        self.tree.setIconSize(QSize(64, 64))
-        self.tree.setAlternatingRowColors(True)
-        self.tree.setUniformRowHeights(True)
-        clay.addWidget(self.tree)
-        lay.addWidget(container)
+        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        self.tabs = QTabWidget()
+        self.tabs.setIconSize(QSize(32, 32))
+
+        # Create a grid for each category
+        self.background_grid = _DraggableGrid()
+        self.objects_grid = _DraggableGrid()
+        self.puppets_grid = _DraggableGrid()
+
+        # Connect signals
+        self.background_grid.addRequested.connect(self.addRequested)
+        self.objects_grid.addRequested.connect(self.addRequested)
+        self.puppets_grid.addRequested.connect(self.addRequested)
+
+        # Add grids as tabs
+        self.tabs.addTab(self.background_grid, get_icon('background'), "")
+        self.tabs.setTabToolTip(0, "Arrière-plans")
+        self.tabs.addTab(self.objects_grid, get_icon('objets'), "")
+        self.tabs.setTabToolTip(1, "Objets")
+        self.tabs.addTab(self.puppets_grid, get_icon('puppet'), "")
+        self.tabs.setTabToolTip(2, "Pantins")
+
+        layout.addWidget(self.tabs)
         self.reload()
 
     def reload(self):
-        self.tree.clear()
-        # Define categories
-        categories = [
-            ("Arrière-plans", self.root_dir / "assets" / "background", {"exts": {".png", ".jpg", ".jpeg"}, "kind": "background"}),
-            ("Objets", self.root_dir / "assets" / "objets", {"exts": {".png", ".svg"}, "kind": "object"}),
-            ("Pantins", self.root_dir / "assets" / "pantins", {"exts": {".svg"}, "kind": "puppet"}),
-        ]
+        self.background_grid.clear()
+        self.objects_grid.clear()
+        self.puppets_grid.clear()
 
-        for title, path, spec in categories:
-            parent_item = QTreeWidgetItem([title])
-            parent_item.setFlags(Qt.ItemIsEnabled)
-            # Style top-level category
-            f = QFont(); f.setBold(True)
-            parent_item.setFont(0, f)
-            parent_item.setForeground(0, QColor(242, 140, 140))
-            self.tree.addTopLevelItem(parent_item)
+        asset_dirs = {
+            "background": (self.background_grid, self.root_dir / "assets" / "background", {".png", ".jpg", ".jpeg"}),
+            "object": (self.objects_grid, self.root_dir / "assets" / "objets", {".png", ".svg"}),
+            "puppet": (self.puppets_grid, self.root_dir / "assets" / "pantins", {".svg"}),
+        }
+
+        for kind, (grid, path, exts) in asset_dirs.items():
             if not path.exists():
-                hint = QTreeWidgetItem([f"(dossier manquant: {path})"]) 
-                hint.setFlags(Qt.ItemIsEnabled)
-                parent_item.addChild(hint)
                 continue
-            files = sorted([p for p in path.iterdir() if p.is_file() and p.suffix.lower() in spec["exts"]])
-            if not files:
-                empty = QTreeWidgetItem(["(vide)"])
-                empty.setFlags(Qt.ItemIsEnabled)
-                parent_item.addChild(empty)
-                continue
+            
+            files = sorted([p for p in path.iterdir() if p.is_file() and p.suffix.lower() in exts])
             for f in files:
-                item = QTreeWidgetItem([f.name])
+                item = QListWidgetItem(f.name)
+                item.setTextAlignment(Qt.AlignCenter)
                 item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled)
-                payload = {"kind": spec["kind"], "path": str(f)}
-                item.setData(0, Qt.UserRole, payload)
-                # Thumbnail/icon
+                
+                payload = {"kind": kind, "path": str(f)}
+                item.setData(Qt.UserRole, payload)
+                
                 try:
-                    item.setIcon(0, QIcon(str(f)))
+                    item.setIcon(QIcon(str(f)))
                 except Exception:
                     pass
-                item.setToolTip(0, str(f))
-                parent_item.addChild(item)
-        self.tree.expandAll()
+                
+                item.setToolTip(str(f))
+                grid.addItem(item)

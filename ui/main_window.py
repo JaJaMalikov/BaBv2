@@ -7,9 +7,7 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QGraphicsScene,
     QVBoxLayout,
-    QHBoxLayout,
     QWidget,
-    QLabel,
     QGraphicsPixmapItem,
     QDockWidget,
     QFileDialog,
@@ -20,7 +18,6 @@ from PySide6.QtWidgets import (
     QListWidget, # Added
     QListWidgetItem, # Added
     QGraphicsItem,
-    QToolButton,
 )
 from PySide6.QtSvgWidgets import QGraphicsSvgItem
 from PySide6.QtGui import QPainter, QPixmap, QAction, QColor, QPen
@@ -34,12 +31,11 @@ from ui.library_widget import LibraryWidget
 from ui.zoomable_view import ZoomableView
 from ui.playback_handler import PlaybackHandler
 from ui.object_manager import ObjectManager
-from ui.draggable_widget import PanelOverlay, DraggableHeader
-from ui.styles import BUTTON_STYLE
+from ui.draggable_widget import PanelOverlay
 import ui.scene_io as scene_io
 from ui.icons import (
     icon_scene_size, icon_background, icon_library, icon_inspector, icon_timeline,
-    icon_save, icon_open, icon_close,
+    icon_save, icon_open,
 )
 
 
@@ -61,7 +57,6 @@ class MainWindow(QMainWindow):
         self.view: ZoomableView = ZoomableView(self.scene, self)
         self.view.setRenderHint(QPainter.Antialiasing)
         self.view.setRenderHint(QPainter.SmoothPixmapTransform)
-        self.view.setBackgroundBrush(QColor("#121212"))
         self.view.setFrameShape(QFrame.NoFrame)
         self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.view.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
@@ -104,7 +99,6 @@ class MainWindow(QMainWindow):
         self.view._build_main_tools_overlay(self)
         self.connect_signals()
         self._setup_scene_visuals()
-        self._apply_unified_stylesheet()
 
         # --- Startup Sequence ---
         self.showMaximized()
@@ -215,26 +209,7 @@ class MainWindow(QMainWindow):
         self.library_widget.addRequested.connect(self.object_manager._add_library_item_to_scene)
 
 
-    def _apply_unified_stylesheet(self) -> None:
-        self.setStyleSheet(
-            """
-            QMainWindow { background: #101112; }
-            QDockWidget { titlebar-close-icon: none; titlebar-normal-icon: none; background: #131011; color: #E6E6E6; border: 1px solid #2C1718; }
-            QDockWidget::title { background: #160C0D; padding: 6px 10px; border-bottom: 1px solid #3C1B1C; color: #F6E9E9; }
-            QListWidget, QTreeWidget { background: #121012; color: #E6E6E6; border: 1px solid #2C1718; }
-            QListWidget::item:selected, QTreeWidget::item:selected { background: rgba(229,57,53,0.35); color: #FFFFFF; }
-            QListWidget::item:hover, QTreeWidget::item:hover { background: rgba(229,57,53,0.15); }
-            QTreeWidget { alternate-background-color: rgba(255,255,255,0.03); }
-            QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox { background: #120E0F; color: #E6E6E6; border: 1px solid #3C1B1C; selection-background-color: rgba(229,57,53,0.55); border-radius: 6px; padding: 2px 4px; }
-            QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus { border-color: rgba(229,57,53,0.7); }
-            QLabel { color: #F2DDDD; }
-            QLabel[role="section-title"] { color: #F28C8C; font-weight: 600; }
-            QWidget[role="card"] { background: #151113; border: 1px solid #3C1B1C; border-radius: 12px; }
-            QWidget[role="overlay-header"] { background: rgba(0,0,0,0.15); border-bottom: 1px solid rgba(229,57,53,0.25); border-top-left-radius: 12px; border-top-right-radius: 12px; }
-            QLabel[role="overlay-header-title"] { color: #F6E9E9; font-weight: 600; }
-            QToolTip { color: #FFFFFF; background-color: rgba(229,57,53,0.85); border: 1px solid #B71C1C; }
-            """
-        )
+    
 
     def _build_side_overlays(self) -> None:
         # Library overlay
@@ -243,35 +218,17 @@ class MainWindow(QMainWindow):
         lib_layout = QVBoxLayout(self.library_overlay)
         lib_layout.setContentsMargins(8, 8, 8, 8)
         lib_layout.setSpacing(6)
-        # Header (HUD)
-        lib_header = DraggableHeader(self.library_overlay, parent=self.library_overlay)
-        h1 = QHBoxLayout(lib_header); h1.setContentsMargins(8, 6, 8, 6); h1.setSpacing(6)
-        lbl_lib = QLabel("Bibliothèque", lib_header)
-        lbl_lib.setProperty("role", "overlay-header-title")
-        btn_close_lib = QToolButton(lib_header); btn_close_lib.setIcon(icon_close()); btn_close_lib.setStyleSheet(BUTTON_STYLE); btn_close_lib.setAutoRaise(True)
-        btn_close_lib.clicked.connect(lambda: self.set_library_overlay_visible(False))
-        h1.addWidget(lbl_lib); h1.addStretch(1); h1.addWidget(btn_close_lib)
-        lib_layout.addWidget(lib_header)
         self.library_widget = LibraryWidget(root_dir=str(Path.cwd()), parent=self.library_overlay)
         lib_layout.addWidget(self.library_widget)
         self.library_overlay.resize(360, 520)
         self.library_overlay.move(10, 100)
 
-        # Inspector overlay (hidden by default)
+        # Inspector overlay
         self.inspector_overlay = PanelOverlay(self.view)
         self.inspector_overlay.setVisible(False)
         insp_layout = QVBoxLayout(self.inspector_overlay)
         insp_layout.setContentsMargins(8, 8, 8, 8)
         insp_layout.setSpacing(6)
-        # Header (HUD)
-        insp_header = DraggableHeader(self.inspector_overlay, parent=self.inspector_overlay)
-        h2 = QHBoxLayout(insp_header); h2.setContentsMargins(8, 6, 8, 6); h2.setSpacing(6)
-        lbl_insp = QLabel("Inspecteur", insp_header)
-        lbl_insp.setProperty("role", "overlay-header-title")
-        btn_close_insp = QToolButton(insp_header); btn_close_insp.setIcon(icon_close()); btn_close_insp.setStyleSheet(BUTTON_STYLE); btn_close_insp.setAutoRaise(True)
-        btn_close_insp.clicked.connect(lambda: self.set_inspector_overlay_visible(False))
-        h2.addWidget(lbl_insp); h2.addStretch(1); h2.addWidget(btn_close_insp)
-        insp_layout.addWidget(insp_header)
         self.inspector_widget = InspectorWidget(self)
         insp_layout.addWidget(self.inspector_widget)
         self.inspector_overlay.resize(380, 560)
