@@ -18,10 +18,11 @@ from PySide6.QtWidgets import (
     QListWidget, # Added
     QListWidgetItem, # Added
     QGraphicsItem,
+    QMessageBox,
 )
 from PySide6.QtSvgWidgets import QGraphicsSvgItem
 from PySide6.QtGui import QPainter, QPixmap, QAction, QColor, QPen
-from PySide6.QtCore import Qt, QTimer, QEvent, QRectF, QPointF
+from PySide6.QtCore import Qt, QTimer, QEvent, QRectF, QPointF, QSettings
 
 from core.scene_model import SceneModel, SceneObject, Keyframe
 from core.puppet_piece import PuppetPiece
@@ -31,11 +32,12 @@ from ui.library_widget import LibraryWidget
 from ui.zoomable_view import ZoomableView
 from ui.playback_handler import PlaybackHandler
 from ui.object_manager import ObjectManager
-from ui.draggable_widget import PanelOverlay
+from ui.draggable_widget import PanelOverlay, DraggableHeader
+
 import ui.scene_io as scene_io
 from ui.icons import (
     icon_scene_size, icon_background, icon_library, icon_inspector, icon_timeline,
-    icon_save, icon_open,
+    icon_save, icon_open, icon_reset_ui, icon_reset_scene
 )
 
 
@@ -48,6 +50,7 @@ class MainWindow(QMainWindow):
         self.background_item: Optional[QGraphicsPixmapItem] = None
         self.zoom_factor: float = 1.0
         self._suspend_item_updates: bool = False
+        self._settings_loaded: bool = False
 
         self.scene: QGraphicsScene = QGraphicsScene()
         self.scene.setSceneRect(0, 0, self.scene_model.scene_width, self.scene_model.scene_height)
@@ -102,9 +105,6 @@ class MainWindow(QMainWindow):
 
         # --- Startup Sequence ---
         self.showMaximized()
-        # Overlays start hidden for a clean canvas
-        self.inspector_overlay.hide()
-        self.library_overlay.hide()
         self.timeline_dock.show()
         self.timeline_dock.visibilityChanged.connect(lambda _: self.ensure_fit())
         self.timeline_dock.topLevelChanged.connect(lambda _: self.ensure_fit())
@@ -112,6 +112,8 @@ class MainWindow(QMainWindow):
         scene_io.create_blank_scene(self, add_default_puppet=False)
         self.ensure_fit()
         self.scene.selectionChanged.connect(self._on_scene_selection_changed)
+
+        self.load_settings()
 
     def showEvent(self, event: QEvent) -> None:
         super().showEvent(event)
@@ -126,41 +128,46 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(200, self._position_overlays)
 
     def _position_overlays(self) -> None:
-        # Open both panels positioned like former docks
-        if not self.library_overlay.isVisible():
-            self.library_overlay.show()
-        if not self.inspector_overlay.isVisible():
-            self.inspector_overlay.show()
-        try:
-            self.toggle_library_action.blockSignals(True)
-            self.toggle_inspector_action.blockSignals(True)
-            self.toggle_library_action.setChecked(True)
-            self.toggle_inspector_action.setChecked(True)
-        finally:
-            self.toggle_library_action.blockSignals(False)
-            self.toggle_inspector_action.blockSignals(False)
+        if self._settings_loaded:
+            return
+
+        # This function defines the DEFAULT layout state.
+        self.set_library_overlay_visible(True)
+        self.set_inspector_overlay_visible(True)
+
         margin = 10
-        # Library on the left
-        lib_w = self.library_overlay.width(); lib_h = min(self.height() - 2*margin - 120, self.library_overlay.height())
-        self.library_overlay.resize(lib_w, lib_h)
-        self.library_overlay.move(margin, margin)
-        # Inspector on the right
-        insp_w = self.inspector_overlay.width(); insp_h = min(self.height() - 2*margin - 120, self.inspector_overlay.height())
-        self.inspector_overlay.resize(insp_w, insp_h)
-        self.inspector_overlay.move(self.width() - insp_w - margin, margin)
-        # Menu overlays: place top area between the two panels
+        self.library_overlay.setGeometry(margin, margin, 290, 550)
+        self.inspector_overlay.setGeometry(self.width() - 290 - margin, margin, 290, 550)
+
+        # Position toolbars based on the new panel positions
         try:
-            left_bound = self.library_overlay.x() + self.library_overlay.width() + margin
-            right_bound = self.inspector_overlay.x() - margin
-            # Access overlays from view
+            left_bound = self.library_overlay.geometry().right() + margin
+            right_bound = self.inspector_overlay.geometry().left() - margin
+
             ov = getattr(self.view, "_overlay", None)
             mov = getattr(self.view, "_main_tools_overlay", None)
+
             if ov:
-                ov.adjustSize(); ov.move(left_bound, margin)
+                ov.adjustSize()
+                ov.move(left_bound, margin)
+                ov.raise_()
             if mov:
-                mov.adjustSize(); mov.move(max(left_bound, right_bound - mov.width()), margin)
+                mov.adjustSize()
+                mov.move(max(left_bound, right_bound - mov.width()), margin)
+                mov.raise_()
         except Exception:
             pass
+
+    def reset_ui(self) -> None:
+        """Clears saved UI settings and resets the UI to its default state immediately."""
+        settings = QSettings("JaJa", "Macronotron")
+        settings.clear()
+
+        self.showMaximized()
+        self._settings_loaded = False
+        self._position_overlays()
+
+        QMessageBox.information(self, "Interface réinitialisée", "La disposition de l'interface a été réinitialisée.")
 
     def _create_actions(self) -> None:
         self.save_action: QAction = QAction(icon_save(), "Sauvegarder (Ctrl+S)", self)
@@ -169,6 +176,9 @@ class MainWindow(QMainWindow):
         self.load_action.setShortcut("Ctrl+O")
         self.scene_size_action: QAction = QAction(icon_scene_size(), "Taille Scène", self)
         self.background_action: QAction = QAction(icon_background(), "Image de fond", self)
+
+        self.reset_scene_action: QAction = QAction(icon_reset_scene(), "Réinitialiser la scène", self)
+        self.reset_ui_action: QAction = QAction(icon_reset_ui(), "Réinitialiser l'interface", self)
 
         # Overlay toggles
         self.toggle_library_action: QAction = QAction(icon_library(), "Bibliothèque", self)
@@ -188,6 +198,8 @@ class MainWindow(QMainWindow):
         # Scene I/O
         self.save_action.triggered.connect(lambda: scene_io.save_scene(self))
         self.load_action.triggered.connect(lambda: scene_io.load_scene(self))
+        self.reset_scene_action.triggered.connect(self.reset_scene)
+        self.reset_ui_action.triggered.connect(self.reset_ui)
 
         # Scene settings
         self.scene_size_action.triggered.connect(self.set_scene_size)
@@ -208,8 +220,12 @@ class MainWindow(QMainWindow):
         # Library signals
         self.library_widget.addRequested.connect(self.object_manager._add_library_item_to_scene)
 
-
-    
+    def reset_scene(self) -> None:
+        """Clears the current scene and creates a new blank one."""
+        scene_io.create_blank_scene(self, add_default_puppet=False)
+        self.scene_model.background_path = None
+        self._update_background()
+        self.ensure_fit()
 
     def _build_side_overlays(self) -> None:
         # Library overlay
@@ -217,7 +233,12 @@ class MainWindow(QMainWindow):
         self.library_overlay.setVisible(False)
         lib_layout = QVBoxLayout(self.library_overlay)
         lib_layout.setContentsMargins(8, 8, 8, 8)
-        lib_layout.setSpacing(6)
+        lib_layout.setSpacing(0)
+
+        lib_drag_handle = DraggableHeader(self.library_overlay, parent=self.library_overlay)
+        lib_drag_handle.setFixedHeight(20)
+        lib_layout.addWidget(lib_drag_handle)
+
         self.library_widget = LibraryWidget(root_dir=str(Path.cwd()), parent=self.library_overlay)
         lib_layout.addWidget(self.library_widget)
         self.library_overlay.resize(360, 520)
@@ -228,7 +249,12 @@ class MainWindow(QMainWindow):
         self.inspector_overlay.setVisible(False)
         insp_layout = QVBoxLayout(self.inspector_overlay)
         insp_layout.setContentsMargins(8, 8, 8, 8)
-        insp_layout.setSpacing(6)
+        insp_layout.setSpacing(0)
+
+        insp_drag_handle = DraggableHeader(self.inspector_overlay, parent=self.inspector_overlay)
+        insp_drag_handle.setFixedHeight(20)
+        insp_layout.addWidget(insp_drag_handle)
+
         self.inspector_widget = InspectorWidget(self)
         insp_layout.addWidget(self.inspector_widget)
         self.inspector_overlay.resize(380, 560)
@@ -476,6 +502,51 @@ class MainWindow(QMainWindow):
     def _on_frame_update(self) -> None:
         self.update_scene_from_model()
         self.update_onion_skins()
+
+    def closeEvent(self, event: QEvent) -> None:
+        """Save settings when the window is closed."""
+        self.save_settings()
+        super().closeEvent(event)
+
+    def save_settings(self) -> None:
+        """Save window and panel geometries to QSettings."""
+        settings = QSettings("JaJa", "Macronotron")
+        settings.setValue("geometry/mainwindow", self.saveGeometry())
+        settings.setValue("geometry/library", self.library_overlay.geometry())
+        settings.setValue("geometry/inspector", self.inspector_overlay.geometry())
+        settings.setValue("layout/timeline_visible", self.timeline_dock.isVisible())
+        if hasattr(self.view, '_overlay') and self.view._overlay:
+            settings.setValue("geometry/view_toolbar", self.view._overlay.geometry())
+        if hasattr(self.view, '_main_tools_overlay') and self.view._main_tools_overlay:
+            settings.setValue("geometry/main_toolbar", self.view._main_tools_overlay.geometry())
+
+    def load_settings(self) -> None:
+        """Load and apply window and panel geometries from QSettings."""
+        settings = QSettings("JaJa", "Macronotron")
+        if settings.contains("geometry/mainwindow"):
+            self.restoreGeometry(settings.value("geometry/mainwindow"))
+            self._settings_loaded = True
+        if settings.contains("geometry/library"):
+            self.library_overlay.setGeometry(settings.value("geometry/library"))
+        self.set_library_overlay_visible(True)
+
+        if settings.contains("geometry/inspector"):
+            self.inspector_overlay.setGeometry(settings.value("geometry/inspector"))
+        self.set_inspector_overlay_visible(True)
+        if settings.contains("layout/timeline_visible"):
+            is_visible = settings.value("layout/timeline_visible")
+            # QSettings might return string 'true'/'false'
+            self.timeline_dock.setVisible(is_visible in [True, 'true'])
+        if hasattr(self.view, '_overlay') and self.view._overlay and settings.contains("geometry/view_toolbar"):
+            self.view._overlay.setGeometry(settings.value("geometry/view_toolbar"))
+        if hasattr(self.view, '_main_tools_overlay') and self.view._main_tools_overlay and settings.contains("geometry/main_toolbar"):
+            self.view._main_tools_overlay.setGeometry(settings.value("geometry/main_toolbar"))
+
+        # Ensure toolbars are always on top
+        if hasattr(self.view, '_overlay') and self.view._overlay:
+            self.view._overlay.raise_()
+        if hasattr(self.view, '_main_tools_overlay') and self.view._main_tools_overlay:
+            self.view._main_tools_overlay.raise_()
 
     def set_onion_enabled(self, enabled: bool) -> None:
         self.onion_enabled = enabled

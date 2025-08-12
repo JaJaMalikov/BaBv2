@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import (
     QWidget, QListWidget, QListWidgetItem, QVBoxLayout, QHBoxLayout,
-    QLabel, QDoubleSpinBox, QComboBox, QToolButton, QFormLayout, QFrame
+    QDoubleSpinBox, QComboBox, QToolButton, QFormLayout, QFrame
 )
 from PySide6.QtCore import Qt
 from ui.icons import icon_delete, icon_duplicate, icon_link, icon_link_off

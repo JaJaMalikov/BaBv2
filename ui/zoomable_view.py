@@ -112,6 +112,8 @@ class ZoomableView(QGraphicsView):
         load_btn: QToolButton = make_btn(main_window.load_action)
         scene_size_btn: QToolButton = make_btn(main_window.scene_size_action)
         background_btn: QToolButton = make_btn(main_window.background_action)
+        reset_scene_btn: QToolButton = make_btn(main_window.reset_scene_action)
+        reset_ui_btn: QToolButton = make_btn(main_window.reset_ui_action)
 
         library_toggle_btn: QToolButton = make_btn(main_window.toggle_library_action, checkable=True)
         inspector_toggle_btn: QToolButton = make_btn(main_window.toggle_inspector_action, checkable=True)
@@ -126,6 +128,8 @@ class ZoomableView(QGraphicsView):
             load_btn,
             scene_size_btn,
             background_btn,
+            reset_scene_btn,
+            reset_ui_btn,
             library_toggle_btn,
             inspector_toggle_btn,
             timeline_toggle_btn,

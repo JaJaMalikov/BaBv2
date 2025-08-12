@@ -23,12 +23,19 @@ QGraphicsView {
 DraggableOverlay, PanelOverlay {
     background-color: rgba(247, 248, 252, 0.9); /* Semi-transparent white */
     border-radius: 12px;
-    border: 1px solid rgba(203, 213, 224, 0.5);
+    border: 1px solid #D0D5DD;
 }
 
 DraggableHeader {
     background-color: rgba(237, 242, 247, 0.9);
     border-bottom: 1px solid rgba(203, 213, 224, 0.5);
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
+DraggableHeader {
+    background-color: rgba(0, 0, 0, 0.05);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
     border-top-left-radius: 12px;
     border-top-right-radius: 12px;
 }
