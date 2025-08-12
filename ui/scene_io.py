@@ -101,9 +101,9 @@ def import_scene(win: MainWindow, file_path: str):
 
     except Exception as e:
         print(f"Failed to load scene '{file_path}': {e}")
-        create_blank_scene(win)
+        create_blank_scene(win, add_default_puppet=False)
 
-def create_blank_scene(win: 'MainWindow', add_default_puppet: bool = True) -> None:
+def create_blank_scene(win: 'MainWindow', add_default_puppet: bool = False) -> None:
     """Clears the scene and optionally adds a default puppet."""
     for name in list(win.scene_model.puppets.keys()): win.object_manager.delete_puppet(name)
     for name in list(win.scene_model.objects.keys()): win.object_manager.delete_object(name)

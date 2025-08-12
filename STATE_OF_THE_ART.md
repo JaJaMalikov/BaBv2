@@ -28,7 +28,7 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
 ## Dépendances
 
 *   `PySide6`: Bibliothèque pour l'interface graphique.
-*   `qt-material`: Pour l'application de thèmes visuels.
+*   (Retiré) `qt-material`: thème désormais assuré par une feuille de style interne.
 
 ## Fonctionnalités clés implémentées
 
@@ -61,7 +61,9 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
         *   **Barre d'outils flottante (Overlay)** directement sur la vue pour un accès rapide au zoom, centrage, et affichage/masquage des poignées de rotation.
         *   **Barre d'outils principale rétractable** regroupée avec la barre d'outils flottante.
         *   Panoramique dans la vue avec le clic molette.
-    *   **Panneaux modulables (Docks)**: La Timeline et l'Inspecteur peuvent être affichés, masqués ou déplacés indépendamment (`F3`, `F4`).
+*   **Panneaux / Overlays**:
+    *   Timeline: reste un Dock (ancré en bas, closable).
+    *   Inspecteur et Bibliothèque: fonctionnent comme des overlays flottants (drag par bordure ou par un en-tête HUD).
     *   **Poignées de rotation basculables** pour désencombrer la vue.
     *   **Onion skinning (fantômes)**: affichage des poses des frames précédentes/suivantes en surimpression (toggle overlay).
     *   **Personnalisation de la scène**:
@@ -81,6 +83,17 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
 - Correction du chargement JSON: `SceneModel.import_json` peuple désormais correctement le modèle via `from_dict` et retourne un booléen de succès.
 - Suppression temporelle des objets: la logique d'affichage considère désormais le dernier keyframe ≤ frame courante comme point de vérité. Si ce keyframe ne référence pas un objet, celui-ci est masqué à partir de cette frame (et jusqu'à ce qu'un nouveau keyframe le réintroduise). L’inspecteur se synchronise sur cette règle.
 - Nettoyage historique: retrait des vestiges `grid` / `snap_to_grid` dans `PuppetPiece` (non utilisés), sans impact sur le comportement actuel.
+- (Revert) Affichage unifié des membres retiré: l'approche basée sur `shape()` des SVG produit des bboxes rectangulaires non conformes. À revisiter ultérieurement avec une extraction de silhouette par rendu offscreen si nécessaire.
+- Suppression de la dépendance `qt-material`: le thème est désormais assuré par une feuille de style interne (dark) appliquée dans `MainWindow`.
+- Suppression de la StatusBar: le statut de zoom est affiché uniquement dans l'overlay flottant (libérant l'espace et uniformisant l'UI vers un modèle d'overlays transparents).
+- Système d'icônes local: `ui/icons.py` charge désormais des icônes depuis `assets/icons` (SVG ou PNG) avec fallback vers des pictos vectoriels dessinés à la volée. Pour remplacer une icône, déposer un fichier sous l'un des noms supportés: `save`, `open`, `plus`, `minus`, `fit`, `rotate`, `chevron_left`, `chevron_right`, `scene_size`, `background`, `library`, `inspector`, `timeline`, `onion`.
+- Thème "carte rouge": unification visuelle autour d'un accent rouge (boutons overlays translucides rouges, sélections rouges dans listes/arbres, tooltips rouges). Overlays restent flottants et mobiles.
+- Inspector: boutons d'action remplacés par des `QToolButton` iconifiés (dupliquer, supprimer, lier/détacher) pour plus de clarté; contrôles regroupés et allégés visuellement.
+- Bibliothèque: vignettes plus grandes (64px), lignes alternées, hiérarchie plus lisible.
+- Overlays géants (nouveau): Inspecteur et Bibliothèque sont désormais de vrais overlays flottants avec en-tête HUD (titre + fermer), déplaçables au clic gauche sur l'en-tête ou la bordure.
+- Overlays menus: ouverts par défaut et positionnés en haut de l'écran, entre Bibliothèque (gauche) et Inspecteur (droite), styles unifiés et sobres (hover/checked neutres).
+- Démarrage plus propre: la scène fait un fit automatique, le cadre/dimensions de la scène sont à nouveau visibles, pas de pantin par défaut.
+- Bibliothèque UX: double-clic sur un élément pour l'ajouter directement à la scène (en plus du glisser-déposer et menu contextuel).
 
 ## État actuel et prochaines étapes possibles
 

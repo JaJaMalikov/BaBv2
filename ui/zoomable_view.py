@@ -5,7 +5,6 @@ from PySide6.QtWidgets import (
     QWidget,
     QHBoxLayout,
     QToolButton,
-    QLabel,
     QGraphicsScene, # Added
 )
 from PySide6.QtGui import QIcon, QDragEnterEvent, QDragMoveEvent, QDropEvent, QMouseEvent, QWheelEvent, QAction
@@ -75,10 +74,7 @@ class ZoomableView(QGraphicsView):
         self.onion_btn: QToolButton = make_btn(icon_onion(), "Onion skin (fantômes)", checkable=True)
         self.onion_btn.toggled.connect(self.onion_toggled)
 
-        self._zoom_label: QLabel = QLabel("100%", self._overlay)
-        self._zoom_label.setStyleSheet("color: #CFCFCF; padding: 2px 4px;")
-
-        self.tool_widgets: List[QWidget] = [self.zoom_out_btn, self.zoom_in_btn, self.fit_btn, self.handles_btn, self.onion_btn, self._zoom_label]
+        self.tool_widgets: List[QWidget] = [self.zoom_out_btn, self.zoom_in_btn, self.fit_btn, self.handles_btn, self.onion_btn]
         for w in self.tool_widgets:
             self.layout.addWidget(w)
 
@@ -107,10 +103,12 @@ class ZoomableView(QGraphicsView):
 
         self.main_collapse_btn: QToolButton = QToolButton(self._main_tools_overlay)
         self.main_collapse_btn.setIcon(icon_chevron_left())
+        self.main_collapse_btn.setIconSize(QSize(icon_size, icon_size))
         self.main_collapse_btn.setCheckable(True)
         self.main_collapse_btn.setChecked(True)
         self.main_collapse_btn.setStyleSheet(BUTTON_STYLE)
         self.main_collapse_btn.setFixedSize(button_size, button_size)
+        self.main_collapse_btn.setToolButtonStyle(Qt.ToolButtonIconOnly)
         self.main_collapse_btn.setAutoRaise(True)
         self.main_collapse_btn.toggled.connect(self.toggle_main_tools_collapse)
 
@@ -119,17 +117,13 @@ class ZoomableView(QGraphicsView):
         scene_size_btn: QToolButton = make_btn(main_window.scene_size_action)
         background_btn: QToolButton = make_btn(main_window.background_action)
 
-        library_toggle_btn: QToolButton = make_btn(main_window.library_dock.toggleViewAction(), checkable=True)
-        inspector_toggle_btn: QToolButton = make_btn(main_window.inspector_dock.toggleViewAction(), checkable=True)
+        library_toggle_btn: QToolButton = make_btn(main_window.toggle_library_action, checkable=True)
+        inspector_toggle_btn: QToolButton = make_btn(main_window.toggle_inspector_action, checkable=True)
         timeline_toggle_btn: QToolButton = make_btn(main_window.timeline_dock.toggleViewAction(), checkable=True)
 
-        library_toggle_btn.setChecked(main_window.library_dock.isVisible())
-        inspector_toggle_btn.setChecked(main_window.inspector_dock.isVisible())
+        library_toggle_btn.setChecked(main_window.library_overlay.isVisible())
+        inspector_toggle_btn.setChecked(main_window.inspector_overlay.isVisible())
         timeline_toggle_btn.setChecked(main_window.timeline_dock.isVisible())
-
-        main_window.library_dock.visibilityChanged.connect(library_toggle_btn.setChecked)
-        main_window.inspector_dock.visibilityChanged.connect(inspector_toggle_btn.setChecked)
-        main_window.timeline_dock.visibilityChanged.connect(timeline_toggle_btn.setChecked)
 
         self.main_tool_buttons: List[QToolButton] = [
             save_btn,
@@ -162,8 +156,7 @@ class ZoomableView(QGraphicsView):
         if hasattr(self, "_main_tools_overlay"):
             self._main_tools_overlay.adjustSize()
 
-    def set_zoom_label(self, text: str):
-        if self._zoom_label: self._zoom_label.setText(text)
+    # Removed zoom label (cleaner overlay)
 
     def resizeEvent(self, event: QEvent) -> None:
         super().resizeEvent(event)

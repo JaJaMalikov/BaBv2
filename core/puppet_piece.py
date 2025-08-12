@@ -81,6 +81,8 @@ class PuppetPiece(QGraphicsSvgItem):
         self.rel_to_parent: Tuple[float, float] = (0.0, 0.0)
         self.local_rotation: float = 0.0
 
+        # No external geometry listeners (rolled back)
+
         if "_droite" in name:
             self.handle_color: QColor = QColor(255, 70, 70, 150)
         elif "_gauche" in name:
@@ -99,6 +101,7 @@ class PuppetPiece(QGraphicsSvgItem):
         else:
             self.rotation_handle = None
             self.handle_local_pos: Optional[QPointF] = None # Initialize if no rotation handle
+
 
     def set_handle_visibility(self, visible: bool) -> None:
         pen_color: QColor = QColor(255, 255, 255, 180)
@@ -127,7 +130,11 @@ class PuppetPiece(QGraphicsSvgItem):
             child.update_handle_positions()
 
     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: Any) -> Any:
-        if change == QGraphicsItem.ItemPositionHasChanged:
+        if change in (
+            QGraphicsItem.ItemPositionHasChanged,
+            QGraphicsItem.ItemRotationHasChanged,
+            QGraphicsItem.ItemScaleHasChanged,
+        ):
             self.update_handle_positions()
             for child in self.children:
                 child.update_transform_from_parent()

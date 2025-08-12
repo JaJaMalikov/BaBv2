@@ -272,8 +272,7 @@
   <g
      id="avant_bras_gauche"
      transform="translate(-254.73,-209.98)"
-     stroke="black"
-     stroke-width="0.4">
+>
     <path
        id="path99"
        d="M 646.14,346.88 649,341.93 672.53,355.56 669.67,360.51 Z"
@@ -312,7 +311,7 @@
   <g
      id="haut_bras_gauche"
      transform="translate(-254.73,-209.98)"
-     style="mix-blend-mode:lighten;stroke:black;stroke-width:0.4">
+>
     <path
        id="path101"
        d="M 534.81,375.75 C 538.38,368.61 547.46,365.85 555.12,369.64 L 555.16,369.66 626.4,404.76 613.57,430.76 542.28,395.64 542.24,395.63 C 534.57,391.82 531.25,382.92 534.81,375.75 Z"
@@ -329,7 +328,7 @@
   <g
      id="avant_bras_droite"
      transform="translate(-254.73,-209.98)"
-     style="stroke:black;stroke-width:0.4">
+>
     <path
        id="path34"
        d="M 311.65,346.89 308.79,341.94 285.26,355.56 288.12,360.52 Z"
@@ -389,19 +388,18 @@
        id="path36"
        d="M 431.84,523.08 V 635.93 H 467.84 V 523.08 Z"
        fill="#262626"
-       stroke="#000000"
-       stroke-width="0.4" />
+/>
   </g>
   <g
      id="tibia_droite"
      transform="translate(-254.73,-209.98)"
-     stroke="black"
-     stroke-width="0.4">
+>
+
     <path
        id="os_tibia_droite"
        d="M 450,618 C 459.94,618 468,626.06 468,636 468,636.82 467.94,637.62 467.84,638.4 V 734.18 H 431.84 V 635.73 H 432 C 432.15,625.91 440.15,618 450,618 Z"
        fill="#262626"
-       style="mix-blend-mode:lighten;stroke:black;stroke-width:0.4" />
+/>
     <path
        id="chaussette_droite"
        d="M 465.09,734.38 H 435.39 V 745.38 H 465.09 Z"
@@ -426,8 +424,7 @@
   <g
      id="cuisse_gauche"
      transform="translate(-254.73,-209.98)"
-     stroke="black"
-     stroke-width="0.4">
+     >
     <path
        id="path39"
        d="M 489.5,635.93 V 523.08 H 507.5 525.5 V 635.93 Z"
@@ -436,7 +433,7 @@
   <g
      id="tibia_gauche"
      transform="translate(-254.73,-209.98)"
-     style="mix-blend-mode:lighten;stroke:black;stroke-width:0.4">
+>
     <path
        id="os_tibia_gauche"
        d="M 507.58,618 C 517.52,618 525.58,626.06 525.58,636 525.58,636.82 525.52,637.62 525.42,638.4 V 734.18 H 489.42 V 635.73 H 489.58 C 489.73,625.91 497.73,618 507.58,618 Z"

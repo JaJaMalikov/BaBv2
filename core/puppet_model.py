@@ -51,7 +51,7 @@ PIVOT_MAP: Dict[str, str] = {
 Z_ORDER: Dict[str, int] = {
     "torse": 0,  
     "cou": -1,
-    "tete": -1,
+    "tete": 1,
     "epaule_droite": 2,
     "haut_bras_droite": -1,
     "coude_droite": 2,

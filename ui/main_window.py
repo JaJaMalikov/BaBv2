@@ -7,7 +7,9 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QGraphicsScene,
     QVBoxLayout,
+    QHBoxLayout,
     QWidget,
+    QLabel,
     QGraphicsPixmapItem,
     QDockWidget,
     QFileDialog,
@@ -15,10 +17,10 @@ from PySide6.QtWidgets import (
     QGraphicsRectItem,
     QGraphicsTextItem,
     QFrame,
-    QStyle,
     QListWidget, # Added
     QListWidgetItem, # Added
-    QGraphicsItem
+    QGraphicsItem,
+    QToolButton,
 )
 from PySide6.QtSvgWidgets import QGraphicsSvgItem
 from PySide6.QtGui import QPainter, QPixmap, QAction, QColor, QPen
@@ -32,9 +34,12 @@ from ui.library_widget import LibraryWidget
 from ui.zoomable_view import ZoomableView
 from ui.playback_handler import PlaybackHandler
 from ui.object_manager import ObjectManager
+from ui.draggable_widget import PanelOverlay, DraggableHeader
+from ui.styles import BUTTON_STYLE
 import ui.scene_io as scene_io
 from ui.icons import (
     icon_scene_size, icon_background, icon_library, icon_inspector, icon_timeline,
+    icon_save, icon_open, icon_close,
 )
 
 
@@ -50,7 +55,7 @@ class MainWindow(QMainWindow):
 
         self.scene: QGraphicsScene = QGraphicsScene()
         self.scene.setSceneRect(0, 0, self.scene_model.scene_width, self.scene_model.scene_height)
-        
+
         self.object_manager: ObjectManager = ObjectManager(self)
 
         self.view: ZoomableView = ZoomableView(self.scene, self)
@@ -60,6 +65,9 @@ class MainWindow(QMainWindow):
         self.view.setFrameShape(QFrame.NoFrame)
         self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.view.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+
+        # Build large overlays (library, inspector) before actions so toggles can bind
+        self._build_side_overlays()
 
         # Onion skin settings
         self.onion_enabled: bool = False
@@ -76,27 +84,19 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.view)
         self.setCentralWidget(main_widget)
 
-        self.timeline_dock: QDockWidget = QDockWidget("Timeline", self)
+        self.timeline_dock: QDockWidget = QDockWidget("", self)
         self.timeline_dock.setObjectName("dock_timeline")
         self.timeline_widget: TimelineWidget = TimelineWidget()
         self.timeline_dock.setWidget(self.timeline_widget)
-        self.timeline_dock.setFeatures(QDockWidget.DockWidgetMovable | QDockWidget.DockWidgetClosable)
+        self.timeline_dock.setFeatures(QDockWidget.DockWidgetClosable)
+        try:
+            from PySide6.QtWidgets import QWidget as _QW
+            self.timeline_dock.setTitleBarWidget(_QW())
+        except Exception:
+            pass
         self.addDockWidget(Qt.BottomDockWidgetArea, self.timeline_dock)
 
-        self.inspector_dock: QDockWidget = QDockWidget("Inspector", self)
-        self.inspector_dock.setObjectName("dock_inspector")
-        self.inspector_widget: InspectorWidget = InspectorWidget(self)
-        self.inspector_dock.setWidget(self.inspector_widget)
-        self.inspector_dock.setFeatures(QDockWidget.DockWidgetMovable | QDockWidget.DockWidgetClosable)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.inspector_dock)
-        self.inspector_dock.hide()
-
-        self.library_dock: QDockWidget = QDockWidget("Bibliothèques", self)
-        self.library_dock.setObjectName("dock_library")
-        self.library_widget: LibraryWidget = LibraryWidget(root_dir=str(Path.cwd()))
-        self.library_dock.setWidget(self.library_widget)
-        self.library_dock.setFeatures(QDockWidget.DockWidgetMovable | QDockWidget.DockWidgetClosable)
-        self.addDockWidget(Qt.LeftDockWidgetArea, self.library_dock)
+        # Inspector and Library now live as overlays (see _build_side_overlays)
 
         self.playback_handler: PlaybackHandler = PlaybackHandler(self.scene_model, self.timeline_widget, self.inspector_widget, self)
 
@@ -108,43 +108,93 @@ class MainWindow(QMainWindow):
 
         # --- Startup Sequence ---
         self.showMaximized()
-        self.inspector_dock.show()
-        self.library_dock.show()
+        # Overlays start hidden for a clean canvas
+        self.inspector_overlay.hide()
+        self.library_overlay.hide()
         self.timeline_dock.show()
         self.timeline_dock.visibilityChanged.connect(lambda _: self.ensure_fit())
         self.timeline_dock.topLevelChanged.connect(lambda _: self.ensure_fit())
-        self.inspector_dock.visibilityChanged.connect(lambda _: self.ensure_fit())
-        self.inspector_dock.topLevelChanged.connect(lambda _: self.ensure_fit())
-        self.library_dock.visibilityChanged.connect(lambda _: self.ensure_fit())
-        self.library_dock.topLevelChanged.connect(lambda _: self.ensure_fit())
         self.ensure_fit()
-        scene_io.create_blank_scene(self)
+        scene_io.create_blank_scene(self, add_default_puppet=False)
         self.ensure_fit()
         self.scene.selectionChanged.connect(self._on_scene_selection_changed)
 
     def showEvent(self, event: QEvent) -> None:
         super().showEvent(event)
-        QTimer.singleShot(0, self.fit_to_view)
-        QTimer.singleShot(50, self.fit_to_view)
+        def _layout_then_fit():
+            try:
+                self.resizeDocks([self.timeline_dock], [int(max(140, self.height()*0.22))], Qt.Vertical)
+            except Exception:
+                pass
+            self.fit_to_view()
+            self._position_overlays()
+        QTimer.singleShot(0, _layout_then_fit)
+        QTimer.singleShot(200, self._position_overlays)
+
+    def _position_overlays(self) -> None:
+        # Open both panels positioned like former docks
+        if not self.library_overlay.isVisible():
+            self.library_overlay.show()
+        if not self.inspector_overlay.isVisible():
+            self.inspector_overlay.show()
+        try:
+            self.toggle_library_action.blockSignals(True)
+            self.toggle_inspector_action.blockSignals(True)
+            self.toggle_library_action.setChecked(True)
+            self.toggle_inspector_action.setChecked(True)
+        finally:
+            self.toggle_library_action.blockSignals(False)
+            self.toggle_inspector_action.blockSignals(False)
+        margin = 10
+        # Library on the left
+        lib_w = self.library_overlay.width(); lib_h = min(self.height() - 2*margin - 120, self.library_overlay.height())
+        self.library_overlay.resize(lib_w, lib_h)
+        self.library_overlay.move(margin, margin)
+        # Inspector on the right
+        insp_w = self.inspector_overlay.width(); insp_h = min(self.height() - 2*margin - 120, self.inspector_overlay.height())
+        self.inspector_overlay.resize(insp_w, insp_h)
+        self.inspector_overlay.move(self.width() - insp_w - margin, margin)
+        # Menu overlays: place top area between the two panels
+        try:
+            left_bound = self.library_overlay.x() + self.library_overlay.width() + margin
+            right_bound = self.inspector_overlay.x() - margin
+            # Access overlays from view
+            ov = getattr(self.view, "_overlay", None)
+            mov = getattr(self.view, "_main_tools_overlay", None)
+            if ov:
+                ov.adjustSize(); ov.move(left_bound, margin)
+            if mov:
+                mov.adjustSize(); mov.move(max(left_bound, right_bound - mov.width()), margin)
+        except Exception:
+            pass
 
     def _create_actions(self) -> None:
-        style: QStyle = self.style()
-        self.save_action: QAction = QAction(style.standardIcon(QStyle.SP_DialogSaveButton), "Sauvegarder (Ctrl+S)", self)
+        self.save_action: QAction = QAction(icon_save(), "Sauvegarder (Ctrl+S)", self)
         self.save_action.setShortcut("Ctrl+S")
-        self.load_action: QAction = QAction(style.standardIcon(QStyle.SP_DialogOpenButton), "Charger (Ctrl+O)", self)
+        self.load_action: QAction = QAction(icon_open(), "Charger (Ctrl+O)", self)
         self.load_action.setShortcut("Ctrl+O")
         self.scene_size_action: QAction = QAction(icon_scene_size(), "Taille Scène", self)
         self.background_action: QAction = QAction(icon_background(), "Image de fond", self)
 
-        self.library_dock.toggleViewAction().setIcon(icon_library())
-        self.inspector_dock.toggleViewAction().setIcon(icon_inspector())
+        # Overlay toggles
+        self.toggle_library_action: QAction = QAction(icon_library(), "Bibliothèque", self)
+        self.toggle_library_action.setCheckable(True)
+        self.toggle_library_action.setChecked(self.library_overlay.isVisible())
+        self.toggle_library_action.toggled.connect(self.set_library_overlay_visible)
+
+        self.toggle_inspector_action: QAction = QAction(icon_inspector(), "Inspecteur", self)
+        self.toggle_inspector_action.setCheckable(True)
+        self.toggle_inspector_action.setChecked(self.inspector_overlay.isVisible())
+        self.toggle_inspector_action.toggled.connect(self.set_inspector_overlay_visible)
+
+        # Timeline toggle (dock)
         self.timeline_dock.toggleViewAction().setIcon(icon_timeline())
 
     def connect_signals(self) -> None:
         # Scene I/O
         self.save_action.triggered.connect(lambda: scene_io.save_scene(self))
         self.load_action.triggered.connect(lambda: scene_io.load_scene(self))
-        
+
         # Scene settings
         self.scene_size_action.triggered.connect(self.set_scene_size)
         self.background_action.triggered.connect(self.set_background)
@@ -167,9 +217,77 @@ class MainWindow(QMainWindow):
 
     def _apply_unified_stylesheet(self) -> None:
         self.setStyleSheet(
-            """QDockWidget { titlebar-close-icon: none; titlebar-normal-icon: none; background: #1E1E1E; color: #E0E0E0; }
-               QDockWidget::title { background: #1B1B1B; padding: 4px 8px; border: 1px solid #2A2A2A; color: #E0E0E0; }
-               QStatusBar { background: #121212; color: #CFCFCF; }""")
+            """
+            QMainWindow { background: #101112; }
+            QDockWidget { titlebar-close-icon: none; titlebar-normal-icon: none; background: #131011; color: #E6E6E6; border: 1px solid #2C1718; }
+            QDockWidget::title { background: #160C0D; padding: 6px 10px; border-bottom: 1px solid #3C1B1C; color: #F6E9E9; }
+            QListWidget, QTreeWidget { background: #121012; color: #E6E6E6; border: 1px solid #2C1718; }
+            QListWidget::item:selected, QTreeWidget::item:selected { background: rgba(229,57,53,0.35); color: #FFFFFF; }
+            QListWidget::item:hover, QTreeWidget::item:hover { background: rgba(229,57,53,0.15); }
+            QTreeWidget { alternate-background-color: rgba(255,255,255,0.03); }
+            QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox { background: #120E0F; color: #E6E6E6; border: 1px solid #3C1B1C; selection-background-color: rgba(229,57,53,0.55); border-radius: 6px; padding: 2px 4px; }
+            QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus { border-color: rgba(229,57,53,0.7); }
+            QLabel { color: #F2DDDD; }
+            QLabel[role="section-title"] { color: #F28C8C; font-weight: 600; }
+            QWidget[role="card"] { background: #151113; border: 1px solid #3C1B1C; border-radius: 12px; }
+            QWidget[role="overlay-header"] { background: rgba(0,0,0,0.15); border-bottom: 1px solid rgba(229,57,53,0.25); border-top-left-radius: 12px; border-top-right-radius: 12px; }
+            QLabel[role="overlay-header-title"] { color: #F6E9E9; font-weight: 600; }
+            QToolTip { color: #FFFFFF; background-color: rgba(229,57,53,0.85); border: 1px solid #B71C1C; }
+            """
+        )
+
+    def _build_side_overlays(self) -> None:
+        # Library overlay
+        self.library_overlay = PanelOverlay(self.view)
+        self.library_overlay.setVisible(False)
+        lib_layout = QVBoxLayout(self.library_overlay)
+        lib_layout.setContentsMargins(8, 8, 8, 8)
+        lib_layout.setSpacing(6)
+        # Header (HUD)
+        lib_header = DraggableHeader(self.library_overlay, parent=self.library_overlay)
+        h1 = QHBoxLayout(lib_header); h1.setContentsMargins(8, 6, 8, 6); h1.setSpacing(6)
+        lbl_lib = QLabel("Bibliothèque", lib_header)
+        lbl_lib.setProperty("role", "overlay-header-title")
+        btn_close_lib = QToolButton(lib_header); btn_close_lib.setIcon(icon_close()); btn_close_lib.setStyleSheet(BUTTON_STYLE); btn_close_lib.setAutoRaise(True)
+        btn_close_lib.clicked.connect(lambda: self.set_library_overlay_visible(False))
+        h1.addWidget(lbl_lib); h1.addStretch(1); h1.addWidget(btn_close_lib)
+        lib_layout.addWidget(lib_header)
+        self.library_widget = LibraryWidget(root_dir=str(Path.cwd()), parent=self.library_overlay)
+        lib_layout.addWidget(self.library_widget)
+        self.library_overlay.resize(360, 520)
+        self.library_overlay.move(10, 100)
+
+        # Inspector overlay (hidden by default)
+        self.inspector_overlay = PanelOverlay(self.view)
+        self.inspector_overlay.setVisible(False)
+        insp_layout = QVBoxLayout(self.inspector_overlay)
+        insp_layout.setContentsMargins(8, 8, 8, 8)
+        insp_layout.setSpacing(6)
+        # Header (HUD)
+        insp_header = DraggableHeader(self.inspector_overlay, parent=self.inspector_overlay)
+        h2 = QHBoxLayout(insp_header); h2.setContentsMargins(8, 6, 8, 6); h2.setSpacing(6)
+        lbl_insp = QLabel("Inspecteur", insp_header)
+        lbl_insp.setProperty("role", "overlay-header-title")
+        btn_close_insp = QToolButton(insp_header); btn_close_insp.setIcon(icon_close()); btn_close_insp.setStyleSheet(BUTTON_STYLE); btn_close_insp.setAutoRaise(True)
+        btn_close_insp.clicked.connect(lambda: self.set_inspector_overlay_visible(False))
+        h2.addWidget(lbl_insp); h2.addStretch(1); h2.addWidget(btn_close_insp)
+        insp_layout.addWidget(insp_header)
+        self.inspector_widget = InspectorWidget(self)
+        insp_layout.addWidget(self.inspector_widget)
+        self.inspector_overlay.resize(380, 560)
+        self.inspector_overlay.move(400, 100)
+
+    def set_library_overlay_visible(self, visible: bool) -> None:
+        self.library_overlay.setVisible(visible)
+        self.toggle_library_action.blockSignals(True)
+        self.toggle_library_action.setChecked(visible)
+        self.toggle_library_action.blockSignals(False)
+
+    def set_inspector_overlay_visible(self, visible: bool) -> None:
+        self.inspector_overlay.setVisible(visible)
+        self.toggle_inspector_action.blockSignals(True)
+        self.toggle_inspector_action.setChecked(visible)
+        self.toggle_inspector_action.blockSignals(False)
 
     def _setup_scene_visuals(self) -> None:
         self.scene_border_item: QGraphicsRectItem = QGraphicsRectItem(); self.scene_size_text_item: QGraphicsTextItem = QGraphicsTextItem()
@@ -185,9 +303,8 @@ class MainWindow(QMainWindow):
         self.scene_size_text_item.setPos(rect.right() - text_rect.width() - 10, rect.bottom() - text_rect.height() - 10)
 
     def _update_zoom_status(self) -> None:
-        txt: str = f"Zoom: {self.zoom_factor:.0%}"
-        self.statusBar().showMessage(txt)
-        if hasattr(self.view, 'set_zoom_label'): self.view.set_zoom_label(f"{int(self.zoom_factor*100)}%")
+        # No status bar or zoom label; keep overlay minimal
+        pass
 
     def zoom(self, factor: float) -> None:
         self.view.scale(factor, factor)
@@ -482,7 +599,6 @@ class MainWindow(QMainWindow):
 
             # Recursive propagation
             def propagate(member_name: str) -> None:
-                member_state = puppet_state.get(member_name, {})
                 base_piece: PuppetPiece = graphics_items.get(f"{puppet_name}:{member_name}")
                 clone_piece: PuppetPiece = clones.get(member_name)
                 if not base_piece or not clone_piece:

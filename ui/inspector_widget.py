@@ -1,8 +1,10 @@
 from PySide6.QtWidgets import (
     QWidget, QListWidget, QListWidgetItem, QVBoxLayout, QHBoxLayout,
-    QLabel, QDoubleSpinBox, QPushButton, QComboBox
+    QLabel, QDoubleSpinBox, QComboBox, QToolButton
 )
 from PySide6.QtCore import Qt
+from ui.icons import icon_delete, icon_duplicate, icon_link, icon_link_off
+from ui.styles import BUTTON_STYLE
 
 class InspectorWidget(QWidget):
     """Simple inspector to manage scene objects and puppets."""
@@ -20,47 +22,58 @@ class InspectorWidget(QWidget):
         self.z_spin = QDoubleSpinBox()
         self.z_spin.setRange(-10000, 10000)
         self.z_spin.setSingleStep(1)
-        self.duplicate_btn = QPushButton("Dupliquer")
-        self.delete_btn = QPushButton("Supprimer")
+        self.duplicate_btn = QToolButton()
+        self.duplicate_btn.setIcon(icon_duplicate())
+        self.duplicate_btn.setToolTip("Dupliquer")
+        self.duplicate_btn.setStyleSheet(BUTTON_STYLE)
+
+        self.delete_btn = QToolButton()
+        self.delete_btn.setIcon(icon_delete())
+        self.delete_btn.setToolTip("Supprimer")
+        self.delete_btn.setStyleSheet(BUTTON_STYLE)
         self.attach_puppet_combo = QComboBox()
         self.attach_member_combo = QComboBox()
-        self.attach_btn = QPushButton("Lier")
-        self.detach_btn = QPushButton("Détacher")
+        self.attach_btn = QToolButton()
+        self.attach_btn.setIcon(icon_link())
+        self.attach_btn.setToolTip("Lier l'objet au membre")
+        self.attach_btn.setStyleSheet(BUTTON_STYLE)
+
+        self.detach_btn = QToolButton()
+        self.detach_btn.setIcon(icon_link_off())
+        self.detach_btn.setToolTip("Détacher l'objet")
+        self.detach_btn.setStyleSheet(BUTTON_STYLE)
 
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(6, 6, 6, 6)
         layout.addWidget(self.list_widget)
 
-        scale_layout = QHBoxLayout()
-        scale_layout.addWidget(QLabel("Échelle"))
-        scale_layout.addWidget(self.scale_spin)
-        layout.addLayout(scale_layout)
+        # Transform card
+        transform_card = QWidget(self)
+        transform_card.setProperty("role", "card")
+        tlay = QVBoxLayout(transform_card); tlay.setContentsMargins(8, 8, 8, 8); tlay.setSpacing(6)
+        lbl_t = QLabel("Transformations"); lbl_t.setProperty("role", "section-title"); tlay.addWidget(lbl_t)
+        row1 = QHBoxLayout(); row1.addWidget(QLabel("Échelle")); row1.addWidget(self.scale_spin); tlay.addLayout(row1)
+        row2 = QHBoxLayout(); row2.addWidget(QLabel("Rotation")); row2.addWidget(self.rot_spin); tlay.addLayout(row2)
+        row3 = QHBoxLayout(); row3.addWidget(QLabel("Z-Order")); row3.addWidget(self.z_spin); tlay.addLayout(row3)
+        layout.addWidget(transform_card)
 
-        rot_layout = QHBoxLayout()
-        rot_layout.addWidget(QLabel("Rotation"))
-        rot_layout.addWidget(self.rot_spin)
-        layout.addLayout(rot_layout)
+        # Attachment card
+        attach_card = QWidget(self)
+        attach_card.setProperty("role", "card")
+        alay = QVBoxLayout(attach_card); alay.setContentsMargins(8, 8, 8, 8); alay.setSpacing(6)
+        lbl_a = QLabel("Attachement"); lbl_a.setProperty("role", "section-title"); alay.addWidget(lbl_a)
+        ar1 = QHBoxLayout(); ar1.addWidget(QLabel("Pantin")); ar1.addWidget(self.attach_puppet_combo); alay.addLayout(ar1)
+        ar2 = QHBoxLayout(); ar2.addWidget(QLabel("Membre")); ar2.addWidget(self.attach_member_combo); alay.addLayout(ar2)
+        ar3 = QHBoxLayout(); ar3.addWidget(self.attach_btn); ar3.addWidget(self.detach_btn); alay.addLayout(ar3)
+        layout.addWidget(attach_card)
 
-        z_layout = QHBoxLayout()
-        z_layout.addWidget(QLabel("Z-Order"))
-        z_layout.addWidget(self.z_spin)
-        layout.addLayout(z_layout)
-
-        attach_row1 = QHBoxLayout()
-        attach_row1.addWidget(QLabel("Lier à"))
-        attach_row1.addWidget(self.attach_puppet_combo)
-        attach_row1.addWidget(self.attach_member_combo)
-        layout.addLayout(attach_row1)
-
-        attach_row2 = QHBoxLayout()
-        attach_row2.addWidget(self.attach_btn)
-        attach_row2.addWidget(self.detach_btn)
-        layout.addLayout(attach_row2)
-        # Pas d'étiquette d'état texte (considérée inutile)
-
-        btn_layout = QHBoxLayout()
-        btn_layout.addWidget(self.duplicate_btn)
-        btn_layout.addWidget(self.delete_btn)
-        layout.addLayout(btn_layout)
+        # Actions card
+        actions_card = QWidget(self)
+        actions_card.setProperty("role", "card")
+        blay = QHBoxLayout(actions_card); blay.setContentsMargins(8, 8, 8, 8); blay.setSpacing(6)
+        blay.addWidget(self.duplicate_btn)
+        blay.addWidget(self.delete_btn)
+        layout.addWidget(actions_card)
 
         self.list_widget.currentItemChanged.connect(self._on_item_changed)
         self.scale_spin.valueChanged.connect(self._on_scale_changed)

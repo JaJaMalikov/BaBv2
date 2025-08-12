@@ -4,7 +4,7 @@ from typing import Optional
 
 from PySide6.QtCore import Qt, QMimeData, QByteArray, Signal, QPoint, QSize
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QTreeWidget, QTreeWidgetItem, QMenu
-from PySide6.QtGui import QDrag, QIcon
+from PySide6.QtGui import QDrag, QIcon, QFont, QColor
 
 
 LIB_MIME = "application/x-bab-item"
@@ -48,6 +48,15 @@ class _DraggableTree(QTreeWidget):
         if action == act_add:
             self.addRequested.emit(payload)
 
+    def mouseDoubleClickEvent(self, event):
+        item = self.itemAt(event.position().toPoint())
+        if item:
+            payload = item.data(0, Qt.UserRole)
+            if payload:
+                self.addRequested.emit(payload)
+                event.accept(); return
+        super().mouseDoubleClickEvent(event)
+
 
 class LibraryWidget(QWidget):
     addRequested = Signal(dict)
@@ -56,11 +65,18 @@ class LibraryWidget(QWidget):
         super().__init__(parent)
         self.root_dir = Path(root_dir or ".").resolve()
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(4, 4, 4, 4)
-        self.tree = _DraggableTree(self)
+        lay.setContentsMargins(6, 6, 6, 6)
+        # Card container for the tree
+        container = QWidget(self)
+        container.setProperty("role", "card")
+        clay = QVBoxLayout(container); clay.setContentsMargins(8, 8, 8, 8); clay.setSpacing(6)
+        self.tree = _DraggableTree(container)
         self.tree.addRequested.connect(self.addRequested)
-        self.tree.setIconSize(QSize(48, 48))
-        lay.addWidget(self.tree)
+        self.tree.setIconSize(QSize(64, 64))
+        self.tree.setAlternatingRowColors(True)
+        self.tree.setUniformRowHeights(True)
+        clay.addWidget(self.tree)
+        lay.addWidget(container)
         self.reload()
 
     def reload(self):
@@ -75,6 +91,10 @@ class LibraryWidget(QWidget):
         for title, path, spec in categories:
             parent_item = QTreeWidgetItem([title])
             parent_item.setFlags(Qt.ItemIsEnabled)
+            # Style top-level category
+            f = QFont(); f.setBold(True)
+            parent_item.setFont(0, f)
+            parent_item.setForeground(0, QColor(242, 140, 140))
             self.tree.addTopLevelItem(parent_item)
             if not path.exists():
                 hint = QTreeWidgetItem([f"(dossier manquant: {path})"]) 
