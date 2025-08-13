@@ -5,6 +5,7 @@ from PySide6.QtWidgets import QGraphicsEllipseItem, QGraphicsSceneMouseEvent, QG
 from PySide6.QtSvgWidgets import QGraphicsSvgItem
 from PySide6.QtCore import Qt, QPointF
 from PySide6.QtGui import QBrush, QPen, QColor
+from PySide6.QtSvg import QSvgRenderer # Added for type hinting
 
 # --- Constantes ---
 PIVOT_KEYWORDS = ["coude", "genou", "hanche", "epaule", "cheville", "poignet", "cou"]
@@ -53,7 +54,6 @@ class PivotHandle(QGraphicsEllipseItem):
         self.setPen(QPen(Qt.transparent))
         self.setZValue(PIVOT_Z_VALUE)
 
-from PySide6.QtSvg import QSvgRenderer # Added for type hinting
 
 class PuppetPiece(QGraphicsSvgItem):
     """Graphical item representing a puppet member (SVG group).
@@ -188,3 +188,17 @@ class PuppetPiece(QGraphicsSvgItem):
             self.update_handle_positions()
         for child in self.children:
             child.update_transform_from_parent()
+
+    # Deselect objects when starting to interact with a puppet piece to avoid accidental moves
+    def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        try:
+            if not (event.modifiers() & (Qt.ShiftModifier | Qt.ControlModifier)):
+                sc = self.scene()
+                if sc is not None:
+                    for it in list(sc.selectedItems()):
+                        # Keep selection on puppet pieces; clear for other items (objects)
+                        if not isinstance(it, PuppetPiece):
+                            it.setSelected(False)
+        except Exception:
+            pass
+        super().mousePressEvent(event)

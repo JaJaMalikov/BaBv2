@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QGraphicsScene, # Added
 )
 from PySide6.QtGui import QIcon, QDragEnterEvent, QDragMoveEvent, QDropEvent, QMouseEvent, QWheelEvent, QAction
-from PySide6.QtCore import Qt, Signal, QPointF, QSize, QEvent
+from PySide6.QtCore import Qt, Signal, QPointF, QSize, QEvent, QSettings
 
 from ui.draggable_widget import DraggableOverlay
 from ui.icons import (
@@ -41,9 +41,9 @@ class ZoomableView(QGraphicsView):
         self.layout: QHBoxLayout = QHBoxLayout(self._overlay)
         self.layout.setContentsMargins(4, 4, 4, 4)
         self.layout.setSpacing(2)
-
-        icon_size: int = 32
-        button_size: int = 36
+        s = QSettings("JaJa", "Macronotron")
+        icon_size: int = int(s.value("ui/icon_size", 32))
+        button_size: int = max(28, icon_size + 4)
 
         def make_btn(icon: Optional[QIcon], tooltip: str, cb: Optional[Callable[[], None]] = None, checkable: bool = False) -> QToolButton:
             btn: QToolButton = QToolButton(self._overlay)
@@ -51,7 +51,8 @@ class ZoomableView(QGraphicsView):
                 btn.setIcon(icon)
                 btn.setIconSize(QSize(icon_size, icon_size))
             btn.setToolTip(tooltip)
-            if cb: btn.clicked.connect(cb)
+            if cb:
+                btn.clicked.connect(cb)
             btn.setCheckable(checkable)
             btn.setFixedSize(button_size, button_size)
             btn.setAutoRaise(True)
@@ -77,6 +78,7 @@ class ZoomableView(QGraphicsView):
             self.layout.addWidget(w)
 
         self._overlay.move(10, 10)
+        self.apply_menu_settings_quick()
 
     def _build_main_tools_overlay(self, main_window: QWidget) -> None:
         self._main_tools_overlay = DraggableOverlay(self)
@@ -84,9 +86,9 @@ class ZoomableView(QGraphicsView):
         self.main_tools_layout: QHBoxLayout = QHBoxLayout(self._main_tools_overlay)
         self.main_tools_layout.setContentsMargins(4, 4, 4, 4)
         self.main_tools_layout.setSpacing(2)
-
-        icon_size: int = 32
-        button_size: int = 36
+        s = QSettings("JaJa", "Macronotron")
+        icon_size: int = int(s.value("ui/icon_size", 32))
+        button_size: int = max(28, icon_size + 4)
 
         def make_btn(action: QAction, checkable: bool = False) -> QToolButton:
             btn: QToolButton = QToolButton(self._main_tools_overlay)
@@ -112,28 +114,34 @@ class ZoomableView(QGraphicsView):
         load_btn: QToolButton = make_btn(main_window.load_action)
         scene_size_btn: QToolButton = make_btn(main_window.scene_size_action)
         background_btn: QToolButton = make_btn(main_window.background_action)
+        settings_btn: QToolButton = make_btn(main_window.settings_action)
         reset_scene_btn: QToolButton = make_btn(main_window.reset_scene_action)
         reset_ui_btn: QToolButton = make_btn(main_window.reset_ui_action)
 
         library_toggle_btn: QToolButton = make_btn(main_window.toggle_library_action, checkable=True)
         inspector_toggle_btn: QToolButton = make_btn(main_window.toggle_inspector_action, checkable=True)
         timeline_toggle_btn: QToolButton = make_btn(main_window.timeline_dock.toggleViewAction(), checkable=True)
+        custom_toggle_btn: QToolButton = make_btn(main_window.toggle_custom_action, checkable=True)
 
         library_toggle_btn.setChecked(main_window.library_overlay.isVisible())
         inspector_toggle_btn.setChecked(main_window.inspector_overlay.isVisible())
         timeline_toggle_btn.setChecked(main_window.timeline_dock.isVisible())
 
-        self.main_tool_buttons: List[QToolButton] = [
-            save_btn,
-            load_btn,
-            scene_size_btn,
-            background_btn,
-            reset_scene_btn,
-            reset_ui_btn,
-            library_toggle_btn,
-            inspector_toggle_btn,
-            timeline_toggle_btn,
-        ]
+        # Mapping for visibility/order control
+        self.main_tool_buttons_map = {
+            'save': save_btn,
+            'load': load_btn,
+            'scene_size': scene_size_btn,
+            'background': background_btn,
+            'settings': settings_btn,
+            'reset_scene': reset_scene_btn,
+            'reset_ui': reset_ui_btn,
+            'toggle_library': library_toggle_btn,
+            'toggle_inspector': inspector_toggle_btn,
+            'toggle_timeline': timeline_toggle_btn,
+            'toggle_custom': custom_toggle_btn,
+        }
+        self.main_tool_buttons: List[QToolButton] = list(self.main_tool_buttons_map.values())
 
         self.main_tools_layout.addStretch()
         for w in self.main_tool_buttons:
@@ -141,6 +149,65 @@ class ZoomableView(QGraphicsView):
         self.main_tools_layout.addWidget(self.main_collapse_btn)
 
         self._main_tools_overlay.move(10, 60)
+        self.apply_menu_settings_main()
+
+    def _build_custom_tools_overlay(self, main_window: QWidget) -> None:
+        self._custom_tools_overlay = DraggableOverlay(self)
+        lay: QHBoxLayout = QHBoxLayout(self._custom_tools_overlay)
+        lay.setContentsMargins(4, 4, 4, 4)
+        lay.setSpacing(2)
+        s = QSettings("JaJa", "Macronotron")
+        icon_size: int = int(s.value("ui/icon_size", 32))
+        button_size: int = max(28, icon_size + 4)
+        def make_btn(action: QAction, checkable: bool = False) -> QToolButton:
+            btn: QToolButton = QToolButton(self._custom_tools_overlay)
+            btn.setDefaultAction(action)
+            btn.setIconSize(QSize(icon_size, icon_size))
+            btn.setCheckable(checkable)
+            btn.setFixedSize(button_size, button_size)
+            btn.setToolButtonStyle(Qt.ToolButtonIconOnly)
+            btn.setAutoRaise(True)
+            return btn
+        # Buttons pool (same as main overlay, excluding toggles that don't make sense?) keep all
+        pool = {
+            'save': make_btn(main_window.save_action),
+            'load': make_btn(main_window.load_action),
+            'scene_size': make_btn(main_window.scene_size_action),
+            'background': make_btn(main_window.background_action),
+            'settings': make_btn(main_window.settings_action),
+            'reset_scene': make_btn(main_window.reset_scene_action),
+            'reset_ui': make_btn(main_window.reset_ui_action),
+            'toggle_library': make_btn(main_window.toggle_library_action, checkable=True),
+            'toggle_inspector': make_btn(main_window.toggle_inspector_action, checkable=True),
+            'toggle_timeline': make_btn(main_window.timeline_dock.toggleViewAction(), checkable=True),
+        }
+        order = s.value("ui/menu/custom/order") or ['save','load','scene_size','background','settings']
+        if isinstance(order, str):
+            order = [k for k in order.split(',') if k]
+        for key in order:
+            btn = pool.get(key)
+            if not btn:
+                continue
+            vis = s.value(f"ui/menu/custom/{key}")
+            visible = True if vis is None else (vis in [True,'true','1'])
+            btn.setVisible(visible)
+            lay.addWidget(btn)
+        # Geometry defaults
+        csize = s.value("ui/default/custom_size")
+        cpos = s.value("ui/default/custom_pos")
+        cw, ch = 320, 60
+        try:
+            if csize:
+                cw = int(csize.width()) if hasattr(csize, 'width') else int(csize[0])
+                ch = int(csize.height()) if hasattr(csize, 'height') else int(csize[1])
+        except Exception:
+            pass
+        if cpos and hasattr(cpos, 'x'):
+            self._custom_tools_overlay.setGeometry(int(cpos.x()), int(cpos.y()), cw, ch)
+        else:
+            self._custom_tools_overlay.setGeometry(10, 110, cw, ch)
+        visible = s.value("ui/menu/custom/visible")
+        self._custom_tools_overlay.setVisible(visible in [True, 'true', '1'])
 
     def toggle_overlay_collapse(self, checked: bool) -> None:
         icon: QIcon = icon_close_menu() if checked else icon_open_menu()
@@ -180,6 +247,124 @@ class ZoomableView(QGraphicsView):
         if not self._did_initial_fit and self.width() > 0 and self.height() > 0:
             self._did_initial_fit = True
             self.fit_requested.emit()
+
+    def refresh_overlay_icons(self, main_window: QWidget) -> None:
+        """Reload icons for overlay buttons after icon settings changed."""
+        try:
+            # Left overlay buttons
+            self.zoom_out_btn.setIcon(icon_minus())
+            self.zoom_in_btn.setIcon(icon_plus())
+            self.fit_btn.setIcon(icon_fit())
+            self.handles_btn.setIcon(icon_rotate())
+            self.onion_btn.setIcon(icon_onion())
+            # Collapse icons respect state
+            self.toggle_overlay_collapse(self.collapse_btn.isChecked())
+
+            # Main tools overlay: actions carry icons; ensure collapse icon correct
+            self.toggle_main_tools_collapse(self.main_collapse_btn.isChecked())
+        except Exception:
+            pass
+        # Also update icon sizes
+        self.apply_icon_size()
+
+    def apply_icon_size(self) -> None:
+        s = QSettings("JaJa", "Macronotron")
+        icon_size: int = int(s.value("ui/icon_size", 32))
+        button_size: int = max(28, icon_size + 4)
+        # Left overlay
+        for btn in [self.zoom_out_btn, self.zoom_in_btn, self.fit_btn, self.handles_btn, self.onion_btn]:
+            btn.setIconSize(QSize(icon_size, icon_size))
+            btn.setFixedSize(button_size, button_size)
+        # Main overlay
+        for btn in getattr(self, 'main_tool_buttons', []):
+            btn.setIconSize(QSize(icon_size, icon_size))
+            btn.setFixedSize(button_size, button_size)
+        # Custom overlay
+        try:
+            if hasattr(self, '_custom_tools_overlay') and self._custom_tools_overlay is not None:
+                for btn in self._custom_tools_overlay.findChildren(QToolButton):
+                    btn.setIconSize(QSize(icon_size, icon_size))
+                    btn.setFixedSize(button_size, button_size)
+        except Exception:
+            pass
+
+    def apply_menu_settings_main(self) -> None:
+        """Apply visibility settings for main tools overlay based on QSettings."""
+        s = QSettings("JaJa", "Macronotron")
+        def is_on(key: str, default: bool = True) -> bool:
+            v = s.value(f"ui/menu/main/{key}")
+            return default if v is None else (v in [True, 'true', '1'])
+        mapping = getattr(self, 'main_tool_buttons_map', {})
+        defaults = {
+            'save': True,
+            'load': True,
+            'scene_size': True,
+            'background': True,
+            'settings': True,
+            'reset_scene': True,
+            'reset_ui': True,
+            'toggle_library': True,
+            'toggle_inspector': True,
+            'toggle_timeline': True,
+            'toggle_custom': True,
+        }
+        for key, btn in mapping.items():
+            btn.setVisible(is_on(key, defaults.get(key, True)))
+        # Reorder according to settings
+        order = s.value("ui/menu/main/order") or list(mapping.keys())
+        if isinstance(order, str):
+            order = [k for k in order.split(',') if k]
+        # Clear and re-add in order
+        try:
+            # Remove existing buttons except collapse
+            for btn in self.main_tool_buttons:
+                self.main_tools_layout.removeWidget(btn)
+            self.main_tool_buttons = []
+            for key in order:
+                btn = mapping.get(key)
+                if btn is None:
+                    continue
+                self.main_tools_layout.addWidget(btn)
+                self.main_tool_buttons.append(btn)
+            self.main_tools_layout.addWidget(self.main_collapse_btn)
+        except Exception:
+            pass
+
+    def apply_menu_settings_quick(self) -> None:
+        """Apply visibility settings for quick overlay buttons based on QSettings."""
+        s = QSettings("JaJa", "Macronotron")
+        def is_on(key: str, default: bool = True) -> bool:
+            v = s.value(f"ui/menu/quick/{key}")
+            return default if v is None else (v in [True, 'true', '1'])
+        defaults = {
+            'zoom_out': True,
+            'zoom_in': True,
+            'fit': True,
+            'handles': True,
+            'onion': True,
+        }
+        self.quick_buttons_map = {
+            'zoom_out': self.zoom_out_btn,
+            'zoom_in': self.zoom_in_btn,
+            'fit': self.fit_btn,
+            'handles': self.handles_btn,
+            'onion': self.onion_btn,
+        }
+        for key, btn in self.quick_buttons_map.items():
+            btn.setVisible(is_on(key, defaults.get(key, True)))
+        # Reorder
+        order = s.value("ui/menu/quick/order") or list(self.quick_buttons_map.keys())
+        if isinstance(order, str):
+            order = [k for k in order.split(',') if k]
+        try:
+            for btn in [self.zoom_out_btn, self.zoom_in_btn, self.fit_btn, self.handles_btn, self.onion_btn]:
+                self.layout.removeWidget(btn)
+            for key in order:
+                btn = self.quick_buttons_map.get(key)
+                if btn:
+                    self.layout.addWidget(btn)
+        except Exception:
+            pass
 
     def wheelEvent(self, event: QWheelEvent) -> None:
         if event.modifiers() == Qt.ControlModifier:

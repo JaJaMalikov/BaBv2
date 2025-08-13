@@ -216,7 +216,8 @@ class TimelineWidget(QWidget):
         self.stopClicked.emit()
 
     def _jump_prev_kf(self) -> None:
-        if not self._kfs: return
+        if not self._kfs:
+            return
         sorted_kfs: List[int] = sorted(list(self._kfs), reverse=True)
         target: int = next((kf for kf in sorted_kfs if kf < self._current), -1)
         if target != -1:
@@ -225,7 +226,8 @@ class TimelineWidget(QWidget):
             self.set_current_frame(sorted_kfs[0])
 
     def _jump_next_kf(self) -> None:
-        if not self._kfs: return
+        if not self._kfs:
+            return
         sorted_kfs: List[int] = sorted(list(self._kfs))
         target: int = next((kf for kf in sorted_kfs if kf > self._current), -1)
         if target != -1:
@@ -387,7 +389,8 @@ class TimelineWidget(QWidget):
         menu.exec(e.globalPosition().toPoint())
 
     def _format_time(self, frame: int) -> str:
-        if self._fps <= 0: return "00:00"
+        if self._fps <= 0:
+            return "00:00"
         secs: float = frame / float(self._fps)
         return f"{int(secs // 60):02d}:{int(secs % 60):02d}"
 

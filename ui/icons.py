@@ -6,6 +6,7 @@ from typing import Dict
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QIcon, QPixmap, QPainter
 from PySide6.QtSvg import QSvgRenderer
+from PySide6.QtCore import QSettings
 
 ICONS_DIR = Path("assets/icons")
 ICON_CACHE: Dict[str, QIcon] = {}
@@ -30,17 +31,60 @@ def _create_icon(name: str) -> QIcon:
     if name in ICON_CACHE:
         return ICON_CACHE[name]
 
+    # Optional per-icon override path from QSettings
+    try:
+        s = QSettings("JaJa", "Macronotron")
+        override_path = s.value(f"ui/icon_override/{name}")
+        icon_dir_override = s.value("ui/icon_dir")
+    except Exception:
+        override_path = None
+        icon_dir_override = None
+
+    # If a direct override path is set, load it (supports SVG and bitmap)
+    if override_path:
+        p = Path(str(override_path))
+        if p.exists():
+            try:
+                if p.suffix.lower() == '.svg':
+                    with open(p, 'r') as f:
+                        original_svg = f.read()
+                    normal_svg = re.sub(r'<path', f'<path fill="{COLOR_NORMAL}"', original_svg)
+                    hover_svg = re.sub(r'<path', f'<path fill="{COLOR_HOVER}"', original_svg)
+                    active_svg = re.sub(r'<path', f'<path fill="{COLOR_ACTIVE}"', original_svg)
+                    pixmap_normal = _render_svg(normal_svg)
+                    pixmap_hover = _render_svg(hover_svg)
+                    pixmap_active = _render_svg(active_svg)
+                    icon = QIcon()
+                    icon.addPixmap(pixmap_normal, QIcon.Normal, QIcon.Off)
+                    icon.addPixmap(pixmap_hover, QIcon.Active, QIcon.Off)
+                    icon.addPixmap(pixmap_active, QIcon.Normal, QIcon.On)
+                    icon.addPixmap(pixmap_active, QIcon.Active, QIcon.On)
+                    ICON_CACHE[name] = icon
+                    return icon
+                else:
+                    # Bitmap path: use same image for all states
+                    pix = QPixmap(str(p))
+                    icon = QIcon(pix)
+                    ICON_CACHE[name] = icon
+                    return icon
+            except Exception as e:
+                logging.warning("Failed loading override for %s: %s", name, e)
+
+    # Otherwise, locate in override directory or default assets (SVG expected)
     svg_path = ICONS_DIR / f"{name}.svg"
+    if icon_dir_override:
+        alt = Path(str(icon_dir_override)) / f"{name}.svg"
+        if alt.exists():
+            svg_path = alt
     if not svg_path.exists():
         logging.debug("Icon '%s' not found at %s", name, svg_path)
-        ICON_CACHE[name] = QIcon() # Cache empty icon if not found
+        ICON_CACHE[name] = QIcon()  # Cache empty icon if not found
         return QIcon()
 
     with open(svg_path, 'r') as f:
         original_svg = f.read()
 
     # Create different colored versions
-    # This simple regex is good enough for monochrome SVGs from material icons.
     normal_svg = re.sub(r'<path', f'<path fill="{COLOR_NORMAL}"', original_svg)
     hover_svg = re.sub(r'<path', f'<path fill="{COLOR_HOVER}"', original_svg)
     active_svg = re.sub(r'<path', f'<path fill="{COLOR_ACTIVE}"', original_svg)
@@ -53,9 +97,9 @@ def _create_icon(name: str) -> QIcon:
     # Create the icon and add pixmaps for each state
     icon = QIcon()
     icon.addPixmap(pixmap_normal, QIcon.Normal, QIcon.Off)
-    icon.addPixmap(pixmap_hover, QIcon.Active, QIcon.Off) # Hover state
-    icon.addPixmap(pixmap_active, QIcon.Normal, QIcon.On) # Checked/On state
-    icon.addPixmap(pixmap_active, QIcon.Active, QIcon.On) # Checked/On + Hover state
+    icon.addPixmap(pixmap_hover, QIcon.Active, QIcon.Off)  # Hover state
+    icon.addPixmap(pixmap_active, QIcon.Normal, QIcon.On)  # Checked/On state
+    icon.addPixmap(pixmap_active, QIcon.Active, QIcon.On)  # Checked/On + Hover state
 
     ICON_CACHE[name] = icon
     return icon
@@ -66,6 +110,10 @@ def _create_icon(name: str) -> QIcon:
 
 def get_icon(name: str) -> QIcon:
     return _create_icon(name)
+
+def clear_cache() -> None:
+    """Clear in-memory icon cache so future calls reload with new settings."""
+    ICON_CACHE.clear()
 
 # Compatibility layer
 def icon_plus(): return get_icon('plus')
@@ -89,8 +137,9 @@ def icon_link_off(): return get_icon('link_off')
 def icon_close(): return get_icon('close')
 def icon_objets(): return get_icon('objets')
 def icon_puppet(): return get_icon('puppet')
-def icon_reset_ui(): return get_icon('rotate')
+def icon_reset_ui(): return get_icon('reset_ui')
 def icon_reset_scene(): return get_icon('new_file')
 def icon_open_menu(): return get_icon('open_menu')
 def icon_close_menu(): return get_icon('close_menu')
 def icon_close_menu_inv(): return get_icon('close_menu_inv')
+def icon_settings(): return get_icon('settings')

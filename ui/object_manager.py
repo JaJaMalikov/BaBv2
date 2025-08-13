@@ -26,6 +26,7 @@ class ObjectManager:
         self.renderers: Dict[str, Any] = {} # QSvgRenderer is not directly imported
         self.puppet_scales: Dict[str, float] = {}
         self.puppet_paths: Dict[str, str] = {}
+        self.puppet_z_offsets: Dict[str, int] = {}
 
     def add_puppet(self, file_path: str, puppet_name: str) -> None:
         puppet: Puppet = Puppet()
@@ -36,8 +37,10 @@ class ObjectManager:
         self.scene_model.add_puppet(puppet_name, puppet)
         self.puppet_scales[puppet_name] = 1.0
         self.puppet_paths[puppet_name] = file_path
+        self.puppet_z_offsets[puppet_name] = 0
         self._add_puppet_graphics(puppet_name, puppet, file_path, renderer, loader)
-        if hasattr(self.win, "inspector_widget"): self.win.inspector_widget.refresh()
+        if hasattr(self.win, "inspector_widget"):
+            self.win.inspector_widget.refresh()
 
     def _add_puppet_graphics(self, puppet_name: str, puppet: Puppet, file_path: str, renderer: Any, loader: SvgLoader) -> None:
         pieces: Dict[str, PuppetPiece] = {}
@@ -66,20 +69,35 @@ class ObjectManager:
         for piece in pieces.values():
             self.scene.addItem(piece)
             self.scene.addItem(piece.pivot_handle)
-            if piece.rotation_handle: self.scene.addItem(piece.rotation_handle)
+            if piece.rotation_handle:
+                self.scene.addItem(piece.rotation_handle)
 
         for piece in pieces.values():
-            if piece.parent_piece: piece.update_transform_from_parent()
+            if piece.parent_piece:
+                piece.update_transform_from_parent()
             else: piece.update_handle_positions()
+
+        # Apply z offset if any (default 0)
+        zoff: int = self.puppet_z_offsets.get(puppet_name, 0)
+        if zoff:
+            for name, piece in pieces.items():
+                member = puppet.members[name]
+                try:
+                    piece.setZValue(member.z_order + zoff)
+                except Exception:
+                    pass
 
     def scale_puppet(self, puppet_name: str, ratio: float) -> None:
         puppet: Optional[Puppet] = self.scene_model.puppets.get(puppet_name)
-        if not puppet: return
+        if not puppet:
+            return
         for member_name in puppet.members:
             piece: Optional[PuppetPiece] = self.graphics_items.get(f"{puppet_name}:{member_name}")
-            if not piece: continue
+            if not piece:
+                continue
             piece.setScale(piece.scale() * ratio)
-            if piece.parent_piece: piece.rel_to_parent = (piece.rel_to_parent[0] * ratio, piece.rel_to_parent[1] * ratio)
+            if piece.parent_piece:
+                piece.rel_to_parent = (piece.rel_to_parent[0] * ratio, piece.rel_to_parent[1] * ratio)
         for root_member in puppet.get_root_members():
             if (root_piece := self.graphics_items.get(f"{puppet_name}:{root_member.name}")):
                 for child in root_piece.children: child.update_transform_from_parent()
@@ -89,15 +107,19 @@ class ObjectManager:
             for member_name in list(puppet.members.keys()):
                 if (piece := self.graphics_items.pop(f"{puppet_name}:{member_name}", None)):
                     self.scene.removeItem(piece)
-                    if piece.pivot_handle: self.scene.removeItem(piece.pivot_handle)
-                    if piece.rotation_handle: self.scene.removeItem(piece.rotation_handle)
+                    if piece.pivot_handle:
+                        self.scene.removeItem(piece.pivot_handle)
+                    if piece.rotation_handle:
+                        self.scene.removeItem(piece.rotation_handle)
             self.scene_model.remove_puppet(puppet_name)
             self.puppet_scales.pop(puppet_name, None)
             self.puppet_paths.pop(puppet_name, None)
+            self.puppet_z_offsets.pop(puppet_name, None)
 
     def duplicate_puppet(self, puppet_name: str) -> None:
         path: Optional[str] = self.puppet_paths.get(puppet_name)
-        if not path: return
+        if not path:
+            return
         base: str = puppet_name
         i: int = 1
         new_name: str = f"{base}_{i}"
@@ -109,6 +131,43 @@ class ObjectManager:
         if scale != 1.0:
             self.puppet_scales[new_name] = scale
             self.scale_puppet(new_name, scale)
+        zoff: int = self.puppet_z_offsets.get(puppet_name, 0)
+        if zoff:
+            self.set_puppet_z_offset(new_name, zoff)
+
+    # --- Puppet transforms (whole puppet) ---
+    def _puppet_root_piece(self, puppet_name: str) -> Optional[PuppetPiece]:
+        puppet: Optional[Puppet] = self.scene_model.puppets.get(puppet_name)
+        if not puppet:
+            return None
+        roots = puppet.get_root_members()
+        if not roots:
+            return None
+        return self.graphics_items.get(f"{puppet_name}:{roots[0].name}")  # type: ignore
+
+    def get_puppet_rotation(self, puppet_name: str) -> float:
+        rp = self._puppet_root_piece(puppet_name)
+        if isinstance(rp, PuppetPiece):
+            return float(rp.local_rotation)
+        return 0.0
+
+    def set_puppet_rotation(self, puppet_name: str, angle: float) -> None:
+        rp = self._puppet_root_piece(puppet_name)
+        if isinstance(rp, PuppetPiece):
+            rp.rotate_piece(float(angle))
+
+    def set_puppet_z_offset(self, puppet_name: str, offset: int) -> None:
+        puppet: Optional[Puppet] = self.scene_model.puppets.get(puppet_name)
+        if not puppet:
+            return
+        self.puppet_z_offsets[puppet_name] = int(offset)
+        for member_name, member in puppet.members.items():
+            piece: Optional[PuppetPiece] = self.graphics_items.get(f"{puppet_name}:{member_name}")
+            if piece:
+                try:
+                    piece.setZValue(member.z_order + int(offset))
+                except Exception:
+                    pass
 
     def capture_puppet_states(self) -> Dict[str, Dict[str, Dict[str, Any]]]:
         states: Dict[str, Dict[str, Dict[str, Any]]] = {}
@@ -130,7 +189,8 @@ class ObjectManager:
 
     def duplicate_object(self, name: str) -> None:
         obj: Optional[SceneObject] = self.scene_model.objects.get(name)
-        if not obj: return
+        if not obj:
+            return
         base: str = name
         i: int = 1
         new_name: str = f"{base}_{i}"
@@ -176,15 +236,42 @@ class ObjectManager:
         parent_piece: Optional[PuppetPiece] = self.graphics_items.get(f"{puppet_name}:{member_name}")
         if not obj or not item or not parent_piece:
             return
+        # Compute world transform components before parenting
+        from math import atan2, degrees, sqrt
+        wt = item.sceneTransform()
+        m11, m12, m21, m22 = float(wt.m11()), float(wt.m12()), float(wt.m21()), float(wt.m22())
+        world_rot = degrees(atan2(m12, m11))
+        world_sx = sqrt(m11 * m11 + m21 * m21)
+        # Y scale cannot be negative with our usage; fall back to sx if degenerate
+        world_sy = sqrt(m12 * m12 + m22 * m22) if (m12 or m22) else world_sx
+        scene_pt: QPointF = item.mapToScene(item.transformOriginPoint())
+
+        # Parent world components
+        pt = parent_piece.sceneTransform()
+        pm11, pm12, pm21, pm22 = float(pt.m11()), float(pt.m12()), float(pt.m21()), float(pt.m22())
+        parent_rot = degrees(atan2(pm12, pm11))
+        parent_sx = sqrt(pm11 * pm11 + pm21 * pm21)
+        parent_sy = sqrt(pm12 * pm12 + pm22 * pm22) if (pm12 or pm22) else parent_sx
+
         self.win._suspend_item_updates = True
         try:
-            scene_pt: QPointF = item.mapToScene(item.transformOriginPoint())
             item.setParentItem(parent_piece)
+            # Set local rotation/scale so the world transform remains the same at the moment of attach
+            try:
+                item.setRotation(world_rot - parent_rot)
+                # Use uniform scale from X to avoid distortions
+                lx = world_sx / (parent_sx if parent_sx != 0 else 1.0)
+                ly = world_sy / (parent_sy if parent_sy != 0 else 1.0)
+                # Prefer uniform scaling: pick average
+                lscale = (lx + ly) * 0.5 if ly > 0 else lx
+                item.setScale(lscale)
+            except Exception:
+                pass
             local_pt: QPointF = parent_piece.mapFromScene(scene_pt)
             item.setPos(local_pt - item.transformOriginPoint())
         finally:
             self.win._suspend_item_updates = False
-        # Persist local transform into the model
+        # Persist local transform into the model and ensure a keyframe exists
         obj.attach(puppet_name, member_name)
         try:
             obj.x = float(item.x())
@@ -194,7 +281,10 @@ class ObjectManager:
             obj.z = int(item.zValue())
         except Exception as e:
             logging.debug("Failed to read item transform on attach for '%s': %s", obj_name, e)
-        kf: Optional[Keyframe] = self.scene_model.keyframes.get(self.scene_model.current_frame)
+        cur_idx = self.scene_model.current_frame
+        if cur_idx not in self.scene_model.keyframes:
+            self.win.add_keyframe(cur_idx)
+        kf: Optional[Keyframe] = self.scene_model.keyframes.get(cur_idx)
         if kf is not None:
             kf.objects[obj_name] = obj.to_dict()
 
@@ -228,10 +318,30 @@ class ObjectManager:
                                 kf.objects[obj_name] = st
             except Exception as e:
                 logging.debug("While patching legacy keyframes for '%s': %s", obj_name, e)
+        # Bake world rotation/scale/z to avoid visual jump on detach
+        from math import atan2, degrees, sqrt
+        wt = item.sceneTransform()
+        m11, m12, m21, m22 = float(wt.m11()), float(wt.m12()), float(wt.m21()), float(wt.m22())
+        world_rot = degrees(atan2(m12, m11))
+        world_sx = sqrt(m11 * m11 + m21 * m21)
+        world_sy = sqrt(m12 * m12 + m22 * m22) if (m12 or m22) else world_sx
+        scene_pt: QPointF = item.mapToScene(item.transformOriginPoint())
+        parent_z = item.parentItem().zValue() if item.parentItem() is not None else 0.0
+
         self.win._suspend_item_updates = True
         try:
-            scene_pt: QPointF = item.mapToScene(item.transformOriginPoint())
             item.setParentItem(None)
+            try:
+                # Prefer uniform scale as before
+                lscale = (world_sx + world_sy) * 0.5
+                item.setScale(lscale)
+                item.setRotation(world_rot)
+            except Exception:
+                pass
+            try:
+                item.setZValue(float(item.zValue()) + float(parent_z))
+            except Exception:
+                pass
             item.setPos(scene_pt - item.transformOriginPoint())
         finally:
             self.win._suspend_item_updates = False
@@ -243,7 +353,10 @@ class ObjectManager:
             obj.z = int(item.zValue())
         except Exception as e:
             logging.debug("Failed to read item transform on detach for '%s': %s", obj_name, e)
-        kf: Optional[Keyframe] = self.scene_model.keyframes.get(self.scene_model.current_frame)
+        cur_idx = self.scene_model.current_frame
+        if cur_idx not in self.scene_model.keyframes:
+            self.win.add_keyframe(cur_idx)
+        kf: Optional[Keyframe] = self.scene_model.keyframes.get(cur_idx)
         if kf is not None:
             kf.objects[obj_name] = obj.to_dict()
 

@@ -1,16 +1,18 @@
 import logging
-"""Inspector panel to list puppets/objects and edit selected object properties.
-
-This widget emits no external signals; it directly calls methods on MainWindow
-to manipulate the scene model and graphics items.
-"""
 
 from PySide6.QtWidgets import (
     QWidget, QListWidget, QListWidgetItem, QVBoxLayout, QHBoxLayout,
     QDoubleSpinBox, QComboBox, QToolButton, QFormLayout, QFrame
 )
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QIcon
 from ui.icons import icon_delete, icon_duplicate, icon_link, icon_link_off
+
+"""Inspector panel to list puppets/objects and edit selected object properties.
+
+This widget emits no external signals; it directly calls methods on MainWindow
+to manipulate the scene model and graphics items.
+"""
 
 class InspectorWidget(QWidget):
     """Inspector to manage scene objects and puppets.
@@ -59,7 +61,9 @@ class InspectorWidget(QWidget):
         main_layout.setSpacing(10)
         main_layout.addWidget(self.list_widget)
 
-        form_layout = QFormLayout()
+        # Properties panel (hidden when nothing is selected)
+        self.props_panel = QWidget()
+        form_layout = QFormLayout(self.props_panel)
         form_layout.setSpacing(8)
         form_layout.setLabelAlignment(Qt.AlignRight)
 
@@ -94,7 +98,8 @@ class InspectorWidget(QWidget):
         main_actions_layout.addWidget(self.delete_btn)
         form_layout.addRow("Actions:", main_actions_layout)
 
-        main_layout.addLayout(form_layout)
+        main_layout.addWidget(self.props_panel)
+        self.props_panel.setVisible(False)
 
         # --- CONNECTIONS ---
         self.list_widget.currentItemChanged.connect(self._on_item_changed)
@@ -120,8 +125,16 @@ class InspectorWidget(QWidget):
         for name in sorted(model.objects.keys()):
             item = QListWidgetItem(name)
             item.setData(Qt.UserRole, ("object", name))
+            # Small visual indicator if attached at current frame
+            pu, me = self._attached_state_for_frame(name)
+            if pu and me:
+                item.setIcon(icon_link())
             self.list_widget.addItem(item)
         self._refresh_attach_puppet_combo()
+        # Ensure icons reflect current frame state
+        self._update_list_attachment_icons()
+        # Hide props when nothing selected
+        self.props_panel.setVisible(self.list_widget.currentItem() is not None)
 
     # --- Callbacks ---
     def _current_info(self):
@@ -133,7 +146,10 @@ class InspectorWidget(QWidget):
     def _on_item_changed(self, current, previous):
         typ, name = self._current_info()
         if not name:
+            self.props_panel.setVisible(False)
             return
+        # Show the props panel now that we have a selection
+        self.props_panel.setVisible(True)
         if typ == "object":
             obj = self.main_window.scene_model.objects.get(name)
             scale = obj.scale if obj else 1.0
@@ -161,9 +177,9 @@ class InspectorWidget(QWidget):
                 self._refresh_attach_member_combo()
         else:
             scale = self.main_window.object_manager.puppet_scales.get(name, 1.0)
-            rot = 0.0
-            z = 0
-            # Rien à afficher pour les pantins
+            rot = self.main_window.object_manager.get_puppet_rotation(name)
+            z = self.main_window.object_manager.puppet_z_offsets.get(name, 0)
+            # Pas de combos d'attache pour les pantins
         self.scale_spin.blockSignals(True)
         self.scale_spin.setValue(scale)
         self.scale_spin.blockSignals(False)
@@ -216,27 +232,35 @@ class InspectorWidget(QWidget):
 
     def _on_rotation_changed(self, value: float) -> None:
         typ, name = self._current_info()
-        if typ != "object" or not name:
+        if not name:
             return
-        obj = self.main_window.scene_model.objects.get(name)
-        item = self.main_window.object_manager.graphics_items.get(name)
-        if obj and item:
-            obj.rotation = value
-            try:
-                item.setTransformOriginPoint(item.boundingRect().center())
-            except Exception as e:
-                logging.debug("Failed to set transform origin in inspector: %s", e)
-            item.setRotation(value)
+        if typ == "object":
+            obj = self.main_window.scene_model.objects.get(name)
+            item = self.main_window.object_manager.graphics_items.get(name)
+            if obj and item:
+                obj.rotation = value
+                try:
+                    item.setTransformOriginPoint(item.boundingRect().center())
+                except Exception as e:
+                    logging.debug("Failed to set transform origin in inspector: %s", e)
+                item.setRotation(value)
+        else:
+            # Rotation du pantin entier (autour du pivot de la pièce racine)
+            self.main_window.object_manager.set_puppet_rotation(name, value)
 
     def _on_z_changed(self, value: float) -> None:
         typ, name = self._current_info()
-        if typ != "object" or not name:
+        if not name:
             return
-        obj = self.main_window.scene_model.objects.get(name)
-        item = self.main_window.object_manager.graphics_items.get(name)
-        if obj and item:
-            obj.z = int(value)
-            item.setZValue(int(value))
+        if typ == "object":
+            obj = self.main_window.scene_model.objects.get(name)
+            item = self.main_window.object_manager.graphics_items.get(name)
+            if obj and item:
+                obj.z = int(value)
+                item.setZValue(int(value))
+        else:
+            # Z offset global du pantin (appliqué à toutes les pièces)
+            self.main_window.object_manager.set_puppet_z_offset(name, int(value))
 
     def _refresh_attach_puppet_combo(self) -> None:
         self.attach_puppet_combo.blockSignals(True)
@@ -266,6 +290,7 @@ class InspectorWidget(QWidget):
         if puppet and member:
             self.main_window.object_manager.attach_object_to_member(name, puppet, member)
             self._on_item_changed(self.list_widget.currentItem(), None)
+            self._update_list_attachment_icons()
 
     def _on_detach_clicked(self) -> None:
         typ, name = self._current_info()
@@ -273,6 +298,7 @@ class InspectorWidget(QWidget):
             return
         self.main_window.object_manager.detach_object(name)
         self._on_item_changed(self.list_widget.currentItem(), None)
+        self._update_list_attachment_icons()
 
     # --- Helpers ---
     def _attached_state_for_frame(self, obj_name: str):
@@ -303,7 +329,43 @@ class InspectorWidget(QWidget):
         return (None, None)
 
     def sync_with_frame(self) -> None:
-        """À appeler quand la frame courante change pour resynchroniser les combos."""
+        """À appeler quand la frame courante change.
+
+        Met à jour l'état d'attache affiché sans modifier la sélection de scène.
+        Évite de réimposer la sélection de l'objet dans la scène à chaque changement de frame.
+        """
         cur = self.list_widget.currentItem()
-        if cur is not None:
-            self._on_item_changed(cur, None)
+        if cur is None:
+            return
+        typ, name = cur.data(Qt.UserRole)
+        # Rafraîchir uniquement les combos d'attache pour les objets
+        if typ == "object" and name:
+            self._refresh_attach_puppet_combo()
+            pu, me = self._attached_state_for_frame(name)
+            if pu:
+                idx = self.attach_puppet_combo.findText(pu)
+                if idx >= 0:
+                    self.attach_puppet_combo.setCurrentIndex(idx)
+                    self._refresh_attach_member_combo()
+                    midx = self.attach_member_combo.findText(me) if me else -1
+                    if midx >= 0:
+                        self.attach_member_combo.setCurrentIndex(midx)
+            else:
+                self.attach_puppet_combo.setCurrentIndex(0)
+                self._refresh_attach_member_combo()
+        # Update icons for all objects to reflect current frame
+        self._update_list_attachment_icons()
+
+    def _update_list_attachment_icons(self) -> None:
+        """Set a small link icon on object items that are attached at the current frame."""
+        for i in range(self.list_widget.count()):
+            it: QListWidgetItem = self.list_widget.item(i)
+            typ, nm = it.data(Qt.UserRole)
+            if typ != 'object':
+                continue
+            pu, me = self._attached_state_for_frame(nm)
+            if pu and me:
+                it.setIcon(icon_link())
+            else:
+                # Clear icon to keep list clean when not attached
+                it.setIcon(QIcon())

@@ -24,6 +24,9 @@ def build_actions(win: Any) -> None:
     win.load_action.setShortcut("Ctrl+O")
     win.scene_size_action = QAction(icon_scene_size(), "Taille Scène", win)
     win.background_action = QAction(icon_background(), "Image de fond", win)
+    # Use 'layers' icon as settings indicator
+    from ui.icons import get_icon
+    win.settings_action = QAction(get_icon('layers'), "Paramètres", win)
 
     win.reset_scene_action = QAction(icon_reset_scene(), "Réinitialiser la scène", win)
     win.reset_ui_action = QAction(icon_reset_ui(), "Réinitialiser l'interface", win)
@@ -42,6 +45,11 @@ def build_actions(win: Any) -> None:
     # Timeline toggle (dock)
     win.timeline_dock.toggleViewAction().setIcon(icon_timeline())
 
+    # Custom overlay toggle
+    from ui.icons import get_icon
+    win.toggle_custom_action = QAction(get_icon('layers'), "Custom", win)
+    win.toggle_custom_action.setCheckable(True)
+
 
 def connect_signals(win: Any) -> None:
     """Wire UI actions and component signals to MainWindow slots."""
@@ -50,6 +58,7 @@ def connect_signals(win: Any) -> None:
     win.load_action.triggered.connect(lambda: scene_io.load_scene(win))
     win.reset_scene_action.triggered.connect(win.reset_scene)
     win.reset_ui_action.triggered.connect(win.reset_ui)
+    win.settings_action.triggered.connect(win.open_settings_dialog)
 
     # Scene settings
     win.scene_size_action.triggered.connect(win.set_scene_size)
@@ -61,6 +70,7 @@ def connect_signals(win: Any) -> None:
     win.view.handles_toggled.connect(win.toggle_rotation_handles)
     win.view.onion_toggled.connect(win.set_onion_enabled)
     win.view.item_dropped.connect(win.object_manager.handle_library_drop)
+    win.toggle_custom_action.toggled.connect(win.set_custom_overlay_visible)
 
     # PlaybackHandler signals
     win.playback_handler.snapshot_requested.connect(win.object_manager.snapshot_current_frame)
@@ -69,4 +79,3 @@ def connect_signals(win: Any) -> None:
 
     # Library signals
     win.library_widget.addRequested.connect(win.object_manager._add_library_item_to_scene)
-

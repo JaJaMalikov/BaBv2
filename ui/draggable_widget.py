@@ -63,10 +63,14 @@ class PanelOverlay(DraggableOverlay):
         on_top = y >= 0 and y < bw
         on_bottom = y >= h - bw and y < h
 
-        if on_top and on_left: return Qt.TopLeftCorner
-        if on_top and on_right: return Qt.TopRightCorner
-        if on_bottom and on_left: return Qt.BottomLeftCorner
-        if on_bottom and on_right: return Qt.BottomRightCorner
+        if on_top and on_left:
+            return Qt.TopLeftCorner
+        if on_top and on_right:
+            return Qt.TopRightCorner
+        if on_bottom and on_left:
+            return Qt.BottomLeftCorner
+        if on_bottom and on_right:
+            return Qt.BottomRightCorner
         return None
 
     def leaveEvent(self, event):

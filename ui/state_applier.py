@@ -15,6 +15,18 @@ class StateApplier:
     def __init__(self, win: 'Any') -> None:
         self.win = win
 
+    def _lerp_angle(self, a: float, b: float, t: float) -> float:
+        """Interpolate angles in degrees along the shortest arc.
+
+        Keeps continuity when crossing 0/360 by wrapping the delta to [-180, 180].
+        """
+        # Normalize delta to [0, 360)
+        delta = (b - a) % 360.0
+        # Wrap to [-180, 180]
+        if delta > 180.0:
+            delta -= 360.0
+        return a + delta * t
+
     def apply_puppet_states(self, graphics_items: Dict[str, Any], keyframes: Dict[int, Keyframe], index: int) -> None:
         sorted_indices: List[int] = sorted(keyframes.keys())
         prev_kf_index: int = next((i for i in reversed(sorted_indices) if i <= index), -1)
@@ -32,7 +44,7 @@ class StateApplier:
                     next_state: Optional[Dict[str, Any]] = next_pose.get(member_name)
                     if not prev_state or not next_state:
                         continue
-                    interp_rot: float = prev_state['rotation'] + (next_state['rotation'] - prev_state['rotation']) * ratio
+                    interp_rot: float = self._lerp_angle(float(prev_state['rotation']), float(next_state['rotation']), ratio)
                     piece: PuppetPiece = graphics_items[f"{name}:{member_name}"]
                     piece.local_rotation = interp_rot
                     if not piece.parent_piece:
@@ -62,61 +74,113 @@ class StateApplier:
                     child.update_transform_from_parent()
 
     def apply_object_states(self, graphics_items: Dict[str, Any], keyframes: Dict[int, Keyframe], index: int) -> None:
-        def state_for(obj_name: str) -> Optional[Dict[str, Any]]:
+        def prev_and_next_state(obj_name: str) -> Tuple[Optional[int], Optional[Dict[str, Any]], Optional[int], Optional[Dict[str, Any]], bool]:
+            """Return (prev_idx, prev_state, next_idx, next_state, visible) for an object.
+
+            visible is False when the last keyframe at or before index omits the object
+            (temporal deletion rule). In that case, other values may be None.
+            """
             si: List[int] = sorted(keyframes.keys())
-            last_kf: Optional[int] = next((i for i in reversed(si) if i <= index), None)
-            if last_kf is not None and obj_name not in keyframes[last_kf].objects:
-                return None
-            prev_including: Optional[int] = next((i for i in reversed(si) if i <= index and obj_name in keyframes[i].objects), None)
-            if prev_including is None:
-                return None
-            return keyframes[prev_including].objects.get(obj_name)
+            last_kf_any: Optional[int] = next((i for i in reversed(si) if i <= index), None)
+            if last_kf_any is not None and obj_name not in keyframes[last_kf_any].objects:
+                return None, None, None, None, False
+            prev_idx: Optional[int] = next((i for i in reversed(si) if i <= index and obj_name in keyframes[i].objects), None)
+            next_idx: Optional[int] = next((i for i in si if i > index and obj_name in keyframes[i].objects), None)
+            prev_state: Optional[Dict[str, Any]] = keyframes[prev_idx].objects.get(obj_name) if prev_idx is not None else None
+            next_state: Optional[Dict[str, Any]] = keyframes[next_idx].objects.get(obj_name) if next_idx is not None else None
+            return prev_idx, prev_state, next_idx, next_state, True
 
         updated: int = 0
         self.win._suspend_item_updates = True
         try:
             for name, base_obj in self.win.scene_model.objects.items():
-                st: Optional[Dict[str, Any]] = state_for(name)
+                prev_idx, prev_st, next_idx, next_st, visible = prev_and_next_state(name)
                 gi: Optional[QGraphicsItem] = graphics_items.get(name)
-                if st is None:
+
+                if not visible or prev_st is None:
                     if gi:
                         gi.setSelected(False)
                         gi.setVisible(False)
                     continue
+
+                # Ensure graphics item exists
                 if gi is None:
                     tmp: SceneObject = SceneObject(
                         name,
-                        st.get('obj_type', base_obj.obj_type),
-                        st.get('file_path', base_obj.file_path),
-                        x=st.get('x', base_obj.x),
-                        y=st.get('y', base_obj.y),
-                        rotation=st.get('rotation', base_obj.rotation),
-                        scale=st.get('scale', base_obj.scale),
-                        z=st.get('z', getattr(base_obj, 'z', 0))
+                        prev_st.get('obj_type', base_obj.obj_type),
+                        prev_st.get('file_path', base_obj.file_path),
+                        x=prev_st.get('x', base_obj.x),
+                        y=prev_st.get('y', base_obj.y),
+                        rotation=prev_st.get('rotation', base_obj.rotation),
+                        scale=prev_st.get('scale', base_obj.scale),
+                        z=prev_st.get('z', getattr(base_obj, 'z', 0))
                     )
                     self.win.object_manager._add_object_graphics(tmp)
                     gi = graphics_items.get(name)
-                if gi:
-                    gi.setVisible(True)
-                    attached: Optional[Tuple[str, str]] = st.get('attached_to', None)
-                    if attached:
-                        puppet_name, member_name = attached
+
+                if gi is None:
+                    continue
+
+                gi.setVisible(True)
+
+                # Decide if we interpolate or step
+                do_interp: bool = (
+                    next_idx is not None and prev_idx is not None and next_idx != prev_idx and next_idx > index
+                )
+                prev_att: Optional[Tuple[str, str]] = prev_st.get('attached_to')
+                next_att: Optional[Tuple[str, str]] = next_st.get('attached_to') if next_st is not None else None
+                same_space: bool = (prev_att == next_att)
+
+                if do_interp and same_space:
+                    t: float = (index - float(prev_idx)) / (float(next_idx - prev_idx))
+                    if prev_att:
+                        puppet_name, member_name = prev_att
                         parent_piece: Optional[PuppetPiece] = graphics_items.get(f"{puppet_name}:{member_name}")
-                        # Always set the parent first, then apply the saved local transform
                         if parent_piece is not None and gi.parentItem() is not parent_piece:
                             gi.setParentItem(parent_piece)
-                        # Apply local coordinates from state (default to 0,0)
-                        gi.setPos(float(st.get('x', 0.0)), float(st.get('y', 0.0)))
+                        # Interpolate local transforms
+                        px, py = float(prev_st.get('x', 0.0)), float(prev_st.get('y', 0.0))
+                        nx, ny = float(next_st.get('x', px)), float(next_st.get('y', py))
+                        gi.setPos(px + (nx - px) * t, py + (ny - py) * t)
+                        prot = float(prev_st.get('rotation', 0.0))
+                        nrot = float(next_st.get('rotation', prot))
+                        gi.setRotation(self._lerp_angle(prot, nrot, t))
+                        psc = float(prev_st.get('scale', 1.0))
+                        nsc = float(next_st.get('scale', psc))
+                        gi.setScale(psc + (nsc - psc) * t)
+                        # Z: keep previous to avoid flicker
+                        gi.setZValue(int(prev_st.get('z', int(gi.zValue()))))
                     else:
-                        # Ensure the item is in scene coordinates
+                        # Free object in scene coordinates
                         if gi.parentItem() is not None:
                             gi.setParentItem(None)
-                        gi.setPos(float(st.get('x', gi.x())), float(st.get('y', gi.y())))
-                    gi.setRotation(float(st.get('rotation', gi.rotation())))
-                    gi.setScale(float(st.get('scale', gi.scale())))
-                    gi.setZValue(int(st.get('z', int(gi.zValue()))))
-                    updated += 1
+                        px, py = float(prev_st.get('x', 0.0)), float(prev_st.get('y', 0.0))
+                        nx, ny = float(next_st.get('x', px)), float(next_st.get('y', py))
+                        gi.setPos(px + (nx - px) * t, py + (ny - py) * t)
+                        prot = float(prev_st.get('rotation', 0.0))
+                        nrot = float(next_st.get('rotation', prot))
+                        gi.setRotation(self._lerp_angle(prot, nrot, t))
+                        psc = float(prev_st.get('scale', 1.0))
+                        nsc = float(next_st.get('scale', psc))
+                        gi.setScale(psc + (nsc - psc) * t)
+                        gi.setZValue(int(prev_st.get('z', int(gi.zValue()))))
+                else:
+                    # Step: apply previous state in its space
+                    if prev_att:
+                        puppet_name, member_name = prev_att
+                        parent_piece: Optional[PuppetPiece] = graphics_items.get(f"{puppet_name}:{member_name}")
+                        if parent_piece is not None and gi.parentItem() is not parent_piece:
+                            gi.setParentItem(parent_piece)
+                        gi.setPos(float(prev_st.get('x', 0.0)), float(prev_st.get('y', 0.0)))
+                    else:
+                        if gi.parentItem() is not None:
+                            gi.setParentItem(None)
+                        gi.setPos(float(prev_st.get('x', gi.x())), float(prev_st.get('y', gi.y())))
+                    gi.setRotation(float(prev_st.get('rotation', gi.rotation())))
+                    gi.setScale(float(prev_st.get('scale', gi.scale())))
+                    gi.setZValue(int(prev_st.get('z', int(gi.zValue()))))
+
+                updated += 1
         finally:
             self.win._suspend_item_updates = False
         logging.debug(f"Applied object states: {updated} updated/visible")
-

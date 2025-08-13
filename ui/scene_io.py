@@ -29,6 +29,13 @@ def export_scene(win: 'MainWindow', file_path: str) -> None:
     """Exports the current scene state to a JSON file."""
     if not win.scene_model.keyframes:
         win.add_keyframe(0)
+    # Capture latest on-screen state into the current keyframe if it exists
+    cur = win.scene_model.current_frame
+    if cur in win.scene_model.keyframes:
+        try:
+            win.object_manager.snapshot_current_frame()
+        except Exception as e:
+            logging.debug("Snapshot on export failed: %s", e)
 
     puppets_data: Dict[str, Dict[str, Any]] = {}
     for name, puppet in win.scene_model.puppets.items():
@@ -41,6 +48,8 @@ def export_scene(win: 'MainWindow', file_path: str) -> None:
                 "path": win.object_manager.puppet_paths.get(name),
                 "scale": win.object_manager.puppet_scales.get(name, 1.0),
                 "position": [root_piece.x(), root_piece.y()],
+                "rotation": win.object_manager.get_puppet_rotation(name),
+                "z_offset": win.object_manager.puppet_z_offsets.get(name, 0),
             }
 
     data: Dict[str, Any] = win.scene_model.to_dict()
@@ -80,6 +89,19 @@ def import_scene(win: MainWindow, file_path: str):
                     root_piece = win.object_manager.graphics_items.get(f"{name}:{root_members[0].name}")
                     if root_piece and pos:
                         root_piece.setPos(pos[0], pos[1])
+                # Optional rotation and z offset
+                try:
+                    rot = float(p_data.get("rotation", 0.0))
+                    if abs(rot) > 1e-9:
+                        win.object_manager.set_puppet_rotation(name, rot)
+                except Exception:
+                    pass
+                try:
+                    zoff = int(p_data.get("z_offset", 0))
+                    if zoff:
+                        win.object_manager.set_puppet_z_offset(name, zoff)
+                except Exception:
+                    pass
 
         for obj in win.scene_model.objects.values():
             try:
@@ -97,7 +119,9 @@ def import_scene(win: MainWindow, file_path: str):
         win.timeline_widget.set_current_frame(win.scene_model.start_frame)
         win.inspector_widget.refresh()
 
-        QTimer.singleShot(0, lambda: win.timeline_widget.set_current_frame(win.scene_model.current_frame or win.scene_model.start_frame))
+        # Assure une application d'état même si la frame n'a pas changé (ex: start=0, current=0)
+        win.update_scene_from_model()
+        QTimer.singleShot(0, lambda: (win.timeline_widget.set_current_frame(win.scene_model.current_frame or win.scene_model.start_frame), win.update_scene_from_model()))
 
     except (OSError, json.JSONDecodeError) as e:
         logging.error("Failed to load scene '%s': %s", file_path, e)
@@ -109,8 +133,10 @@ def import_scene(win: MainWindow, file_path: str):
 
 def create_blank_scene(win: 'MainWindow', add_default_puppet: bool = False) -> None:
     """Clears the scene and optionally adds a default puppet."""
-    for name in list(win.scene_model.puppets.keys()): win.object_manager.delete_puppet(name)
-    for name in list(win.scene_model.objects.keys()): win.object_manager.delete_object(name)
+    for name in list(win.scene_model.puppets.keys()):
+        win.object_manager.delete_puppet(name)
+    for name in list(win.scene_model.objects.keys()):
+        win.object_manager.delete_object(name)
     win.object_manager.renderers.clear()
     win.object_manager.graphics_items.clear()
     win.scene_model.keyframes.clear()

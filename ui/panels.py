@@ -64,8 +64,31 @@ def position_overlays(win) -> None:
 
     margin = 10
     try:
-        win.library_overlay.setGeometry(margin, margin, 290, 550)
-        win.inspector_overlay.setGeometry(win.width() - 290 - margin, margin, 290, 550)
+        from PySide6.QtCore import QSettings
+        s = QSettings("JaJa", "Macronotron")
+        lib_size = s.value("ui/default/library_size")
+        insp_size = s.value("ui/default/inspector_size")
+        lib_pos = s.value("ui/default/library_pos")
+        insp_pos = s.value("ui/default/inspector_pos")
+        lib_w, lib_h = 290, 550
+        insp_w, insp_h = 290, 550
+        try:
+            if lib_size:
+                lib_w = int(lib_size.width()) if hasattr(lib_size, 'width') else int(lib_size[0])
+                lib_h = int(lib_size.height()) if hasattr(lib_size, 'height') else int(lib_size[1])
+            if insp_size:
+                insp_w = int(insp_size.width()) if hasattr(insp_size, 'width') else int(insp_size[0])
+                insp_h = int(insp_size.height()) if hasattr(insp_size, 'height') else int(insp_size[1])
+        except Exception:
+            pass
+        if lib_pos and hasattr(lib_pos, 'x'):
+            win.library_overlay.setGeometry(int(lib_pos.x()), int(lib_pos.y()), lib_w, lib_h)
+        else:
+            win.library_overlay.setGeometry(margin, margin, lib_w, lib_h)
+        if insp_pos and hasattr(insp_pos, 'x'):
+            win.inspector_overlay.setGeometry(int(insp_pos.x()), int(insp_pos.y()), insp_w, insp_h)
+        else:
+            win.inspector_overlay.setGeometry(win.width() - insp_w - margin, margin, insp_w, insp_h)
 
         left_bound = win.library_overlay.geometry().right() + margin
         right_bound = win.inspector_overlay.geometry().left() - margin
