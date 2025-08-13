@@ -21,13 +21,16 @@ class _ObjectItemMixin:
             QGraphicsItem.ItemScaleHasChanged,
             QGraphicsItem.ItemSelectedHasChanged,
         ):
+            name = getattr(self, "_obj_name", None)
             try:
-                name = getattr(self, "_obj_name", None)
                 if mw and name:
                     obj = mw.scene_model.objects.get(name)
                     if obj:
-                        obj.x = self.x(); obj.y = self.y()
-                        obj.rotation = self.rotation(); obj.scale = self.scale(); obj.z = int(self.zValue())
+                        obj.x = self.x()
+                        obj.y = self.y()
+                        obj.rotation = self.rotation()
+                        obj.scale = self.scale()
+                        obj.z = int(self.zValue())
                         # If a keyframe exists at current frame, persist state in it
                         kf = mw.scene_model.keyframes.get(mw.scene_model.current_frame)
                         if kf is not None:

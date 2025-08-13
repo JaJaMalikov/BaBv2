@@ -1,4 +1,5 @@
 import re
+import logging
 from pathlib import Path
 from typing import Dict
 
@@ -31,6 +32,7 @@ def _create_icon(name: str) -> QIcon:
 
     svg_path = ICONS_DIR / f"{name}.svg"
     if not svg_path.exists():
+        logging.debug("Icon '%s' not found at %s", name, svg_path)
         ICON_CACHE[name] = QIcon() # Cache empty icon if not found
         return QIcon()
 

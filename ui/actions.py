@@ -1,0 +1,72 @@
+from __future__ import annotations
+
+from typing import Any
+
+from PySide6.QtGui import QAction
+
+import ui.scene_io as scene_io
+from ui.icons import (
+    icon_scene_size, icon_background, icon_library, icon_inspector, icon_timeline,
+    icon_save, icon_open, icon_reset_ui, icon_reset_scene,
+)
+
+
+def build_actions(win: Any) -> None:
+    """Create and attach QActions to the given MainWindow instance.
+
+    Exposes attributes on win: save_action, load_action, scene_size_action, background_action,
+    reset_scene_action, reset_ui_action, toggle_library_action, toggle_inspector_action.
+    Also decorates the timeline dock toggle action with an icon.
+    """
+    win.save_action = QAction(icon_save(), "Sauvegarder (Ctrl+S)", win)
+    win.save_action.setShortcut("Ctrl+S")
+    win.load_action = QAction(icon_open(), "Charger (Ctrl+O)", win)
+    win.load_action.setShortcut("Ctrl+O")
+    win.scene_size_action = QAction(icon_scene_size(), "Taille Scène", win)
+    win.background_action = QAction(icon_background(), "Image de fond", win)
+
+    win.reset_scene_action = QAction(icon_reset_scene(), "Réinitialiser la scène", win)
+    win.reset_ui_action = QAction(icon_reset_ui(), "Réinitialiser l'interface", win)
+
+    # Overlay toggles
+    win.toggle_library_action = QAction(icon_library(), "Bibliothèque", win)
+    win.toggle_library_action.setCheckable(True)
+    win.toggle_library_action.setChecked(win.library_overlay.isVisible())
+    win.toggle_library_action.toggled.connect(win.set_library_overlay_visible)
+
+    win.toggle_inspector_action = QAction(icon_inspector(), "Inspecteur", win)
+    win.toggle_inspector_action.setCheckable(True)
+    win.toggle_inspector_action.setChecked(win.inspector_overlay.isVisible())
+    win.toggle_inspector_action.toggled.connect(win.set_inspector_overlay_visible)
+
+    # Timeline toggle (dock)
+    win.timeline_dock.toggleViewAction().setIcon(icon_timeline())
+
+
+def connect_signals(win: Any) -> None:
+    """Wire UI actions and component signals to MainWindow slots."""
+    # Scene I/O
+    win.save_action.triggered.connect(lambda: scene_io.save_scene(win))
+    win.load_action.triggered.connect(lambda: scene_io.load_scene(win))
+    win.reset_scene_action.triggered.connect(win.reset_scene)
+    win.reset_ui_action.triggered.connect(win.reset_ui)
+
+    # Scene settings
+    win.scene_size_action.triggered.connect(win.set_scene_size)
+    win.background_action.triggered.connect(win.set_background)
+
+    # ZoomableView signals
+    win.view.zoom_requested.connect(win.zoom)
+    win.view.fit_requested.connect(win.fit_to_view)
+    win.view.handles_toggled.connect(win.toggle_rotation_handles)
+    win.view.onion_toggled.connect(win.set_onion_enabled)
+    win.view.item_dropped.connect(win.object_manager.handle_library_drop)
+
+    # PlaybackHandler signals
+    win.playback_handler.snapshot_requested.connect(win.object_manager.snapshot_current_frame)
+    win.playback_handler.frame_update_requested.connect(win._on_frame_update)
+    win.playback_handler.keyframe_add_requested.connect(win.add_keyframe)
+
+    # Library signals
+    win.library_widget.addRequested.connect(win.object_manager._add_library_item_to_scene)
+

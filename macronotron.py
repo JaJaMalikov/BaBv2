@@ -1,5 +1,4 @@
 import sys
-import logging
 from PySide6.QtWidgets import QApplication
 from ui.main_window import MainWindow
 from ui.styles import apply_stylesheet

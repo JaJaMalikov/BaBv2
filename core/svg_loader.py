@@ -100,8 +100,7 @@ class SvgLoader:
 
         new_tree: ET.ElementTree = ET.ElementTree(new_svg)
         new_tree.write(output_path)
-
-        print(f"[SvgLoader] Group '{group_id}' exported → {output_path}") # Keep print for user feedback
+        logging.info("[SvgLoader] Group '%s' exported → %s", group_id, output_path)
 
         return x_min, y_min
 

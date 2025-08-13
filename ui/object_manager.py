@@ -1,7 +1,7 @@
 from __future__ import annotations
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, Optional, Any
 
 from PySide6.QtCore import QPointF
 from PySide6.QtWidgets import QGraphicsItem, QGraphicsScene # Added QGraphicsScene
@@ -15,7 +15,6 @@ from core.puppet_piece import PuppetPiece
 if TYPE_CHECKING:
     from .main_window import MainWindow
 
-from typing import Dict, Optional, Any
 
 class ObjectManager:
     """Manages puppets and objects (creation, deletion, manipulation) in the scene."""
@@ -23,14 +22,15 @@ class ObjectManager:
         self.win: MainWindow = win
         self.scene: QGraphicsScene = win.scene
         self.scene_model: SceneModel = win.scene_model
-        
         self.graphics_items: Dict[str, QGraphicsItem] = {}
         self.renderers: Dict[str, Any] = {} # QSvgRenderer is not directly imported
         self.puppet_scales: Dict[str, float] = {}
         self.puppet_paths: Dict[str, str] = {}
 
     def add_puppet(self, file_path: str, puppet_name: str) -> None:
-        puppet: Puppet = Puppet(); loader: SvgLoader = SvgLoader(file_path); renderer: Any = loader.renderer # QSvgRenderer
+        puppet: Puppet = Puppet()
+        loader: SvgLoader = SvgLoader(file_path)
+        renderer: Any = loader.renderer  # QSvgRenderer
         self.renderers[puppet_name] = renderer
         puppet.build_from_svg(loader, PARENT_MAP, PIVOT_MAP, Z_ORDER)
         self.scene_model.add_puppet(puppet_name, puppet)
@@ -64,7 +64,8 @@ class ObjectManager:
                 piece.setFlag(QGraphicsItem.ItemSendsGeometryChanges, True)
 
         for piece in pieces.values():
-            self.scene.addItem(piece); self.scene.addItem(piece.pivot_handle)
+            self.scene.addItem(piece)
+            self.scene.addItem(piece.pivot_handle)
             if piece.rotation_handle: self.scene.addItem(piece.rotation_handle)
 
         for piece in pieces.values():
@@ -97,7 +98,8 @@ class ObjectManager:
     def duplicate_puppet(self, puppet_name: str) -> None:
         path: Optional[str] = self.puppet_paths.get(puppet_name)
         if not path: return
-        base: str = puppet_name; i: int = 1
+        base: str = puppet_name
+        i: int = 1
         new_name: str = f"{base}_{i}"
         while new_name in self.scene_model.puppets:
             i += 1
@@ -129,7 +131,8 @@ class ObjectManager:
     def duplicate_object(self, name: str) -> None:
         obj: Optional[SceneObject] = self.scene_model.objects.get(name)
         if not obj: return
-        base: str = name; i: int = 1
+        base: str = name
+        i: int = 1
         new_name: str = f"{base}_{i}"
         while new_name in self.scene_model.objects:
             i += 1
@@ -162,7 +165,8 @@ class ObjectManager:
             item.setZValue(getattr(obj, 'z', 0))
         except Exception as e:
             logging.error(f"Error setting Z-value for {obj.name}: {e}")
-        item.setFlag(QGraphicsItem.ItemIsMovable, True); item.setFlag(QGraphicsItem.ItemIsSelectable, True)
+        item.setFlag(QGraphicsItem.ItemIsMovable, True)
+        item.setFlag(QGraphicsItem.ItemIsSelectable, True)
         self.scene.addItem(item)
         self.graphics_items[obj.name] = item
 
@@ -183,11 +187,13 @@ class ObjectManager:
         # Persist local transform into the model
         obj.attach(puppet_name, member_name)
         try:
-            obj.x = float(item.x()); obj.y = float(item.y())
-            obj.rotation = float(item.rotation()); obj.scale = float(item.scale())
+            obj.x = float(item.x())
+            obj.y = float(item.y())
+            obj.rotation = float(item.rotation())
+            obj.scale = float(item.scale())
             obj.z = int(item.zValue())
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug("Failed to read item transform on attach for '%s': %s", obj_name, e)
         kf: Optional[Keyframe] = self.scene_model.keyframes.get(self.scene_model.current_frame)
         if kf is not None:
             kf.objects[obj_name] = obj.to_dict()
@@ -214,14 +220,14 @@ class ObjectManager:
                             sx = st.get('x', 0.0); sy = st.get('y', 0.0)
                             try:
                                 sx = float(sx); sy = float(sy)
-                            except Exception:
+                            except (TypeError, ValueError):
                                 sx, sy = 0.0, 0.0
                             if (abs(sx) < 1e-9 and abs(sy) < 1e-9):
                                 st['x'] = local_x
                                 st['y'] = local_y
                                 kf.objects[obj_name] = st
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug("While patching legacy keyframes for '%s': %s", obj_name, e)
         self.win._suspend_item_updates = True
         try:
             scene_pt: QPointF = item.mapToScene(item.transformOriginPoint())
@@ -235,8 +241,8 @@ class ObjectManager:
             obj.x = float(item.x()); obj.y = float(item.y())
             obj.rotation = float(item.rotation()); obj.scale = float(item.scale())
             obj.z = int(item.zValue())
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug("Failed to read item transform on detach for '%s': %s", obj_name, e)
         kf: Optional[Keyframe] = self.scene_model.keyframes.get(self.scene_model.current_frame)
         if kf is not None:
             kf.objects[obj_name] = obj.to_dict()
@@ -267,10 +273,8 @@ class ObjectManager:
         else:
             logging.error(f"Unsupported object file type: {ext}")
             return None
-        
         base: str = Path(file_path).stem
         name: str = self._unique_object_name(base)
-        
         x: float
         y: float
         if scene_pos is None:
@@ -300,15 +304,17 @@ class ObjectManager:
                             puppet_name, member_name = key.split(":", 1)
                             attached_to = (puppet_name, member_name)
                             break
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug("Parsing puppet/member from key '%s' failed: %s", key, e)
             state: Dict[str, Any] = obj.to_dict()
             try:
-                state["x"] = float(gi.x()); state["y"] = float(gi.y())
-                state["rotation"] = float(gi.rotation()); state["scale"] = float(gi.scale())
+                state["x"] = float(gi.x())
+                state["y"] = float(gi.y())
+                state["rotation"] = float(gi.rotation())
+                state["scale"] = float(gi.scale())
                 state["z"] = int(gi.zValue())
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug("Reading graphics item state for '%s' failed: %s", name, e)
             state["attached_to"] = attached_to
             kf.objects[name] = state
         if hasattr(self.win, "inspector_widget"): self.win.inspector_widget.refresh()
@@ -371,8 +377,8 @@ class ObjectManager:
                 try:
                     puppet_name, member_name = key.split(":", 1)
                     piece_owner[val] = (puppet_name, member_name)
-                except Exception:
-                    continue
+                except Exception as e:
+                    logging.debug("Split key '%s' failed: %s", key, e)
         for name, obj in self.scene_model.objects.items():
             gi: Optional[QGraphicsItem] = self.graphics_items.get(name)
             if gi and gi.isVisible():
@@ -382,11 +388,13 @@ class ObjectManager:
                     attached_to = piece_owner[parent]
                 data = obj.to_dict()
                 try:
-                    data["x"] = float(gi.x()); data["y"] = float(gi.y())
-                    data["rotation"] = float(gi.rotation()); data["scale"] = float(gi.scale())
+                    data["x"] = float(gi.x())
+                    data["y"] = float(gi.y())
+                    data["rotation"] = float(gi.rotation())
+                    data["scale"] = float(gi.scale())
                     data["z"] = int(gi.zValue())
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug("Reading graphics item state for '%s' failed: %s", name, e)
                 data["attached_to"] = attached_to
                 states[name] = data
         return states
@@ -406,5 +414,5 @@ class ObjectManager:
         # Ensure marker exists
         try:
             self.win.timeline_widget.add_keyframe_marker(cur)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug("Failed to add keyframe marker at %s: %s", cur, e)

@@ -1,3 +1,4 @@
+import logging
 from PySide6.QtWidgets import QWidget
 from PySide6.QtCore import Qt, QPoint, QRect
 from PySide6.QtWidgets import QGraphicsDropShadowEffect
@@ -13,8 +14,8 @@ class DraggableOverlay(QWidget):
             shadow.setOffset(0, 4)
             shadow.setColor(QColor(0, 0, 0, 150))
             self.setGraphicsEffect(shadow)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug("Shadow effect unavailable: %s", e)
         self._drag_start_position = None
 
     def mousePressEvent(self, event):
@@ -100,17 +101,27 @@ class PanelOverlay(DraggableOverlay):
             new_geom = QRect(self._resize_start_geom)
 
             edge = self._resize_edge
-            if edge == Qt.TopEdge: new_geom.setTop(self._resize_start_geom.top() + delta.y())
-            elif edge == Qt.BottomEdge: new_geom.setBottom(self._resize_start_geom.bottom() + delta.y())
-            elif edge == Qt.LeftEdge: new_geom.setLeft(self._resize_start_geom.left() + delta.x())
-            elif edge == Qt.RightEdge: new_geom.setRight(self._resize_start_geom.right() + delta.x())
-            elif edge == Qt.TopLeftCorner: new_geom.setTopLeft(self._resize_start_geom.topLeft() + delta)
-            elif edge == Qt.TopRightCorner: new_geom.setTopRight(self._resize_start_geom.topRight() + delta)
-            elif edge == Qt.BottomLeftCorner: new_geom.setBottomLeft(self._resize_start_geom.bottomLeft() + delta)
-            elif edge == Qt.BottomRightCorner: new_geom.setBottomRight(self._resize_start_geom.bottomRight() + delta)
+            if edge == Qt.TopEdge:
+                new_geom.setTop(self._resize_start_geom.top() + delta.y())
+            elif edge == Qt.BottomEdge:
+                new_geom.setBottom(self._resize_start_geom.bottom() + delta.y())
+            elif edge == Qt.LeftEdge:
+                new_geom.setLeft(self._resize_start_geom.left() + delta.x())
+            elif edge == Qt.RightEdge:
+                new_geom.setRight(self._resize_start_geom.right() + delta.x())
+            elif edge == Qt.TopLeftCorner:
+                new_geom.setTopLeft(self._resize_start_geom.topLeft() + delta)
+            elif edge == Qt.TopRightCorner:
+                new_geom.setTopRight(self._resize_start_geom.topRight() + delta)
+            elif edge == Qt.BottomLeftCorner:
+                new_geom.setBottomLeft(self._resize_start_geom.bottomLeft() + delta)
+            elif edge == Qt.BottomRightCorner:
+                new_geom.setBottomRight(self._resize_start_geom.bottomRight() + delta)
 
-            if new_geom.width() < 200: new_geom.setWidth(200)
-            if new_geom.height() < 150: new_geom.setHeight(150)
+            if new_geom.width() < 200:
+                new_geom.setWidth(200)
+            if new_geom.height() < 150:
+                new_geom.setHeight(150)
 
             self.setGeometry(new_geom)
             event.accept()
@@ -118,9 +129,12 @@ class PanelOverlay(DraggableOverlay):
 
         edge = self._get_edge(event.position().toPoint())
         if not self._is_resizing:
-            if edge in [Qt.TopLeftCorner, Qt.BottomRightCorner]: self.setCursor(Qt.SizeFDiagCursor)
-            elif edge in [Qt.TopRightCorner, Qt.BottomLeftCorner]: self.setCursor(Qt.SizeBDiagCursor)
-            else: self.unsetCursor()
+            if edge in [Qt.TopLeftCorner, Qt.BottomRightCorner]:
+                self.setCursor(Qt.SizeFDiagCursor)
+            elif edge in [Qt.TopRightCorner, Qt.BottomLeftCorner]:
+                self.setCursor(Qt.SizeBDiagCursor)
+            else:
+                self.unsetCursor()
 
         super().mouseMoveEvent(event)
 
@@ -137,17 +151,20 @@ class DraggableHeader(QWidget):
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton and self._target is not None:
             self._drag_start = event.globalPosition().toPoint() - self._target.pos()
-            event.accept(); return
+            event.accept()
+            return
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
         if (event.buttons() & Qt.LeftButton) and self._drag_start is not None and self._target is not None:
             self._target.move(event.globalPosition().toPoint() - self._drag_start)
-            event.accept(); return
+            event.accept()
+            return
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.LeftButton and self._drag_start is not None:
             self._drag_start = None
-            event.accept(); return
+            event.accept()
+            return
         super().mouseReleaseEvent(event)

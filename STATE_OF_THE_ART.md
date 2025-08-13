@@ -81,6 +81,24 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
 ## Mises à jour récentes
 
 - Correction du chargement JSON: `SceneModel.import_json` peuple désormais correctement le modèle via `from_dict` et retourne un booléen de succès.
+- Nettoyage: suppression de code inatteignable dans `SceneModel.import_json` et sécurisation de `ui/object_item.py` pour éviter une référence potentiellement non définie dans les logs.
+- Logging renforcé: remplacement des `print` par `logging` dans `ui/scene_io.py` (sauvegarde/chargement) et `core/svg_loader.py` (export de groupe), avec gestion plus précise des exceptions et messages contextualisés. Ajout de logs non intrusifs (niveau debug/warning) dans `ui/main_window.py`, `ui/library_widget.py`, `ui/inspector_widget.py`, `ui/draggable_widget.py`, `ui/object_manager.py` et `ui/icons.py` pour éviter les silences en cas d'erreurs non critiques.
+- Refactor Onion Skin: extraction de toute la logique de fantômes (onion skin) dans `ui/onion_skin.py` avec une classe `OnionSkinManager`. `MainWindow` délègue désormais via de simples wrappers (`set_onion_enabled`, `update_onion_skins`, `clear_onion_skins`).
+- Refactor UI: extraction de la construction des overlays (Bibliothèque/Inspecteur) dans `ui/panels.py` et de la gestion des visuels de scène (bordure, label des dimensions, image de fond) dans `ui/scene_visuals.py` via la classe `SceneVisuals`. `MainWindow` délègue désormais ces responsabilités et expose des wrappers compatibles.
+- Refactor Actions/Signaux: création de `ui/actions.py` pour centraliser la création des `QAction` et le câblage des signaux UI. `MainWindow` utilise `app_actions.build_actions(self)` et `app_actions.connect_signals(self)` pour réduire la taille et améliorer la lisibilité.
+- Refactor Settings: création de `ui/settings_manager.py` avec une classe `SettingsManager` qui encapsule la sauvegarde/chargement/clear des réglages (géométries, visibilité de la timeline, positions des overlays). `MainWindow` délègue via des wrappers (`save_settings`, `load_settings`, `reset_ui`).
+- Refactor State Applier: extraction de l'application des états keyframes vers les items graphiques dans `ui/state_applier.py` via `StateApplier`. `MainWindow` garde des wrappers (`_apply_puppet_states`, `_apply_object_states`) qui délèguent au nouveau module.
+- Refactor Overlays Position: `_position_overlays` déplacée dans `ui/panels.position_overlays(win)` pour centraliser la logique de placement des overlays et barres d’outils.
+- Refactor Sélection: synchronisation scène ↔ inspecteur extraite dans `ui/selection_sync.py` (fonctions `select_object_in_inspector` et `scene_selection_changed`). `MainWindow` délègue via des wrappers pour compatibilité.
+- Refactor Scene Settings: externalisation de `set_scene_size` dans `ui/scene_settings.py` pour gérer l'entrée utilisateur et l'application (sceneRect, visuels, fond, zoom). `MainWindow` délègue via un wrapper.
+- Refactor Scene Commands: externalisation de `reset_scene` et `set_background` dans `ui/scene_commands.py` pour centraliser les commandes de scène interactives. `MainWindow` expose des wrappers qui délèguent.
+- Docstrings & Typage: ajout de docstrings et d'annotations de types dans les modules clés:
+  - `core/scene_model.py`: annotations complètes pour `SceneObject`, `Keyframe`, `SceneModel` et docstrings de module/classes.
+  - `core/puppet_piece.py`: docstrings de classes/méthodes (handles, PuppetPiece) et clarifications.
+  - `core/puppet_model.py`: docstrings de module/classes/fonctions (Puppet, PuppetMember, `compute_child_map`).
+  - `ui/inspector_widget.py`: docstrings classe/méthodes et types pour callbacks.
+  - `ui/library_widget.py`: docstring de module/classe et annotation `reload()`.
+  - `ui/timeline_widget.py`: docstring de classe pour préciser le rôle et les signaux exposés.
 - Suppression temporelle des objets: la logique d'affichage considère désormais le dernier keyframe ≤ frame courante comme point de vérité. Si ce keyframe ne référence pas un objet, celui-ci est masqué à partir de cette frame (et jusqu'à ce qu'un nouveau keyframe le réintroduise). L’inspecteur se synchronise sur cette règle.
 - Nettoyage historique: retrait des vestiges `grid` / `snap_to_grid` dans `PuppetPiece` (non utilisés), sans impact sur le comportement actuel.
 - (Revert) Affichage unifié des membres retiré: l'approche basée sur `shape()` des SVG produit des bboxes rectangulaires non conformes. À revisiter ultérieurement avec une extraction de silhouette par rendu offscreen si nécessaire.
@@ -105,6 +123,10 @@ Prochaines étapes :
 *   **Système d'Undo/Redo**: Implémenter un historique des actions.
 *   **Attachement d'objets**: Finaliser la fonctionnalité permettant d'attacher un objet à un membre de marionnette.
 *   **Modes d'interpolation**: Ajouter des courbes d'animation (ease-in, ease-out).
+*   **Interpolation angulaire (prioritaire)**:
+    - Implémenter une interpolation des rotations par « plus court chemin » (normaliser le delta dans [-180°, +180°] avant lerp) dans `ui/state_applier.py`.
+    - Optionnel: « unwrap » des séries d'angles par membre entre keyframes consécutives pour éviter tout saut 0/360 en lecture continue.
+    - Ajouter un test ciblé: 350° -> 10° doit interpoler via -20° et non +340°.
 ### Responsabilités I/O (clarification)
 
 - `core/scene_model.py`:
@@ -115,3 +137,4 @@ Prochaines étapes :
   - Enrichit le JSON avec `puppets_data` (chemins, échelles, position des racines) nécessaire à la reconstitution graphique.
 
 *   **Timeline Multi-pistes**: Afficher et gérer des pistes de keyframes séparées pour chaque objet ou membre dans la timeline.
+- Correction Onion Skin: prise en compte de l’échelle courante du pantin pour les fantômes. Les clones appliquent désormais le facteur d’échelle (`setScale`) et les offsets parent→enfant sont multipliés par l’échelle pour conserver la cohésion et la taille du ghost en phase avec le pantin.

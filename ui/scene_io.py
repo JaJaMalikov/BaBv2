@@ -1,5 +1,6 @@
 from __future__ import annotations
 import json
+import logging
 from pathlib import Path
 
 from PySide6.QtWidgets import QFileDialog
@@ -23,8 +24,6 @@ def load_scene(win: 'MainWindow') -> None:
     filePath, _ = QFileDialog.getOpenFileName(win, "Charger une scène", "", "JSON Files (*.json)")
     if filePath:
         import_scene(win, filePath)
-
-import logging # Added for error handling
 
 def export_scene(win: 'MainWindow', file_path: str) -> None:
     """Exports the current scene state to a JSON file."""
@@ -50,13 +49,14 @@ def export_scene(win: 'MainWindow', file_path: str) -> None:
     try:
         with open(file_path, "w") as f:
             json.dump(data, f, indent=2)
-        logging.info(f"Scene saved to {file_path}")
-    except (IOError, TypeError) as e:
-        logging.error(f"Error saving scene: {e}")
+        logging.info("Scene saved to %s", file_path)
+    except (OSError, TypeError) as e:
+        logging.error("Error saving scene '%s': %s", file_path, e)
 
 def import_scene(win: MainWindow, file_path: str):
     """Imports a scene from a JSON file, rebuilding the entire scene state."""
     try:
+        # Chargement du fichier JSON (exceptions ciblées)
         with open(file_path, 'r') as f:
             data = json.load(f)
         
@@ -85,7 +85,7 @@ def import_scene(win: MainWindow, file_path: str):
             try:
                 win.object_manager._add_object_graphics(obj)
             except Exception as e:
-                print(f"Failed to create graphics for '{obj.name}': {e}")
+                logging.error("Failed to create graphics for '%s': %s", getattr(obj, 'name', '?'), e)
 
         win.timeline_widget.clear_keyframes()
         for kf_index in win.scene_model.keyframes:
@@ -99,8 +99,12 @@ def import_scene(win: MainWindow, file_path: str):
 
         QTimer.singleShot(0, lambda: win.timeline_widget.set_current_frame(win.scene_model.current_frame or win.scene_model.start_frame))
 
-    except Exception as e:
-        print(f"Failed to load scene '{file_path}': {e}")
+    except (OSError, json.JSONDecodeError) as e:
+        logging.error("Failed to load scene '%s': %s", file_path, e)
+        create_blank_scene(win, add_default_puppet=False)
+    except Exception:
+        # Log full traceback for unexpected errors
+        logging.exception("Unexpected error while loading scene '%s'", file_path)
         create_blank_scene(win, add_default_puppet=False)
 
 def create_blank_scene(win: 'MainWindow', add_default_puppet: bool = False) -> None:

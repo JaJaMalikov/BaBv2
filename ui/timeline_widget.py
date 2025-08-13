@@ -31,6 +31,12 @@ DIAMOND_W: int = 10
 DIAMOND_H: int = 10
 
 class TimelineWidget(QWidget):
+    """Lightweight timeline widget.
+
+    Emits signals for frame changes, play/pause/stop, range and FPS changes,
+    and exposes helpers to add/remove keyframe markers. The widget does not
+    mutate the scene model; MainWindow/PlaybackHandler should handle logic.
+    """
     frameChanged = Signal(int)
     addKeyframeClicked = Signal(int)
     deleteKeyframeClicked = Signal(int)
@@ -64,33 +70,70 @@ class TimelineWidget(QWidget):
         bar.setContentsMargins(4, 0, 4, 0)
         bar.setSpacing(4)
 
-        self.play_btn: QToolButton = QToolButton(); self.play_btn.setText("⏵"); self.play_btn.setCheckable(True); self.play_btn.clicked.connect(self._on_play_clicked)
-        self.stop_btn: QToolButton = QToolButton(); self.stop_btn.setText("■"); self.stop_btn.setToolTip("Stop and go to start"); self.stop_btn.clicked.connect(self._on_stop_clicked)
-        self.prev_kf_btn: QToolButton = QToolButton(); self.prev_kf_btn.setText("|◀"); self.prev_kf_btn.setToolTip("Previous keyframe"); self.prev_kf_btn.clicked.connect(self._jump_prev_kf)
-        self.next_kf_btn: QToolButton = QToolButton(); self.next_kf_btn.setText("▶|"); self.next_kf_btn.setToolTip("Next keyframe"); self.next_kf_btn.clicked.connect(self._jump_next_kf)
-        self.loop_btn: QToolButton = QToolButton(); self.loop_btn.setText("Loop"); self.loop_btn.setCheckable(True); self.loop_btn.setChecked(True); self.loop_btn.toggled.connect(self.loopToggled)
-        
-        self.add_kf_btn: QToolButton = QToolButton(); self.add_kf_btn.setText("＋◆"); self.add_kf_btn.setToolTip("Add keyframe (A)"); self.add_kf_btn.clicked.connect(lambda: self.addKeyframeClicked.emit(self._current))
-        self.del_kf_btn: QToolButton = QToolButton(); self.del_kf_btn.setText("－◆"); self.del_kf_btn.setToolTip("Delete keyframe (D)"); self.del_kf_btn.clicked.connect(lambda: self.deleteKeyframeClicked.emit(self._current))
+        self.play_btn: QToolButton = QToolButton()
+        self.play_btn.setText("⏵")
+        self.play_btn.setCheckable(True)
+        self.play_btn.clicked.connect(self._on_play_clicked)
+
+        self.stop_btn: QToolButton = QToolButton()
+        self.stop_btn.setText("■")
+        self.stop_btn.setToolTip("Stop and go to start")
+        self.stop_btn.clicked.connect(self._on_stop_clicked)
+
+        self.prev_kf_btn: QToolButton = QToolButton()
+        self.prev_kf_btn.setText("|◀")
+        self.prev_kf_btn.setToolTip("Previous keyframe")
+        self.prev_kf_btn.clicked.connect(self._jump_prev_kf)
+
+        self.next_kf_btn: QToolButton = QToolButton()
+        self.next_kf_btn.setText("▶|")
+        self.next_kf_btn.setToolTip("Next keyframe")
+        self.next_kf_btn.clicked.connect(self._jump_next_kf)
+
+        self.loop_btn: QToolButton = QToolButton()
+        self.loop_btn.setText("Loop")
+        self.loop_btn.setCheckable(True)
+        self.loop_btn.setChecked(True)
+        self.loop_btn.toggled.connect(self.loopToggled)
+
+        self.add_kf_btn: QToolButton = QToolButton()
+        self.add_kf_btn.setText("＋◆")
+        self.add_kf_btn.setToolTip("Add keyframe (A)")
+        self.add_kf_btn.clicked.connect(lambda: self.addKeyframeClicked.emit(self._current))
+
+        self.del_kf_btn: QToolButton = QToolButton()
+        self.del_kf_btn.setText("－◆")
+        self.del_kf_btn.setToolTip("Delete keyframe (D)")
+        self.del_kf_btn.clicked.connect(lambda: self.deleteKeyframeClicked.emit(self._current))
 
         for btn in [self.play_btn, self.stop_btn, self.prev_kf_btn, self.next_kf_btn, self.loop_btn, self.add_kf_btn, self.del_kf_btn]:
             bar.addWidget(btn)
 
         bar.addSpacerItem(QSpacerItem(10, 10, QSizePolicy.Expanding, QSizePolicy.Minimum))
 
-        self.time_label: QLabel = QLabel("00:00"); self.time_label.setToolTip("Time (mm:ss)")
-        self.frame_spin: QSpinBox = QSpinBox(); self.frame_spin.setRange(0, 999999); self.frame_spin.setFixedWidth(70); self.frame_spin.valueChanged.connect(self.set_current_frame)
+        self.time_label: QLabel = QLabel("00:00")
+        self.time_label.setToolTip("Time (mm:ss)")
+        self.frame_spin: QSpinBox = QSpinBox()
+        self.frame_spin.setRange(0, 999999)
+        self.frame_spin.setFixedWidth(70)
+        self.frame_spin.valueChanged.connect(self.set_current_frame)
         self.fps_label: QLabel = QLabel("FPS:")
-        self.fps_spin: QSpinBox = QSpinBox(); self.fps_spin.setRange(1, 240); self.fps_spin.setValue(24); self.fps_spin.valueChanged.connect(self.fpsChanged.emit)
+        self.fps_spin: QSpinBox = QSpinBox()
+        self.fps_spin.setRange(1, 240)
+        self.fps_spin.setValue(24)
+        self.fps_spin.valueChanged.connect(self.fpsChanged.emit)
 
         self.in_label: QLabel = QLabel("In:")
         self.out_label: QLabel = QLabel("Out:")
-        self.start_spin: QSpinBox = QSpinBox(); self.end_spin: QSpinBox = QSpinBox()
-        self.start_spin.setRange(0, 999999); self.end_spin.setRange(0, 999999)
+        self.start_spin: QSpinBox = QSpinBox()
+        self.end_spin: QSpinBox = QSpinBox()
+        self.start_spin.setRange(0, 999999)
+        self.end_spin.setRange(0, 999999)
         for w in [self.time_label, self.frame_spin, self.fps_label, self.fps_spin, self.in_label, self.start_spin, self.out_label, self.end_spin]:
             bar.addWidget(w)
 
-        self.slider: QSlider = QSlider(Qt.Horizontal); self.slider.setVisible(False)
+        self.slider: QSlider = QSlider(Qt.Horizontal)
+        self.slider.setVisible(False)
         self.fps_spinbox: QSpinBox = self.fps_spin
         self.start_frame_spinbox: QSpinBox = self.start_spin
         self.end_frame_spinbox: QSpinBox = self.end_spin
@@ -201,17 +244,21 @@ class TimelineWidget(QWidget):
         p: QPainter = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
         p.fillRect(self.rect(), BG)
-        ruler_rect: QRect; timeline_rect: QRect
+        ruler_rect: QRect
+        timeline_rect: QRect
         ruler_rect, timeline_rect = self._ruler_rect(), self._timeline_rect()
-        p.fillRect(ruler_rect, RULER_BG); p.fillRect(timeline_rect, TRACK_BG)
-        in_x: float; out_x: float
+        p.fillRect(ruler_rect, RULER_BG)
+        p.fillRect(timeline_rect, TRACK_BG)
+        in_x: float
+        out_x: float
         in_x, out_x = self._frame_to_x(self._start), self._frame_to_x(self._end)
         p.fillRect(QRectF(timeline_rect.left(), timeline_rect.top(), in_x - timeline_rect.left(), timeline_rect.height()), INOUT_SHADE)
         p.fillRect(QRectF(out_x, timeline_rect.top(), timeline_rect.right() - out_x, timeline_rect.height()), INOUT_SHADE)
         self._draw_ticks(p, ruler_rect)
         for fr in self._kfs:
             x: float = self._frame_to_x(fr)
-            if x < 0 or x > self.width(): continue
+            if x < 0 or x > self.width():
+                continue
             self._draw_kf(p, QPointF(x, timeline_rect.center().y()), fr == self._hover_kf)
         px: float = self._frame_to_x(self._current)
         p.setPen(QPen(PLAYHEAD, PLAYHEAD_W))
@@ -226,7 +273,8 @@ class TimelineWidget(QWidget):
                 h: int = metrics.height() + 6
                 x: int = int(min(max(6, pos.x() - w//2), self.width() - w - 6))
                 y: int = 6
-                p.setPen(Qt.NoPen); p.setBrush(QColor(0, 0, 0, 160))
+                p.setPen(Qt.NoPen)
+                p.setBrush(QColor(0, 0, 0, 160))
                 p.drawRoundedRect(QRectF(x, y, w, h), 6, 6)
                 p.setPen(QColor('#D0D0D0'))
                 p.drawText(x + 5, y + h - 5, hud)
@@ -237,22 +285,28 @@ class TimelineWidget(QWidget):
         target: int = 80
         step_frames: int = max(1, int(round(target / max(1.0, self._px_per_frame))))
         base: int = 1
-        while base * 10 < step_frames: base *= 10
+        while base * 10 < step_frames:
+            base *= 10
         for k in (1, 2, 5, 10):
-            if base * k >= step_frames: step_frames = base * k; break
+            if base * k >= step_frames:
+                step_frames = base * k
+                break
         first: int = max(0, int(math.floor((self._start + self._scroll_frames) / step_frames) * step_frames))
         for f in range(first, self._end + 1, step_frames):
             x: float = self._frame_to_x(f)
-            if x < rr.left() - 20 or x > rr.right() + 20: continue
+            if x < rr.left() - 20 or x > rr.right() + 20:
+                continue
             is_major: bool = (f % (step_frames * 5) == 0)
             p.setPen(TICK_MAJOR if is_major else TICK)
             h: float = rr.height() - 2 if is_major else rr.height() / 2
             p.drawLine(int(x), rr.bottom() - int(h), int(x), rr.bottom())
-            if is_major: p.drawText(int(x) + 4, rr.top() + rr.height() - 6, f"{f}")
+            if is_major:
+                p.drawText(int(x) + 4, rr.top() + rr.height() - 6, f"{f}")
 
     def _draw_kf(self, p: QPainter, pos: QPointF, is_hovered: bool) -> None:
         color: QColor = KF_HOVER if is_hovered else KF_NORMAL
-        p.setPen(QPen(color.darker(150), 1)); p.setBrush(QBrush(color))
+        p.setPen(QPen(color.darker(150), 1))
+        p.setBrush(QBrush(color))
         p.drawPolygon(QPolygonF([QPointF(pos.x(), pos.y() - DIAMOND_H / 2), QPointF(pos.x() + DIAMOND_W / 2, pos.y()), QPointF(pos.x(), pos.y() + DIAMOND_H / 2), QPointF(pos.x() - DIAMOND_W / 2, pos.y())]))
 
     def mousePressEvent(self, e: QMouseEvent) -> None:
@@ -260,38 +314,52 @@ class TimelineWidget(QWidget):
         if e.button() == Qt.LeftButton and (self._ruler_rect().contains(pos.toPoint()) or self._timeline_rect().contains(pos.toPoint())):
             self._dragging_playhead = True
             self.set_current_frame(self._x_to_frame(pos.x()))
-        elif e.button() == Qt.RightButton: self._show_context_menu(e)
+        elif e.button() == Qt.RightButton:
+            self._show_context_menu(e)
         super().mousePressEvent(e)
 
     def mouseMoveEvent(self, e: QMouseEvent) -> None:
-        if self._dragging_playhead: self.set_current_frame(self._x_to_frame(e.position().x()))
-        else: self._hover_kf = self._kf_at_pos(e.position())
+        if self._dragging_playhead:
+            self.set_current_frame(self._x_to_frame(e.position().x()))
+        else:
+            self._hover_kf = self._kf_at_pos(e.position())
         self.update()
 
     def mouseReleaseEvent(self, e: QMouseEvent) -> None:
-        if e.button() == Qt.LeftButton: self._dragging_playhead = False
+        if e.button() == Qt.LeftButton:
+            self._dragging_playhead = False
         super().mouseReleaseEvent(e)
 
     def wheelEvent(self, e: QWheelEvent) -> None:
-        pos: QPointF = e.position(); steps: float = e.angleDelta().y() / 120.0
+        pos: QPointF = e.position()
+        steps: float = e.angleDelta().y() / 120.0
         if e.modifiers() & Qt.ControlModifier:
             mouse_frame_before: int = self._x_to_frame(pos.x())
             self._px_per_frame = max(self._min_ppf, min(self._max_ppf, self._px_per_frame * (1.0 + steps * 0.1)))
             mouse_frame_after: int = self._x_to_frame(pos.x())
             self._scroll_frames += mouse_frame_before - mouse_frame_after
-        else: self._scroll_frames -= steps * 15
+        else:
+            self._scroll_frames -= steps * 15
         self._scroll_frames = max(0.0, self._scroll_frames)
         self.update()
 
     def keyPressEvent(self, e: QKeyEvent) -> None:
-        if e.key() == Qt.Key_Space: self.play_btn.click()
-        elif e.key() == Qt.Key_A: self.addKeyframeClicked.emit(self._current)
-        elif e.key() == Qt.Key_D and self._current in self._kfs: self.deleteKeyframeClicked.emit(self._current)
-        elif e.key() == Qt.Key_Home: self.set_current_frame(self._start)
-        elif e.key() == Qt.Key_End: self.set_current_frame(self._end)
-        elif e.key() == Qt.Key_Left: self._jump_prev_kf()
-        elif e.key() == Qt.Key_Right: self._jump_next_kf()
-        else: super().keyPressEvent(e)
+        if e.key() == Qt.Key_Space:
+            self.play_btn.click()
+        elif e.key() == Qt.Key_A:
+            self.addKeyframeClicked.emit(self._current)
+        elif e.key() == Qt.Key_D and self._current in self._kfs:
+            self.deleteKeyframeClicked.emit(self._current)
+        elif e.key() == Qt.Key_Home:
+            self.set_current_frame(self._start)
+        elif e.key() == Qt.Key_End:
+            self.set_current_frame(self._end)
+        elif e.key() == Qt.Key_Left:
+            self._jump_prev_kf()
+        elif e.key() == Qt.Key_Right:
+            self._jump_next_kf()
+        else:
+            super().keyPressEvent(e)
 
     def mouseDoubleClickEvent(self, e: QMouseEvent) -> None:
         if e.button() == Qt.LeftButton and self._timeline_rect().contains(e.position().toPoint()):
@@ -299,7 +367,8 @@ class TimelineWidget(QWidget):
         super().mouseDoubleClickEvent(e)
 
     def _kf_at_pos(self, pos: QPointF) -> Optional[int]:
-        if not self._timeline_rect().contains(pos.toPoint()): return None
+        if not self._timeline_rect().contains(pos.toPoint()):
+            return None
         f: int = self._x_to_frame(pos.x())
         tol_frames: int = max(1, round(DIAMOND_W / (2 * max(1.0, self._px_per_frame))))
         return next((fr for fr in self._kfs if abs(fr - f) <= tol_frames), None)
@@ -307,10 +376,14 @@ class TimelineWidget(QWidget):
     def _show_context_menu(self, e: QMouseEvent) -> None:
         menu: QMenu = QMenu(self)
         f: int = self._x_to_frame(e.position().x())
-        add_action: QAction = QAction(f"Add keyframe @ {f}", self); add_action.triggered.connect(lambda: self.addKeyframeClicked.emit(f)); menu.addAction(add_action)
+        add_action: QAction = QAction(f"Add keyframe @ {f}", self)
+        add_action.triggered.connect(lambda: self.addKeyframeClicked.emit(f))
+        menu.addAction(add_action)
         kf_at_cursor: Optional[int] = self._kf_at_pos(e.position())
         if kf_at_cursor is not None:
-            rem_action: QAction = QAction(f"Delete keyframe @ {kf_at_cursor}", self); rem_action.triggered.connect(lambda: self.deleteKeyframeClicked.emit(kf_at_cursor)); menu.addAction(rem_action)
+            rem_action: QAction = QAction(f"Delete keyframe @ {kf_at_cursor}", self)
+            rem_action.triggered.connect(lambda: self.deleteKeyframeClicked.emit(kf_at_cursor))
+            menu.addAction(rem_action)
         menu.exec(e.globalPosition().toPoint())
 
     def _format_time(self, frame: int) -> str:

@@ -1,3 +1,4 @@
+from typing import Optional, Tuple, List, Any
 import math
 
 from PySide6.QtWidgets import QGraphicsEllipseItem, QGraphicsSceneMouseEvent, QGraphicsItem
@@ -10,11 +11,10 @@ PIVOT_KEYWORDS = ["coude", "genou", "hanche", "epaule", "cheville", "poignet", "
 HANDLE_Z_VALUE = 1000
 PIVOT_Z_VALUE = 999
 
-from typing import Optional, Tuple, List, Any
-
 
 class RotationHandle(QGraphicsEllipseItem):
-    def __init__(self, piece: 'PuppetPiece'):
+    """Circular handle used to rotate a PuppetPiece around its pivot."""
+    def __init__(self, piece: 'PuppetPiece') -> None:
         super().__init__(-10, -10, 20, 20)
         self.piece: 'PuppetPiece' = piece
         self.setBrush(QBrush(Qt.transparent))
@@ -46,6 +46,7 @@ class RotationHandle(QGraphicsEllipseItem):
         super().mouseReleaseEvent(event)
 
 class PivotHandle(QGraphicsEllipseItem):
+    """Small circle visualizing the pivot point of a PuppetPiece."""
     def __init__(self) -> None:
         super().__init__(-5, -5, 10, 10)
         self.setBrush(QBrush(Qt.transparent))
@@ -55,6 +56,12 @@ class PivotHandle(QGraphicsEllipseItem):
 from PySide6.QtSvg import QSvgRenderer # Added for type hinting
 
 class PuppetPiece(QGraphicsSvgItem):
+    """Graphical item representing a puppet member (SVG group).
+
+    The item stores its local rotation (relative to parent) and knows how to
+    update its position/rotation from the parent using precomputed relative
+    offsets (rel_to_parent). It also owns optional rotation/pivot handles.
+    """
     def __init__(
         self,
         svg_path: str,
@@ -104,6 +111,7 @@ class PuppetPiece(QGraphicsSvgItem):
 
 
     def set_handle_visibility(self, visible: bool) -> None:
+        """Show or hide pivot and rotation handles with themed styling."""
         pen_color: QColor = QColor(255, 255, 255, 180)
         if visible:
             self.pivot_handle.setBrush(QBrush(QColor(70, 200, 255, 180)))
@@ -121,6 +129,7 @@ class PuppetPiece(QGraphicsSvgItem):
                 self.rotation_handle.setPen(QPen(Qt.transparent))
 
     def update_handle_positions(self) -> None:
+        """Update scene positions of the pivot and rotation handles."""
         pivot_pos: QPointF = self.mapToScene(self.pivot_x, self.pivot_y)
         self.pivot_handle.setPos(pivot_pos)
         if self.rotation_handle and self.handle_local_pos: # Check handle_local_pos as well
@@ -141,12 +150,14 @@ class PuppetPiece(QGraphicsSvgItem):
         return super().itemChange(change, value)
 
     def set_parent_piece(self, parent: 'PuppetPiece', rel_x: float = 0.0, rel_y: float = 0.0) -> None:
+        """Define parent piece and relative offset in parent's local space."""
         self.parent_piece = parent
         self.rel_to_parent = (rel_x, rel_y)
         if parent and self not in parent.children:
             parent.children.append(self)
 
     def update_transform_from_parent(self) -> None:
+        """Recompute world transform from parent rotation and stored offset."""
         if not self.parent_piece:
             return
 
@@ -168,6 +179,7 @@ class PuppetPiece(QGraphicsSvgItem):
             child.update_transform_from_parent()
 
     def rotate_piece(self, angle_degrees: float) -> None:
+        """Set local rotation and propagate transform updates to children."""
         self.local_rotation = angle_degrees
         if self.parent_piece:
             self.update_transform_from_parent()

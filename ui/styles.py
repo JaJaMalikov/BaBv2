@@ -1,3 +1,4 @@
+import logging
 from PySide6.QtGui import QFont
 
 # This is used for the fallback icon drawing function.
@@ -128,4 +129,4 @@ def apply_stylesheet(app):
     try:
         app.setFont(QFont("Poppins", 10))
     except RuntimeError:
-        print("Poppins font not found, using system default.")
+        logging.warning("Poppins font not found, using system default.")

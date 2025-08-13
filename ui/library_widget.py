@@ -1,4 +1,10 @@
+"""Library panel showing background, objects and puppets available under assets/.
+
+Provides drag-and-drop payloads and context menu to add items to the scene.
+"""
+
 import json
+import logging
 from pathlib import Path
 from typing import Optional
 
@@ -63,7 +69,8 @@ class _DraggableGrid(QListWidget):
             payload = item.data(Qt.UserRole)
             if payload:
                 self.addRequested.emit(payload)
-                event.accept(); return
+                event.accept()
+                return
         super().mouseDoubleClickEvent(event)
 
 class LibraryWidget(QWidget):
@@ -100,7 +107,7 @@ class LibraryWidget(QWidget):
         layout.addWidget(self.tabs)
         self.reload()
 
-    def reload(self):
+    def reload(self) -> None:
         self.background_grid.clear()
         self.objects_grid.clear()
         self.puppets_grid.clear()
@@ -126,8 +133,8 @@ class LibraryWidget(QWidget):
                 
                 try:
                     item.setIcon(QIcon(str(f)))
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug("Failed to load icon for '%s': %s", f, e)
                 
                 item.setToolTip(str(f))
                 grid.addItem(item)

@@ -1,14 +1,32 @@
+"""Scene data model: puppets, objects, keyframes and settings.
+
+This module contains pure data structures and serialization helpers used by the UI.
+"""
+
+from typing import Dict, Any, Optional
 import logging
 from core.puppet_model import Puppet
-from typing import Dict, Any
 
 
 class SceneObject:
     """
-    Un objet générique de la scène (image, SVG, décor, etc.)
-    Peut être libre ou attaché à un membre de pantin.
+    Un objet générique de la scène (image, SVG, décor, etc.).
+
+    Peut être libre (coordonnées en scène) ou attaché à un membre de pantin
+    (coordonnées locales au parent). Les coordonnées/valeurs sont des types
+    simples pour faciliter la sérialisation JSON.
     """
-    def __init__(self, name, obj_type, file_path, x=0, y=0, rotation=0, scale=1.0, z=0):
+    def __init__(
+        self,
+        name: str,
+        obj_type: str,
+        file_path: str,
+        x: float = 0,
+        y: float = 0,
+        rotation: float = 0,
+        scale: float = 1.0,
+        z: int = 0,
+    ) -> None:
         self.name = name
         self.obj_type = obj_type  # "image", "svg", "puppet"
         self.file_path = file_path
@@ -17,15 +35,15 @@ class SceneObject:
         self.rotation = rotation
         self.scale = scale
         self.z = z
-        self.attached_to = None  # ("puppet_name", "member_name") ou None
+        self.attached_to: Optional[tuple[str, str]] = None  # (puppet_name, member_name) ou None
 
-    def attach(self, puppet_name, member_name):
+    def attach(self, puppet_name: str, member_name: str) -> None:
         self.attached_to = (puppet_name, member_name)
 
-    def detach(self):
+    def detach(self) -> None:
         self.attached_to = None
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         """Sérialise l'objet pour l'export JSON."""
         return {
             "name": self.name,
@@ -40,7 +58,7 @@ class SceneObject:
         }
 
     @classmethod
-    def from_dict(cls, data):
+    def from_dict(cls, data: Dict[str, Any]) -> "SceneObject":
         """Construit un ``SceneObject`` depuis une structure dict."""
         obj = cls(
             name=data.get("name"),
@@ -69,7 +87,7 @@ class Keyframe:
         self.puppets: Dict[str, Dict[str, Dict[str, Any]]] = {}
 
 class SceneModel:
-    def __init__(self):
+    def __init__(self) -> None:
         self.puppets = {}    # name -> Puppet instance
         self.objects = {}    # name -> SceneObject
         self.keyframes = {}  # index -> Keyframe
@@ -84,27 +102,27 @@ class SceneModel:
     # -----------------------------
     # PUPPETS ET OBJETS
     # -----------------------------
-    def add_puppet(self, name, puppet: Puppet):
+    def add_puppet(self, name: str, puppet: Puppet) -> None:
         self.puppets[name] = puppet
 
-    def remove_puppet(self, name):
+    def remove_puppet(self, name: str) -> None:
         self.puppets.pop(name, None)
 
-    def add_object(self, scene_object: SceneObject):
+    def add_object(self, scene_object: SceneObject) -> None:
         self.objects[scene_object.name] = scene_object
 
-    def remove_object(self, name):
+    def remove_object(self, name: str) -> None:
         self.objects.pop(name, None)
 
     # -----------------------------
     # ATTACHEMENT
     # -----------------------------
-    def attach_object(self, obj_name, puppet_name, member_name):
+    def attach_object(self, obj_name: str, puppet_name: str, member_name: str) -> None:
         obj = self.objects.get(obj_name)
         if obj:
             obj.attach(puppet_name, member_name)
 
-    def detach_object(self, obj_name):
+    def detach_object(self, obj_name: str) -> None:
         obj = self.objects.get(obj_name)
         if obj:
             obj.detach()
@@ -112,7 +130,7 @@ class SceneModel:
     # -----------------------------
     # KEYFRAMES ET TIMELINE
     # -----------------------------
-    def add_keyframe(self, index, puppet_states=None):
+    def add_keyframe(self, index: int, puppet_states: Optional[Dict[str, Dict[str, Dict[str, Any]]]] = None) -> Keyframe:
         kf = self.keyframes.get(index)
         if not kf:
             kf = Keyframe(index)
@@ -126,10 +144,10 @@ class SceneModel:
         self.keyframes = dict(sorted(self.keyframes.items()))
         return kf
 
-    def remove_keyframe(self, index):
+    def remove_keyframe(self, index: int) -> None:
         self.keyframes.pop(index, None)
 
-    def go_to_frame(self, index):
+    def go_to_frame(self, index: int) -> None:
         self.current_frame = index
         # La restauration de l'état se fera dans la MainWindow
         # qui a accès aux objets graphiques.
@@ -137,7 +155,43 @@ class SceneModel:
     # -----------------------------
     # IMPORT/EXPORT
     # -----------------------------
-    def to_dict(self):
+    def _validate_data(self, data: Any) -> bool:
+        """Validate minimally the loaded scene JSON structure without mutating state.
+
+        Rules (lenient):
+        - data must be a dict
+        - settings (if present) must be a dict with ints for frames/fps and ints for size
+        - objects (if present) must be a dict mapping str -> dict
+        - keyframes (if present) must be a list of dict with an integer 'index'
+        """
+        if not isinstance(data, dict):
+            return False
+        settings = data.get("settings", {})
+        if settings is not None and not isinstance(settings, dict):
+            return False
+        if isinstance(settings, dict):
+            for k in ("start_frame", "end_frame", "fps", "scene_width", "scene_height"):
+                if k in settings and not isinstance(settings[k], int):
+                    return False
+        objects = data.get("objects", {})
+        if objects is not None and not isinstance(objects, dict):
+            return False
+        if isinstance(objects, dict):
+            for k, v in objects.items():
+                if not isinstance(k, str) or not isinstance(v, dict):
+                    return False
+        keyframes = data.get("keyframes", [])
+        if keyframes is not None and not isinstance(keyframes, list):
+            return False
+        if isinstance(keyframes, list):
+            for kf in keyframes:
+                if not isinstance(kf, dict):
+                    return False
+                idx = kf.get("index")
+                if idx is not None and not isinstance(idx, int):
+                    return False
+        return True
+    def to_dict(self) -> Dict[str, Any]:
         return {
             "settings": {
                 "start_frame": self.start_frame,
@@ -159,7 +213,7 @@ class SceneModel:
             ],
         }
 
-    def from_dict(self, data):
+    def from_dict(self, data: Dict[str, Any]) -> None:
         settings = data.get("settings", {})
         self.start_frame = settings.get("start_frame", 0)
         self.end_frame = settings.get("end_frame", 100)
@@ -185,20 +239,22 @@ class SceneModel:
 
         self.keyframes = dict(sorted(self.keyframes.items()))
 
-    def export_json(self, file_path):
+    def export_json(self, file_path: str) -> None:
         import json
         with open(file_path, "w") as f:
             json.dump(self.to_dict(), f, indent=2)
 
-    def import_json(self, file_path):
+    def import_json(self, file_path: str) -> bool:
         import json
         try:
             with open(file_path, "r") as f:
                 data = json.load(f)
-            # Peupler le modèle depuis les données chargées
+            # Valider avant d'appliquer pour éviter tout état partiel
+            if not self._validate_data(data):
+                logging.error("Import JSON invalide: structure non conforme")
+                return False
             self.from_dict(data)
             return True
         except (IOError, json.JSONDecodeError) as e:
             logging.error(f"Erreur lors du chargement du fichier : {e}")
             return False
-        self.from_dict(data)

@@ -1,3 +1,10 @@
+import logging
+"""Inspector panel to list puppets/objects and edit selected object properties.
+
+This widget emits no external signals; it directly calls methods on MainWindow
+to manipulate the scene model and graphics items.
+"""
+
 from PySide6.QtWidgets import (
     QWidget, QListWidget, QListWidgetItem, QVBoxLayout, QHBoxLayout,
     QDoubleSpinBox, QComboBox, QToolButton, QFormLayout, QFrame
@@ -6,7 +13,13 @@ from PySide6.QtCore import Qt
 from ui.icons import icon_delete, icon_duplicate, icon_link, icon_link_off
 
 class InspectorWidget(QWidget):
-    """Simple inspector to manage scene objects and puppets."""
+    """Inspector to manage scene objects and puppets.
+
+    - Lists puppets and objects
+    - Allows duplicate/delete for both
+    - Edits object scale/rotation/z
+    - Attaches/detaches an object to a puppet member
+    """
     def __init__(self, main_window):
         super().__init__()
         self.main_window = main_window
@@ -96,8 +109,8 @@ class InspectorWidget(QWidget):
 
         self.refresh()
 
-    def refresh(self):
-        """Refresh list from scene model."""
+    def refresh(self) -> None:
+        """Refresh the list from the scene model."""
         self.list_widget.clear()
         model = self.main_window.scene_model
         for name in sorted(model.puppets.keys()):
@@ -161,7 +174,7 @@ class InspectorWidget(QWidget):
         self.z_spin.setValue(z)
         self.z_spin.blockSignals(False)
 
-    def _on_scale_changed(self, value):
+    def _on_scale_changed(self, value: float) -> None:
         typ, name = self._current_info()
         if not name:
             return
@@ -180,7 +193,7 @@ class InspectorWidget(QWidget):
             self.main_window.object_manager.puppet_scales[name] = value
             self.main_window.object_manager.scale_puppet(name, ratio)
 
-    def _on_delete_clicked(self):
+    def _on_delete_clicked(self) -> None:
         typ, name = self._current_info()
         if not name:
             return
@@ -191,7 +204,7 @@ class InspectorWidget(QWidget):
             self.main_window.object_manager.delete_puppet(name)
         self.refresh()
 
-    def _on_duplicate_clicked(self):
+    def _on_duplicate_clicked(self) -> None:
         typ, name = self._current_info()
         if not name:
             return
@@ -201,7 +214,7 @@ class InspectorWidget(QWidget):
             self.main_window.object_manager.duplicate_puppet(name)
         self.refresh()
 
-    def _on_rotation_changed(self, value: float):
+    def _on_rotation_changed(self, value: float) -> None:
         typ, name = self._current_info()
         if typ != "object" or not name:
             return
@@ -211,11 +224,11 @@ class InspectorWidget(QWidget):
             obj.rotation = value
             try:
                 item.setTransformOriginPoint(item.boundingRect().center())
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug("Failed to set transform origin in inspector: %s", e)
             item.setRotation(value)
 
-    def _on_z_changed(self, value: float):
+    def _on_z_changed(self, value: float) -> None:
         typ, name = self._current_info()
         if typ != "object" or not name:
             return
@@ -225,7 +238,7 @@ class InspectorWidget(QWidget):
             obj.z = int(value)
             item.setZValue(int(value))
 
-    def _refresh_attach_puppet_combo(self):
+    def _refresh_attach_puppet_combo(self) -> None:
         self.attach_puppet_combo.blockSignals(True)
         self.attach_puppet_combo.clear()
         self.attach_puppet_combo.addItem("")
@@ -234,7 +247,7 @@ class InspectorWidget(QWidget):
         self.attach_puppet_combo.blockSignals(False)
         self._refresh_attach_member_combo()
 
-    def _refresh_attach_member_combo(self):
+    def _refresh_attach_member_combo(self) -> None:
         puppet = self.attach_puppet_combo.currentText()
         self.attach_member_combo.clear()
         if puppet and puppet in self.main_window.scene_model.puppets:
@@ -244,7 +257,7 @@ class InspectorWidget(QWidget):
     def _on_attach_puppet_changed(self, _):
         self._refresh_attach_member_combo()
 
-    def _on_attach_clicked(self):
+    def _on_attach_clicked(self) -> None:
         typ, name = self._current_info()
         if typ != "object" or not name:
             return
@@ -254,7 +267,7 @@ class InspectorWidget(QWidget):
             self.main_window.object_manager.attach_object_to_member(name, puppet, member)
             self._on_item_changed(self.list_widget.currentItem(), None)
 
-    def _on_detach_clicked(self):
+    def _on_detach_clicked(self) -> None:
         typ, name = self._current_info()
         if typ != "object" or not name:
             return
@@ -263,7 +276,8 @@ class InspectorWidget(QWidget):
 
     # --- Helpers ---
     def _attached_state_for_frame(self, obj_name: str):
-        """Retourne (puppet_name, member_name) attachés à la frame courante, sinon (None, None).
+        """Retourne (puppet_name, member_name) à la frame courante, sinon (None, None).
+
         Respecte la même politique de visibilité que la scène: si le keyframe le plus
         récent ≤ frame ne contient pas l'objet, on considère l'objet masqué/détaché.
         """
@@ -283,11 +297,12 @@ class InspectorWidget(QWidget):
             try:
                 pu, me = attached
                 return pu, me
-            except Exception:
+            except Exception as e:
+                logging.debug("Invalid 'attached_to' format in inspector: %s", e)
                 return (None, None)
         return (None, None)
 
-    def sync_with_frame(self):
+    def sync_with_frame(self) -> None:
         """À appeler quand la frame courante change pour resynchroniser les combos."""
         cur = self.list_widget.currentItem()
         if cur is not None:
