@@ -37,6 +37,15 @@ class SceneController:
         """Set background image path and refresh visuals accordingly."""
         self.win.scene_model.background_path = path
         self.update_background()
+	# --- Zoom & ajustements de vue ---
+    def zoom(self, factor: float) -> None:
+        """Applique un zoom sur la vue et met à jour le statut."""
+        self.win.view.scale(factor, factor)
+        self.win.zoom_factor *= factor
+        try:
+            self.win._update_zoom_status()
+        except Exception:
+            pass
 
     # --- Délégations onion skin ---
     def set_onion_enabled(self, enabled: bool) -> None:

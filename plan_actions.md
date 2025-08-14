@@ -59,7 +59,7 @@
   - [x] Construction des overlays (`build_side_overlays`, `position_overlays`) déjà isolée : étendre la logique pour toute manipulation UI.
   - [x] Paramètres & sauvegarde d’état → `SettingsManager` (déjà existant), `open_settings_dialog`.
 - Remplacer les accès directs aux attributs par des signaux/slots, par ex. :
-  - [ ] `ZoomableView` émet un signal `zoom_requested` → `SceneController.zoom(factor)`.
+  - [x] `ZoomableView` émet un signal `zoom_requested` → `SceneController.zoom(factor)`.
   - [ ] `TimelineWidget` émet des signaux → `PlaybackController` gère le modèle.
 
 ### 4. Organiser par fonctionnalités

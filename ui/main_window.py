@@ -91,11 +91,10 @@ class MainWindow(QMainWindow):
             self.view._build_custom_tools_overlay(self)
         except Exception as e:
             logging.debug("Custom overlay not built: %s", e)
-        app_actions.connect_signals(self)
         self._setup_scene_visuals()
         # Scene controller façade (agrège visuals, onion, applier)
         self.scene_controller: SceneController = SceneController(self, visuals=self.visuals, onion=self.onion)
-
+        app_actions.connect_signals(self)
         # --- Startup Sequence ---
         self.showMaximized()
         self.timeline_dock.show()
@@ -175,11 +174,6 @@ class MainWindow(QMainWindow):
     def _update_zoom_status(self) -> None:
         # No status bar or zoom label; keep overlay minimal
         pass
-
-    def zoom(self, factor: float) -> None:
-        self.view.scale(factor, factor)
-        self.zoom_factor *= factor
-        self._update_zoom_status()
 
     def fit_to_view(self) -> None:
         self.view.resetTransform()

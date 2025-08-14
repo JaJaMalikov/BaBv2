@@ -65,7 +65,7 @@ def connect_signals(win: Any) -> None:
     win.background_action.triggered.connect(win.set_background)
 
     # ZoomableView signals
-    win.view.zoom_requested.connect(win.zoom)
+    win.view.zoom_requested.connect(win.scene_controller.zoom)
     win.view.fit_requested.connect(win.fit_to_view)
     win.view.handles_toggled.connect(win.toggle_rotation_handles)
     win.view.onion_toggled.connect(win.set_onion_enabled)
