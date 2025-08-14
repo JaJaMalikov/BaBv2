@@ -9,8 +9,8 @@ from pathlib import Path
 from PySide6.QtWidgets import QVBoxLayout
 
 from ui.draggable_widget import PanelOverlay, DraggableHeader
-from ui.library_widget import LibraryWidget
-from ui.inspector_widget import InspectorWidget
+from ui.library.library_widget import LibraryWidget
+from ui.inspector.inspector_widget import InspectorWidget
 
 
 def build_side_overlays(win) -> Tuple[PanelOverlay, LibraryWidget, PanelOverlay, InspectorWidget]:

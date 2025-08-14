@@ -17,7 +17,7 @@ from ui.icons import (
     icon_plus, icon_minus, icon_fit, icon_rotate, icon_onion,
     icon_open_menu, icon_close_menu, icon_close_menu_inv
 )
-from ui.library_widget import LIB_MIME
+from ui.library.library_widget import LIB_MIME
 
 
 from typing import Optional, Any, Callable, Dict, List

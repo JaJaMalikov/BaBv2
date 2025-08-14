@@ -15,21 +15,22 @@ from PySide6.QtWidgets import (
     QMessageBox,
 )
 
-import ui.scene_io as scene_io
+from ui.scene import scene_io
 from core.scene_model import SceneModel, Keyframe
 from ui import actions as app_actions
-from ui import scene_commands
-from ui import scene_settings
+from ui.scene import actions as scene_actions
 from ui import selection_sync
 from ui.object_manager import ObjectManager
 from ui.onion_skin import OnionSkinManager
 from ui.overlay_manager import OverlayManager
 from ui.playback_controller import PlaybackController
-from ui.scene_controller import SceneController
-from ui.scene_visuals import SceneVisuals
+from ui.scene.scene_controller import SceneController
+from ui.scene.scene_visuals import SceneVisuals
 from ui.settings_manager import SettingsManager
 from ui.timeline_widget import TimelineWidget
 from ui.zoomable_view import ZoomableView
+from ui.library import actions as library_actions
+from ui.inspector import actions as inspector_actions
 
 
 class MainWindow(QMainWindow):
@@ -159,7 +160,7 @@ class MainWindow(QMainWindow):
 
     def reset_scene(self) -> None:
         """Resets the scene to a blank state."""
-        scene_commands.reset_scene(self)
+        scene_actions.reset_scene(self)
 
     def _build_side_overlays(self) -> None:
         """Builds the side overlays for the library and inspector."""
@@ -168,11 +169,11 @@ class MainWindow(QMainWindow):
 
     def set_library_overlay_visible(self, visible: bool) -> None:
         """Sets the visibility of the library overlay."""
-        self.overlays.set_library_visible(visible)
+        library_actions.set_library_overlay_visible(self, visible)
 
     def set_inspector_overlay_visible(self, visible: bool) -> None:
         """Sets the visibility of the inspector overlay."""
-        self.overlays.set_inspector_visible(visible)
+        inspector_actions.set_inspector_overlay_visible(self, visible)
 
     def set_custom_overlay_visible(self, visible: bool) -> None:
         """Sets the visibility of the custom overlay."""
@@ -205,11 +206,11 @@ class MainWindow(QMainWindow):
 
     def set_scene_size(self) -> None:
         """Sets the scene size."""
-        scene_settings.set_scene_size(self)
+        scene_actions.set_scene_size(self)
 
     def set_background(self) -> None:
         """Sets the background of the scene."""
-        scene_commands.set_background(self)
+        scene_actions.set_background(self)
 
     def _update_background(self):
         """Updates the background of the scene."""

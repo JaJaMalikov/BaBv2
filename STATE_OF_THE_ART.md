@@ -128,6 +128,7 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
 - Bibliothèque UX: double-clic sur un élément pour l'ajouter directement à la scène (en plus du glisser-déposer et menu contextuel).
 
 - Centralisation des poignées de rotation: `SceneController.set_rotation_handles_visible` gère désormais l'affichage des poignées de rotation au lieu de `MainWindow`. Un test unitaire couvre également `SceneController.set_scene_size`.
+- **Centralisation de la logique de scène** : Les méthodes de manipulation de la scène (ajout/suppression/duplication d'objets et de marionnettes) ont été déplacées de `ObjectManager` vers `SceneController` pour une meilleure séparation des responsabilités. `ObjectManager` se concentre désormais sur la gestion des données des objets et des marionnettes, tandis que `SceneController` gère leur représentation et leur manipulation dans la scène.
 
 ## État actuel et prochaines étapes possibles
 

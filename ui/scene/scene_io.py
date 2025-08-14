@@ -49,7 +49,7 @@ def export_scene(win: 'MainWindow', file_path: str) -> None:
                 "path": win.object_manager.puppet_paths.get(name),
                 "scale": win.object_manager.puppet_scales.get(name, 1.0),
                 "position": [root_piece.x(), root_piece.y()],
-                "rotation": win.object_manager.get_puppet_rotation(name),
+                "rotation": win.scene_controller.get_puppet_rotation(name),
                 "z_offset": win.object_manager.puppet_z_offsets.get(name, 0),
             }
 
@@ -78,10 +78,10 @@ def import_scene(win: MainWindow, file_path: str):
         for name, p_data in puppets_data.items():
             puppet_path = p_data.get("path")
             if puppet_path and Path(puppet_path).exists():
-                win.object_manager.add_puppet(puppet_path, name)
+                win.scene_controller.add_puppet(puppet_path, name)
                 scale = p_data.get("scale", 1.0)
                 if scale != 1.0:
-                    win.object_manager.scale_puppet(name, scale)
+                    win.scene_controller.scale_puppet(name, scale)
                     win.object_manager.puppet_scales[name] = scale
                 
                 pos = p_data.get("position")
@@ -94,19 +94,19 @@ def import_scene(win: MainWindow, file_path: str):
                 try:
                     rot = float(p_data.get("rotation", 0.0))
                     if abs(rot) > 1e-9:
-                        win.object_manager.set_puppet_rotation(name, rot)
+                        win.scene_controller.set_puppet_rotation(name, rot)
                 except Exception:
                     pass
                 try:
                     zoff = int(p_data.get("z_offset", 0))
                     if zoff:
-                        win.object_manager.set_puppet_z_offset(name, zoff)
+                        win.scene_controller.set_puppet_z_offset(name, zoff)
                 except Exception:
                     pass
 
         for obj in win.scene_model.objects.values():
             try:
-                win.object_manager._add_object_graphics(obj)
+                win.scene_controller._add_object_graphics(obj)
             except Exception as e:
                 logging.error("Failed to create graphics for '%s': %s", getattr(obj, 'name', '?'), e)
 
@@ -138,14 +138,14 @@ def import_scene(win: MainWindow, file_path: str):
 def create_blank_scene(win: 'MainWindow', add_default_puppet: bool = False) -> None:
     """Clears the scene and optionally adds a default puppet."""
     for name in list(win.scene_model.puppets.keys()):
-        win.object_manager.delete_puppet(name)
+        win.scene_controller.delete_puppet(name)
     for name in list(win.scene_model.objects.keys()):
-        win.object_manager.delete_object(name)
+        win.scene_controller.delete_object(name)
     win.object_manager.renderers.clear()
     win.object_manager.graphics_items.clear()
     win.scene_model.keyframes.clear()
     win.timeline_widget.clear_keyframes()
     if add_default_puppet:
-        win.object_manager.add_puppet("assets/pantins/manu.svg", "manu")
+        win.scene_controller.add_puppet("assets/pantins/manu.svg", "manu")
     win.playback_handler.update_timeline_ui_from_model()
     win.inspector_widget.refresh()

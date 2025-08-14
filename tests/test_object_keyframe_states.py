@@ -24,14 +24,14 @@ def _puppet_piece(win: MainWindow, puppet: str, member: str):
 def test_object_state_is_per_keyframe(app):
     win = MainWindow()
 
-    win.object_manager.add_puppet(str(Path("assets/pantins/manu.svg").resolve()), "manu")
+    win.scene_controller.add_puppet(str(Path("assets/pantins/manu.svg").resolve()), "manu")
 
     # Ensure on frame 0
     win.playback_handler.go_to_frame(0)
 
     # Create a free object at a known position
     obj_path = str(Path("assets/objets/Faucille.svg").resolve())
-    name = win.object_manager._create_object_from_file(obj_path)
+    name = win.scene_controller._create_object_from_file(obj_path)
     assert name in win.object_manager.graphics_items
     item = win.object_manager.graphics_items[name]
 
@@ -41,14 +41,14 @@ def test_object_state_is_per_keyframe(app):
     win.object_manager.snapshot_current_frame()
 
     # Attach the object at KF 0 and set a local offset, re-snapshot
-    win.object_manager.attach_object_to_member(name, "manu", "main_droite")
+    win.scene_controller.attach_object_to_member(name, "manu", "main_droite")
     item.setPos(10.0, 20.0)  # local pos relative to the member
     win.object_manager.snapshot_current_frame()
 
     # Jump to frame 10, detach and set a different scene position, snapshot
     win.playback_handler.go_to_frame(10)
     win.add_keyframe(10)
-    win.object_manager.detach_object(name)
+    win.scene_controller.detach_object(name)
     item = win.object_manager.graphics_items[name]
     assert item.parentItem() is None
     item.setPos(345.0, 456.0)

@@ -49,7 +49,7 @@
   - [x] Mise à jour du fond et dimension de scène
   - [x] Onion skin
   - [x] Visibilité des poignées de rotation
-  - [ ] Ajout/suppression d’items
+  - [x] Ajout/suppression d’items
   - `MainWindow` ne ferait que déléguer (`scene_controller.add_object(...)` etc.).
 - **`ObjectManager`** : limiter à la création/duplication/paramétrage des items (membres, objets).
   Les interactions avec le modèle (`SceneModel`) pourraient passer par un service intermédiaire pour réduire le couplage.
@@ -60,12 +60,12 @@
   - [x] Paramètres & sauvegarde d’état → `SettingsManager` (déjà existant), `open_settings_dialog`.
 - Remplacer les accès directs aux attributs par des signaux/slots, par ex. :
   - [x] `ZoomableView` émet un signal `zoom_requested` → `SceneController.zoom(factor)`.
-  - [ ] `TimelineWidget` émet des signaux → `PlaybackController` gère le modèle.
+  - [x] `TimelineWidget` émet des signaux → `PlaybackController` gère le modèle.
 
 ### 4. Organiser par fonctionnalités
-- Créer des **modules ou packages par fonctionnalité** (par ex. `animation`, `library`, `inspector`, `scene`).
+- [x] Créer des **modules ou packages par fonctionnalité** (par ex. `animation`, `library`, `inspector`, `scene`).
   Chaque package contient son widget + son contrôleur, avec une API claire.
-- Déplacer toutes les actions `app_actions` vers des sous-modules liés à ces packages, pour que chaque action soit proche de la fonction qu’elle déclenche.
+- [x] Déplacer toutes les actions `app_actions` vers des sous-modules liés à ces packages, pour que chaque action soit proche de la fonction qu’elle déclenche.
 
 ### 5. Améliorer la testabilité et la maintenance
 - Introduire des interfaces/abstractions simples pour `SceneModel` (ex. via protocoles ou classes de base), facilitant les tests unitaires.

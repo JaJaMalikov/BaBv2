@@ -11,7 +11,7 @@ from PySide6.QtCore import QObject, Signal
 
 from core.scene_model import SceneModel
 from ui.timeline_widget import TimelineWidget
-from ui.inspector_widget import InspectorWidget
+from ui.inspector.inspector_widget import InspectorWidget
 from ui.playback_handler import PlaybackHandler
 
 

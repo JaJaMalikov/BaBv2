@@ -6,7 +6,7 @@ from typing import Optional
 
 from core.scene_model import SceneModel
 from ui.timeline_widget import TimelineWidget
-from ui.inspector_widget import InspectorWidget
+from ui.inspector.inspector_widget import InspectorWidget
 
 
 class PlaybackHandler(QObject):

@@ -185,7 +185,7 @@ class InspectorWidget(QWidget):
                 self._refresh_attach_member_combo()
         else:
             scale = self.main_window.object_manager.puppet_scales.get(name, 1.0)
-            rot = self.main_window.object_manager.get_puppet_rotation(name)
+            rot = self.main_window.scene_controller.get_puppet_rotation(name)
             z = self.main_window.object_manager.puppet_z_offsets.get(name, 0)
             # Pas de combos d'attache pour les pantins
         self.scale_spin.blockSignals(True)
@@ -216,7 +216,7 @@ class InspectorWidget(QWidget):
                 return
             ratio = value / old if old else value
             self.main_window.object_manager.puppet_scales[name] = value
-            self.main_window.object_manager.scale_puppet(name, ratio)
+            self.main_window.scene_controller.scale_puppet(name, ratio)
 
     def _on_delete_clicked(self) -> None:
         """Handles the deletion of the selected item."""
@@ -225,9 +225,9 @@ class InspectorWidget(QWidget):
             return
         if typ == "object":
             # Suppression temporelle: à partir de la frame courante
-            self.main_window.object_manager.delete_object_from_current_frame(name)
+            self.main_window.scene_controller.delete_object_from_current_frame(name)
         else:
-            self.main_window.object_manager.delete_puppet(name)
+            self.main_window.scene_controller.delete_puppet(name)
         self.refresh()
 
     def _on_duplicate_clicked(self) -> None:
@@ -236,9 +236,9 @@ class InspectorWidget(QWidget):
         if not name:
             return
         if typ == "object":
-            self.main_window.object_manager.duplicate_object(name)
+            self.main_window.scene_controller.duplicate_object(name)
         else:
-            self.main_window.object_manager.duplicate_puppet(name)
+            self.main_window.scene_controller.duplicate_puppet(name)
         self.refresh()
 
     def _on_rotation_changed(self, value: float) -> None:
@@ -258,7 +258,7 @@ class InspectorWidget(QWidget):
                 item.setRotation(value)
         else:
             # Rotation du pantin entier (autour du pivot de la pièce racine)
-            self.main_window.object_manager.set_puppet_rotation(name, value)
+            self.main_window.scene_controller.set_puppet_rotation(name, value)
 
     def _on_z_changed(self, value: float) -> None:
         """Handles the z-order change of the selected item."""
@@ -273,7 +273,7 @@ class InspectorWidget(QWidget):
                 item.setZValue(int(value))
         else:
             # Z offset global du pantin (appliqué à toutes les pièces)
-            self.main_window.object_manager.set_puppet_z_offset(name, int(value))
+            self.main_window.scene_controller.set_puppet_z_offset(name, int(value))
 
     def _refresh_attach_puppet_combo(self) -> None:
         """Refreshes the puppet attachment combo box."""
@@ -305,7 +305,7 @@ class InspectorWidget(QWidget):
         puppet = self.attach_puppet_combo.currentText()
         member = self.attach_member_combo.currentText()
         if puppet and member:
-            self.main_window.object_manager.attach_object_to_member(name, puppet, member)
+            self.main_window.scene_controller.attach_object_to_member(name, puppet, member)
             self._on_item_changed(self.list_widget.currentItem(), None)
             self._update_list_attachment_icons()
 
@@ -314,7 +314,7 @@ class InspectorWidget(QWidget):
         typ, name = self._current_info()
         if typ != "object" or not name:
             return
-        self.main_window.object_manager.detach_object(name)
+        self.main_window.scene_controller.detach_object(name)
         self._on_item_changed(self.list_widget.currentItem(), None)
         self._update_list_attachment_icons()
 

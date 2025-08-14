@@ -23,7 +23,7 @@ def app():
 def test_hierarchy_and_pivot(app):
     window = MainWindow()
 
-    window.object_manager.add_puppet(str(Path("assets/pantins/manu.svg").resolve()), "manu")
+    window.scene_controller.add_puppet(str(Path("assets/pantins/manu.svg").resolve()), "manu")
 
     gis = window.object_manager.graphics_items
     upper = gis["manu:haut_bras_droite"]
@@ -53,7 +53,7 @@ def test_hierarchy_and_pivot(app):
 
 def test_puppet_translation(app):
     window = MainWindow()
-    window.object_manager.add_puppet(str(Path("assets/pantins/manu.svg").resolve()), "manu")
+    window.scene_controller.add_puppet(str(Path("assets/pantins/manu.svg").resolve()), "manu")
     gis = window.object_manager.graphics_items
     torso = gis["manu:torse"]
     hand = gis["manu:main_droite"]
