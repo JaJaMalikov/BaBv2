@@ -1,4 +1,6 @@
 import logging
+from typing import Optional
+
 from PySide6.QtWidgets import QWidget
 from PySide6.QtCore import Qt, QPoint, QRect
 from PySide6.QtWidgets import QGraphicsDropShadowEffect
@@ -53,25 +55,37 @@ class PanelOverlay(DraggableOverlay):
         self._resize_start_pos = None
         self._resize_start_geom = None
 
-    def _get_edge(self, pos: QPoint):
+    def _hit_test_corner(self, pos: QPoint) -> Optional[Qt.Corner]:
+        """
+        Retourne le coin de redimensionnement (Qt.Corner) si le pointeur
+        se trouve dans la bordure (épaisseur self._border_width), sinon None.
+        """
         x, y = pos.x(), pos.y()
         w, h = self.width(), self.height()
         bw = self._border_width
 
-        on_left = x >= 0 and x < bw
-        on_right = x >= w - bw and x < w
-        on_top = y >= 0 and y < bw
-        on_bottom = y >= h - bw and y < h
+        on_left = 0 <= x < bw
+        on_right = (w - bw) <= x < w
+        on_top = 0 <= y < bw
+        on_bottom = (h - bw) <= y < h
 
-        if on_top and on_left:
-            return Qt.TopLeftCorner
-        if on_top and on_right:
-            return Qt.TopRightCorner
-        if on_bottom and on_left:
-            return Qt.BottomLeftCorner
-        if on_bottom and on_right:
-            return Qt.BottomRightCorner
+        if on_top:
+            if on_left:
+                return Qt.TopLeftCorner
+            if on_right:
+                return Qt.TopRightCorner
+        elif on_bottom:
+            if on_left:
+                return Qt.BottomLeftCorner
+            if on_right:
+                return Qt.BottomRightCorner
+
         return None
+
+    # Compatibilité rétroactive: conserver l’ancienne API.
+    def _get_edge(self, pos: QPoint) -> Optional[Qt.Corner]:
+        return self._hit_test_corner(pos)
+
 
     def leaveEvent(self, event):
         self.unsetCursor() # Fix for sticky cursor

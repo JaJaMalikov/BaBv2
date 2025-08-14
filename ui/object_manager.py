@@ -13,7 +13,7 @@ from ui.object_item import ObjectPixmapItem, ObjectSvgItem
 from core.puppet_piece import PuppetPiece
 
 if TYPE_CHECKING:
-    from .main_window import MainWindow
+    from ui.main_window import MainWindow
 
 
 class ObjectManager:
@@ -447,8 +447,12 @@ class ObjectManager:
             return
 
         if kind == 'background':
-            self.scene_model.background_path = path
-            self.win._update_background()
+            try:
+                self.win.scene_controller.set_background_path(path)
+            except Exception:
+                # Fallback for older code paths
+                self.scene_model.background_path = path
+                self.win._update_background()
         elif kind == 'object':
             self._create_object_from_file(path, scene_pos)
         elif kind == 'puppet':

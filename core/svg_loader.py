@@ -1,17 +1,21 @@
 from __future__ import annotations
 
 import logging
-import re
 import xml.etree.ElementTree as ET
-from typing import List, Optional, Tuple, Dict
+from typing import Dict, List, Optional, Tuple
+
 
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtCore import QRectF
 
 
-_COORD_PATTERN = re.compile(
-    r"((?:[-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?\s*)+)"
-)
+# Types parlants
+Point = Tuple[float, float]
+BoundingBox = Tuple[float, float, float, float]
+
+# Constantes SVG
+SVG_NS: str = "http://www.w3.org/2000/svg"
+DEFAULT_NAMESPACES: Dict[str, str] = {"svg": SVG_NS}
 
 
 class SvgLoader:
@@ -19,83 +23,97 @@ class SvgLoader:
         self.svg_path: str = svg_path
         self.tree: ET.ElementTree = ET.parse(svg_path)
         self.root: ET.Element = self.tree.getroot()
-        self.namespaces: Dict[str, str] = {"svg": "http://www.w3.org/2000/svg"}
+        self.namespaces: Dict[str, str] = DEFAULT_NAMESPACES
         self.renderer: QSvgRenderer = QSvgRenderer(svg_path)
 
-    def get_group_offset(self, group_id: str) -> Optional[Tuple[float, float]]:
-        """Return the top-left coordinates of ``group_id``."""
-
-        rect: QRectF = self.renderer.boundsOnElement(group_id)
-        if rect.isNull():
+    # -------------------------
+    # Helpers privés
+    # -------------------------
+    def _get_bounds_rect(self, element_id: str) -> Optional[QRectF]:
+        """Retourne le QRectF des bounds pour un élément identifié, ou None si non trouvé/invalide."""
+        bounds_rect: QRectF = self.renderer.boundsOnElement(element_id)
+        if bounds_rect.isNull():
             return None
+        return bounds_rect
 
-        return rect.left(), rect.top()
+    @staticmethod
+    def _rect_to_bbox(rect: QRectF) -> BoundingBox:
+        """Convertit un QRectF en BoundingBox (x_min, y_min, x_max, y_max)."""
+        return rect.left(), rect.top(), rect.right(), rect.bottom()
+
+    @staticmethod
+    def _clone_element(elem: ET.Element) -> ET.Element:
+        """Clone un élément XML (shallow copy structure)."""
+        return ET.fromstring(ET.tostring(elem))
+
+    # -------------------------
+    # API publique
+    # -------------------------
+    def get_group_offset(self, group_id: str) -> Optional[Point]:
+        """Retourne les coordonnées (x, y) du coin haut-gauche du groupe."""
+        bounds_rect: Optional[QRectF] = self._get_bounds_rect(group_id)
+        if bounds_rect is None:
+            return None
+        return bounds_rect.left(), bounds_rect.top()
 
     def get_groups(self) -> List[str]:
-        groups: List[str] = []
-        for elem in self.root.findall(".//svg:g", self.namespaces):
-            group_id: Optional[str] = elem.attrib.get("id")
-            if group_id:
-                groups.append(group_id)
-        return groups
+        """Liste les identifiants de tous les groupes <g>."""
+        return [
+            elem.attrib["id"]
+            for elem in self.root.findall(".//svg:g", self.namespaces)
+            if "id" in elem.attrib
+        ]
 
-    def get_group_bounding_box(self, group_id: str) -> Optional[Tuple[float, float, float, float]]:
-        """Return the bounding box of ``group_id``."""
-
-        rect: QRectF = self.renderer.boundsOnElement(group_id)
-        if rect.isNull():
+    def get_group_bounding_box(self, group_id: str) -> Optional[BoundingBox]:
+        """Retourne la bounding box (x_min, y_min, x_max, y_max) du groupe."""
+        bounds_rect: Optional[QRectF] = self._get_bounds_rect(group_id)
+        if bounds_rect is None:
             return None
+        return self._rect_to_bbox(bounds_rect)
 
-        return (rect.left(), rect.top(), rect.right(), rect.bottom())
-
-    def get_pivot(self, group_id: str) -> Tuple[float, float]:
+    def get_pivot(self, group_id: str) -> Point:
         """
-        Retourne le centre de la bbox du groupe (pour les groupes pivot).
+        Retourne le centre de la bounding box du groupe (pivot).
         """
-        bbox: Optional[Tuple[float, float, float, float]] = self.get_group_bounding_box(group_id)
-        if bbox is None:
-            return 0.0, 0.0 # Return floats for consistency
-        x_min, y_min, x_max, y_max = bbox
+        bounding_box: Optional[BoundingBox] = self.get_group_bounding_box(group_id)
+        if bounding_box is None:
+            return 0.0, 0.0  # Cohérence: toujours des floats
+        x_min, y_min, x_max, y_max = bounding_box
         cx: float = (x_min + x_max) / 2
         cy: float = (y_min + y_max) / 2
         return cx, cy
 
-    def extract_group(self, group_id: str, output_path: str) -> Optional[Tuple[float, float]]:
-        """Export ``group_id`` as a standalone SVG file."""
+    def extract_group(self, group_id: str, output_path: str) -> Optional[Point]:
+        """Exporte « group_id » dans un fichier SVG autonome. Retourne l'offset (x_min, y_min)."""
         group_elem: Optional[ET.Element] = self.root.find(
             f".//svg:g[@id='{group_id}']",
-            self.namespaces
+            self.namespaces,
         )
-
         if group_elem is None:
             raise ValueError(f"Group '{group_id}' not found in SVG.")
 
         # Bounding box
-        bbox: Optional[Tuple[float, float, float, float]] = self.get_group_bounding_box(group_id)
-        if bbox is None:
-            logging.warning(f"Impossible to compute bounding box for SVG group: {group_id}")
+        bounding_box: Optional[BoundingBox] = self.get_group_bounding_box(group_id)
+        if bounding_box is None:
+            logging.warning("Impossible de calculer la bounding box du groupe SVG: %s", group_id)
             return None
 
-        x_min, y_min, x_max, y_max = bbox
-
+        x_min, y_min, x_max, y_max = bounding_box
         width: float = x_max - x_min
         height: float = y_max - y_min
 
-        # Nouveau SVG racine
+        # Nouveau SVG racine (on s'appuie sur le viewBox pour le cadrage)
         new_svg: ET.Element = ET.Element(
-            'svg',
+            "svg",
             {
-                'xmlns': 'http://www.w3.org/2000/svg',
-                'width': str(width),
-                'height': str(height),
-                'viewBox': f"{x_min} {y_min} {width} {height}",
+                "xmlns": SVG_NS,
+                "width": str(width),
+                "height": str(height),
+                "viewBox": f"{x_min} {y_min} {width} {height}",
             },
         )
 
-        # Cloner le groupe original
-        cloned_group: ET.Element = ET.fromstring(ET.tostring(group_elem))
-
-        # No path translation; rely on the viewBox
+        cloned_group: ET.Element = self._clone_element(group_elem)
         new_svg.append(cloned_group)
 
         new_tree: ET.ElementTree = ET.ElementTree(new_svg)
@@ -105,31 +123,35 @@ class SvgLoader:
         return x_min, y_min
 
     def get_svg_viewbox(self) -> List[float]:
+        """
+        Retourne le viewBox du SVG sous la forme [min_x, min_y, width, height].
+
+        Si le viewBox est absent, retombe sur width/height (si présents),
+        sinon retourne [0.0, 0.0, 0.0, 0.0].
+        """
         viewbox: Optional[str] = self.root.attrib.get("viewBox")
         if viewbox:
-            return [float(x) for x in viewbox.strip().split()]
-        # Fallback : width/height (mais pas toujours fiable)
-        width: float = float(self.root.attrib.get("width", 0.0))
-        height: float = float(self.root.attrib.get("height", 0.0))
-        return [0.0, 0.0, width, height]
+            parts = viewbox.strip().split()
+            if len(parts) == 4:
+                try:
+                    return [float(x) for x in parts]
+                except ValueError:
+                    pass  # On retombe sur le fallback ci-dessous
 
-def translate_path(d: str, dx: float, dy: float) -> str:
-    """
-    Décale toutes les coordonnées d'un path SVG.
-    """
-    def repl(match: re.Match) -> str:
-        nums: List[str] = match.group(0).strip().split()
-        new_nums: List[str] = []
-        for i, n in enumerate(nums):
+        # Fallback : width/height (peu fiable si unités)
+        def _to_float_maybe_unit(val: str, default: float = 0.0) -> float:
             try:
-                num: float = float(n)
-                if i % 2 == 0:
-                    num -= dx
-                else:
-                    num -= dy
-                new_nums.append(str(num))
-            except ValueError:
-                new_nums.append(n) # Keep non-numeric parts as is
-        return " ".join(new_nums)
+                return float(val)
+            except (TypeError, ValueError):
+                # Essaye de retirer d'éventuelles unités (px, etc.)
+                if isinstance(val, str):
+                    num = "".join(ch for ch in val if (ch.isdigit() or ch in ".-+eE"))
+                    try:
+                        return float(num)
+                    except ValueError:
+                        return default
+                return default
 
-    return _COORD_PATTERN.sub(repl, d)
+        width: float = _to_float_maybe_unit(self.root.attrib.get("width", "0"))
+        height: float = _to_float_maybe_unit(self.root.attrib.get("height", "0"))
+        return [0.0, 0.0, width, height]

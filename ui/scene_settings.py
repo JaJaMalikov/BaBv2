@@ -27,10 +27,14 @@ def set_scene_size(win) -> None:
     if not ok2:
         return
 
-    win.scene_model.scene_width = int(width)
-    win.scene_model.scene_height = int(height)
-    win.scene.setSceneRect(0, 0, int(width), int(height))
-    win._update_scene_visuals()
-    win._update_background()
-    win._update_zoom_status()
-
+    # Déléguer au SceneController pour centraliser la logique
+    try:
+        win.scene_controller.set_scene_size(int(width), int(height))
+    except Exception:
+        # Fallback en cas d'indisponibilité (sécurité)
+        win.scene_model.scene_width = int(width)
+        win.scene_model.scene_height = int(height)
+        win.scene.setSceneRect(0, 0, int(width), int(height))
+        win._update_scene_visuals()
+        win._update_background()
+        win._update_zoom_status()

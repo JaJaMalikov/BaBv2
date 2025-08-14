@@ -3,7 +3,7 @@
 from .scene_model import SceneModel, SceneObject, Keyframe
 from .puppet_model import Puppet, PuppetMember
 from .puppet_piece import PuppetPiece
-from .svg_loader import SvgLoader, translate_path
+from .svg_loader import SvgLoader
 
 __all__ = [
     "SceneModel",
@@ -13,5 +13,4 @@ __all__ = [
     "PuppetMember",
     "PuppetPiece",
     "SvgLoader",
-    "translate_path",
 ]

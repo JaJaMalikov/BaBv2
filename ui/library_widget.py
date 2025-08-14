@@ -12,7 +12,7 @@ from PySide6.QtCore import Qt, QMimeData, QByteArray, Signal, QPoint, QSize
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QListWidget, QListWidgetItem, QMenu, QTabWidget
 from PySide6.QtGui import QDrag, QIcon
 
-from .icons import get_icon
+from ui.icons import get_icon
 
 LIB_MIME = "application/x-bab-item"
 

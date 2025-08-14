@@ -9,7 +9,7 @@ from PySide6.QtCore import QTimer
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 if TYPE_CHECKING:
-    from .main_window import MainWindow
+    from ui.main_window import MainWindow
 
 def save_scene(win: 'MainWindow') -> None:
     """Opens a dialog to save the current scene to a JSON file."""
@@ -115,7 +115,10 @@ def import_scene(win: MainWindow, file_path: str):
         
         win.playback_handler.update_timeline_ui_from_model()
         win.scene.setSceneRect(0, 0, win.scene_model.scene_width, win.scene_model.scene_height)
-        win._update_background()
+        try:
+            win.scene_controller.update_background()
+        except Exception:
+            win._update_background()
         win.timeline_widget.set_current_frame(win.scene_model.start_frame)
         win.inspector_widget.refresh()
 
