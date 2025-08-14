@@ -1,3 +1,9 @@
+"""Inspector panel to list puppets/objects and edit selected object properties.
+
+This widget emits no external signals; it directly calls methods on MainWindow
+to manipulate the scene model and graphics items.
+"""
+
 import logging
 
 from PySide6.QtWidgets import (
@@ -8,11 +14,6 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
 from ui.icons import icon_delete, icon_duplicate, icon_link, icon_link_off
 
-"""Inspector panel to list puppets/objects and edit selected object properties.
-
-This widget emits no external signals; it directly calls methods on MainWindow
-to manipulate the scene model and graphics items.
-"""
 
 class InspectorWidget(QWidget):
     """Inspector to manage scene objects and puppets.
@@ -23,6 +24,11 @@ class InspectorWidget(QWidget):
     - Attaches/detaches an object to a puppet member
     """
     def __init__(self, main_window):
+        """Initializes the inspector widget.
+
+        Args:
+            main_window: The main window of the application.
+        """
         super().__init__()
         self.main_window = main_window
 
@@ -138,12 +144,14 @@ class InspectorWidget(QWidget):
 
     # --- Callbacks ---
     def _current_info(self):
+        """Returns the type and name of the currently selected item."""
         item = self.list_widget.currentItem()
         if not item:
             return None, None
         return item.data(Qt.UserRole)
 
     def _on_item_changed(self, current, previous):
+        """Handles the selection change in the list widget."""
         typ, name = self._current_info()
         if not name:
             self.props_panel.setVisible(False)
@@ -191,6 +199,7 @@ class InspectorWidget(QWidget):
         self.z_spin.blockSignals(False)
 
     def _on_scale_changed(self, value: float) -> None:
+        """Handles the scale change of the selected item."""
         typ, name = self._current_info()
         if not name:
             return
@@ -210,6 +219,7 @@ class InspectorWidget(QWidget):
             self.main_window.object_manager.scale_puppet(name, ratio)
 
     def _on_delete_clicked(self) -> None:
+        """Handles the deletion of the selected item."""
         typ, name = self._current_info()
         if not name:
             return
@@ -221,6 +231,7 @@ class InspectorWidget(QWidget):
         self.refresh()
 
     def _on_duplicate_clicked(self) -> None:
+        """Handles the duplication of the selected item."""
         typ, name = self._current_info()
         if not name:
             return
@@ -231,6 +242,7 @@ class InspectorWidget(QWidget):
         self.refresh()
 
     def _on_rotation_changed(self, value: float) -> None:
+        """Handles the rotation change of the selected item."""
         typ, name = self._current_info()
         if not name:
             return
@@ -249,6 +261,7 @@ class InspectorWidget(QWidget):
             self.main_window.object_manager.set_puppet_rotation(name, value)
 
     def _on_z_changed(self, value: float) -> None:
+        """Handles the z-order change of the selected item."""
         typ, name = self._current_info()
         if not name:
             return
@@ -263,6 +276,7 @@ class InspectorWidget(QWidget):
             self.main_window.object_manager.set_puppet_z_offset(name, int(value))
 
     def _refresh_attach_puppet_combo(self) -> None:
+        """Refreshes the puppet attachment combo box."""
         self.attach_puppet_combo.blockSignals(True)
         self.attach_puppet_combo.clear()
         self.attach_puppet_combo.addItem("")
@@ -272,6 +286,7 @@ class InspectorWidget(QWidget):
         self._refresh_attach_member_combo()
 
     def _refresh_attach_member_combo(self) -> None:
+        """Refreshes the member attachment combo box."""
         puppet = self.attach_puppet_combo.currentText()
         self.attach_member_combo.clear()
         if puppet and puppet in self.main_window.scene_model.puppets:
@@ -279,9 +294,11 @@ class InspectorWidget(QWidget):
             self.attach_member_combo.addItems(members)
 
     def _on_attach_puppet_changed(self, _):
+        """Handles the change of the selected puppet for attachment."""
         self._refresh_attach_member_combo()
 
     def _on_attach_clicked(self) -> None:
+        """Handles the attachment of the selected object to a puppet member."""
         typ, name = self._current_info()
         if typ != "object" or not name:
             return
@@ -293,6 +310,7 @@ class InspectorWidget(QWidget):
             self._update_list_attachment_icons()
 
     def _on_detach_clicked(self) -> None:
+        """Handles the detachment of the selected object."""
         typ, name = self._current_info()
         if typ != "object" or not name:
             return

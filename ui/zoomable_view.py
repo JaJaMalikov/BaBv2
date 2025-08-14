@@ -1,3 +1,5 @@
+"""Module for the zoomable view, which provides a user interface for zooming and panning the scene."""
+
 import logging
 import json
 from PySide6.QtWidgets import (

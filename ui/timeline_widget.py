@@ -1,3 +1,5 @@
+"""Module for the timeline widget, which provides a user interface for controlling animation playback."""
+
 from __future__ import annotations
 
 import math

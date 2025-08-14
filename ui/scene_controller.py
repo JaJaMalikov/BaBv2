@@ -1,3 +1,10 @@
+"""SceneController: façade légère pour regrouper les opérations de scène.
+
+Objectif de ce premier incrément:
+- Centraliser l'accès à StateApplier, SceneVisuals et OnionSkinManager
+- Exposer de petites méthodes de délégation sans changer le comportement
+"""
+
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
@@ -7,16 +14,18 @@ from ui.state_applier import StateApplier
 from ui.scene_visuals import SceneVisuals
 from ui.onion_skin import OnionSkinManager
 
-"""SceneController: façade légère pour regrouper les opérations de scène.
-
-Objectif de ce premier incrément:
-- Centraliser l'accès à StateApplier, SceneVisuals et OnionSkinManager
-- Exposer de petites méthodes de délégation sans changer le comportement
-"""
-
 
 class SceneController:
+    """A facade for grouping scene operations."""
     def __init__(self, win: Any, *, visuals: SceneVisuals | None = None, onion: OnionSkinManager | None = None, applier: StateApplier | None = None) -> None:
+        """Initializes the scene controller.
+
+        Args:
+            win: The main window of the application.
+            visuals: The scene visuals manager.
+            onion: The onion skin manager.
+            applier: The state applier.
+        """
         self.win = win
         # Conserver les instances existantes si fournies pour éviter tout double initialisation
         self.visuals: SceneVisuals = visuals if visuals is not None else SceneVisuals(win)
@@ -29,9 +38,11 @@ class SceneController:
 
     # --- Délégations visuelles ---
     def update_scene_visuals(self) -> None:
+        """Updates the scene visuals."""
         self.visuals.update_scene_visuals()
 
     def update_background(self) -> None:
+        """Updates the background."""
         self.visuals.update_background()
     def set_background_path(self, path: Optional[str]) -> None:
         """Set background image path and refresh visuals accordingly."""
@@ -49,12 +60,15 @@ class SceneController:
 
     # --- Délégations onion skin ---
     def set_onion_enabled(self, enabled: bool) -> None:
+        """Enables or disables onion skinning."""
         self.onion.set_enabled(enabled)
 
     def clear_onion_skins(self) -> None:
+        """Clears the onion skins."""
         self.onion.clear()
 
     def update_onion_skins(self) -> None:
+        """Updates the onion skins."""
         self.onion.update()
 
     # --- Poignées de rotation ---
@@ -70,9 +84,11 @@ class SceneController:
 
     # --- Application d'états (keyframes) ---
     def apply_puppet_states(self, graphics_items: Dict[str, Any], keyframes: Dict[int, Any], index: int) -> None:
+        """Applies puppet states from a keyframe to the scene."""
         self.applier.apply_puppet_states(graphics_items, keyframes, index)
 
     def apply_object_states(self, graphics_items: Dict[str, Any], keyframes: Dict[int, Any], index: int) -> None:
+        """Applies object states from a keyframe to the scene."""
         self.applier.apply_object_states(graphics_items, keyframes, index)
 
     # --- Réglages scène ---

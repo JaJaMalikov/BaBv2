@@ -1,3 +1,5 @@
+"""Module for managing application styles and themes."""
+
 import logging
 from PySide6.QtGui import QFont
 

@@ -1,3 +1,5 @@
+"""Module providing draggable and resizable overlay widgets."""
+
 import logging
 from typing import Optional
 

@@ -1,3 +1,5 @@
+"""Module for managing scene visuals, such as borders and background."""
+
 from __future__ import annotations
 
 import logging

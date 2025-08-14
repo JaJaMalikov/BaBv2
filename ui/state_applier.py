@@ -1,3 +1,5 @@
+"""Module for applying keyframe states to the scene."""
+
 from __future__ import annotations
 
 import logging

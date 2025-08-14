@@ -1,3 +1,5 @@
+"""Main entry point for the Macronotron application."""
+
 import sys
 from typing import List
 

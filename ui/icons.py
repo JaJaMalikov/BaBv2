@@ -1,3 +1,5 @@
+"""Module for creating and managing SVG-based icons with dynamic coloring."""
+
 import re
 import logging
 from pathlib import Path

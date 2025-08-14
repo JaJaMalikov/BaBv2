@@ -1,3 +1,5 @@
+"""Module for building and positioning side panels and overlays."""
+
 from __future__ import annotations
 
 import logging

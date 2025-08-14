@@ -1,3 +1,5 @@
+"""Module for the settings dialog, allowing users to customize the application."""
+
 from __future__ import annotations
 
 from typing import Optional, Any

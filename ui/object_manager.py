@@ -19,6 +19,11 @@ if TYPE_CHECKING:
 class ObjectManager:
     """Manages puppets and objects (creation, deletion, manipulation) in the scene."""
     def __init__(self, win: MainWindow) -> None:
+        """Initializes the object manager.
+
+        Args:
+            win: The main window of the application.
+        """
         self.win: MainWindow = win
         self.scene: QGraphicsScene = win.scene
         self.scene_model: SceneModel = win.scene_model
@@ -29,6 +34,12 @@ class ObjectManager:
         self.puppet_z_offsets: Dict[str, int] = {}
 
     def add_puppet(self, file_path: str, puppet_name: str) -> None:
+        """Adds a puppet to the scene.
+
+        Args:
+            file_path: The path to the puppet's SVG file.
+            puppet_name: The name of the puppet.
+        """
         puppet: Puppet = Puppet()
         loader: SvgLoader = SvgLoader(file_path)
         renderer: Any = loader.renderer  # QSvgRenderer
@@ -43,6 +54,7 @@ class ObjectManager:
             self.win.inspector_widget.refresh()
 
     def _add_puppet_graphics(self, puppet_name: str, puppet: Puppet, file_path: str, renderer: Any, loader: SvgLoader) -> None:
+        """Adds the graphical representation of a puppet to the scene."""
         pieces: Dict[str, PuppetPiece] = {}
         for name, member in puppet.members.items():
             offset_x, offset_y = loader.get_group_offset(name) or (0.0, 0.0)
@@ -89,6 +101,7 @@ class ObjectManager:
                     pass
 
     def scale_puppet(self, puppet_name: str, ratio: float) -> None:
+        """Scales a puppet by a given ratio."""
         puppet: Optional[Puppet] = self.scene_model.puppets.get(puppet_name)
         if not puppet:
             return
@@ -105,6 +118,7 @@ class ObjectManager:
                     child.update_transform_from_parent()
 
     def delete_puppet(self, puppet_name: str) -> None:
+        """Deletes a puppet from the scene."""
         if (puppet := self.scene_model.puppets.get(puppet_name)):
             for member_name in list(puppet.members.keys()):
                 if (piece := self.graphics_items.pop(f"{puppet_name}:{member_name}", None)):
@@ -119,6 +133,7 @@ class ObjectManager:
             self.puppet_z_offsets.pop(puppet_name, None)
 
     def duplicate_puppet(self, puppet_name: str) -> None:
+        """Duplicates a puppet."""
         path: Optional[str] = self.puppet_paths.get(puppet_name)
         if not path:
             return
@@ -139,6 +154,7 @@ class ObjectManager:
 
     # --- Puppet transforms (whole puppet) ---
     def _puppet_root_piece(self, puppet_name: str) -> Optional[PuppetPiece]:
+        """Returns the root piece of a puppet."""
         puppet: Optional[Puppet] = self.scene_model.puppets.get(puppet_name)
         if not puppet:
             return None
@@ -148,17 +164,20 @@ class ObjectManager:
         return self.graphics_items.get(f"{puppet_name}:{roots[0].name}")  # type: ignore
 
     def get_puppet_rotation(self, puppet_name: str) -> float:
+        """Returns the rotation of a puppet."""
         rp = self._puppet_root_piece(puppet_name)
         if isinstance(rp, PuppetPiece):
             return float(rp.local_rotation)
         return 0.0
 
     def set_puppet_rotation(self, puppet_name: str, angle: float) -> None:
+        """Sets the rotation of a puppet."""
         rp = self._puppet_root_piece(puppet_name)
         if isinstance(rp, PuppetPiece):
             rp.rotate_piece(float(angle))
 
     def set_puppet_z_offset(self, puppet_name: str, offset: int) -> None:
+        """Sets the Z-offset of a puppet."""
         puppet: Optional[Puppet] = self.scene_model.puppets.get(puppet_name)
         if not puppet:
             return
@@ -172,6 +191,7 @@ class ObjectManager:
                     pass
 
     def capture_puppet_states(self) -> Dict[str, Dict[str, Dict[str, Any]]]:
+        """Captures the states of all puppets in the scene."""
         states: Dict[str, Dict[str, Dict[str, Any]]] = {}
         for name, puppet in self.scene_model.puppets.items():
             puppet_state: Dict[str, Dict[str, Any]] = {}
@@ -186,11 +206,13 @@ class ObjectManager:
         return states
 
     def delete_object(self, name: str) -> None:
+        """Deletes an object from the scene."""
         if (item := self.graphics_items.pop(name, None)):
             self.scene.removeItem(item)
         self.scene_model.remove_object(name)
 
     def duplicate_object(self, name: str) -> None:
+        """Duplicates an object."""
         obj: Optional[SceneObject] = self.scene_model.objects.get(name)
         if not obj:
             return
@@ -205,6 +227,7 @@ class ObjectManager:
         self._add_object_graphics(new_obj)
 
     def _add_object_graphics(self, obj: SceneObject) -> None:
+        """Adds the graphical representation of an object to the scene."""
         item: QGraphicsItem
         if obj.obj_type == "image":
             item = ObjectPixmapItem(obj.file_path)
@@ -234,6 +257,7 @@ class ObjectManager:
         self.graphics_items[obj.name] = item
 
     def attach_object_to_member(self, obj_name: str, puppet_name: str, member_name: str) -> None:
+        """Attaches an object to a puppet member."""
         obj: Optional[SceneObject] = self.scene_model.objects.get(obj_name)
         item: Optional[QGraphicsItem] = self.graphics_items.get(obj_name)
         parent_piece: Optional[PuppetPiece] = self.graphics_items.get(f"{puppet_name}:{member_name}")
@@ -292,6 +316,7 @@ class ObjectManager:
             kf.objects[obj_name] = obj.to_dict()
 
     def detach_object(self, obj_name: str) -> None:
+        """Detaches an object from its parent."""
         obj: Optional[SceneObject] = self.scene_model.objects.get(obj_name)
         item: Optional[QGraphicsItem] = self.graphics_items.get(obj_name)
         if not obj or not item:
@@ -368,6 +393,7 @@ class ObjectManager:
             kf.objects[obj_name] = obj.to_dict()
 
     def _unique_object_name(self, base: str) -> str:
+        """Generates a unique name for an object."""
         name: str = base
         i: int = 1
         while name in self.scene_model.objects:
@@ -376,6 +402,7 @@ class ObjectManager:
         return name
 
     def _unique_puppet_name(self, base: str) -> str:
+        """Generates a unique name for a puppet."""
         name: str = base
         i: int = 1
         while name in self.scene_model.puppets:
@@ -384,6 +411,7 @@ class ObjectManager:
         return name
 
     def _create_object_from_file(self, file_path: str, scene_pos: Optional[QPointF] = None) -> Optional[str]:
+        """Creates an object from a file."""
         ext: str = Path(file_path).suffix.lower()
         obj_type: str
         if ext in ('.png', '.jpg', '.jpeg'):
@@ -442,13 +470,16 @@ class ObjectManager:
         return name
 
     def _add_library_item_to_scene(self, payload: Dict[str, Any]) -> None:
+        """Adds a library item to the scene."""
         self._add_library_payload(payload, scene_pos=None)
 
     def handle_library_drop(self, payload: Dict[str, Any], pos: QPointF) -> None:
+        """Handles a library item drop event."""
         scene_pt: QPointF = self.win.view.mapToScene(pos.toPoint())
         self._add_library_payload(payload, scene_pos=scene_pt)
 
     def _add_library_payload(self, payload: Dict[str, Any], scene_pos: Optional[QPointF]) -> None:
+        """Adds a library payload to the scene."""
         kind: Optional[str] = payload.get('kind')
         path: Optional[str] = payload.get('path')
         if not kind or not path:
@@ -479,6 +510,7 @@ class ObjectManager:
             logging.error(f"Unknown library kind: {kind}")
 
     def delete_object_from_current_frame(self, name: str) -> None:
+        """Deletes an object from the current frame onwards."""
         cur: int = self.scene_model.current_frame
         if cur not in self.scene_model.keyframes:
             self.win.add_keyframe(cur)
@@ -525,6 +557,7 @@ class ObjectManager:
         return states
 
     def snapshot_current_frame(self) -> None:
+        """Snapshots the current frame."""
         cur: int = self.scene_model.current_frame
         puppet_states = self.capture_puppet_states()
         obj_states = self.capture_visible_object_states()

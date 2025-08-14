@@ -1,3 +1,10 @@
+"""Module for managing onion skinning in the scene.
+
+This module provides the `OnionSkinManager` class, which is responsible for
+displaying semi-transparent 'ghosts' of puppets and objects from previous
+and next frames.
+"""
+
 from __future__ import annotations
 
 import logging
@@ -21,6 +28,11 @@ class OnionSkinManager:
     """
 
     def __init__(self, main_window: 'Any') -> None:  # avoid circular import in type hints
+        """Initializes the onion skin manager.
+
+        Args:
+            main_window: The main window of the application.
+        """
         self.win = main_window
         self.enabled: bool = False
         self.prev_count: int = 2
@@ -31,10 +43,12 @@ class OnionSkinManager:
 
     # --- Public API ---
     def set_enabled(self, enabled: bool) -> None:
+        """Enables or disables onion skinning."""
         self.enabled = enabled
         self.update()
 
     def clear(self) -> None:
+        """Clears all onion skin items from the scene."""
         # Remove only root onion items to avoid Qt warnings when children lose their scene
         for it in list(self._onion_items):
             try:
@@ -45,6 +59,7 @@ class OnionSkinManager:
         self._onion_items.clear()
 
     def update(self) -> None:
+        """Updates the onion skins based on the current frame."""
         self.clear()
         if not self.enabled:
             return
@@ -64,6 +79,7 @@ class OnionSkinManager:
 
     # --- Implementation ---
     def _add_onion_for_frame(self, frame_index: int, opacity: float, z_offset: int = -200) -> None:
+        """Adds onion skins for a specific frame."""
         keyframes = self.win.scene_model.keyframes
         if not keyframes:
             return

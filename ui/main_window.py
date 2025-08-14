@@ -1,3 +1,5 @@
+"""Main window of the application, orchestrating UI components and scene management."""
+
 import logging
 from typing import Optional, Any, Dict
 
@@ -31,9 +33,14 @@ from ui.zoomable_view import ZoomableView
 
 
 class MainWindow(QMainWindow):
-    """
+    """Main application window.
+
+    This class orchestrates all UI components, including the scene, timeline,
+    inspector, and library. It holds the central `SceneModel` and manages
+    interactions between different parts of the UI.
     """
     def __init__(self) -> None:
+        """Initializes the main window, scene, and all UI components."""
         super().__init__()
         self.setWindowTitle("Borne and the Bayrou - Disco MIX")
 
@@ -124,6 +131,7 @@ class MainWindow(QMainWindow):
             pass
 
     def showEvent(self, event: QEvent) -> None:
+        """Ensures the view is fitted and overlays are positioned on show."""
         super().showEvent(event)
         def _layout_then_fit():
             try:
@@ -136,6 +144,7 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(200, self._position_overlays)
 
     def _position_overlays(self) -> None:
+        """Positions the overlays in the main window."""
         self.overlays.position_overlays()
 
     def reset_ui(self) -> None:
@@ -149,55 +158,70 @@ class MainWindow(QMainWindow):
         QMessageBox.information(self, "Interface réinitialisée", "La disposition de l'interface a été réinitialisée.")
 
     def reset_scene(self) -> None:
+        """Resets the scene to a blank state."""
         scene_commands.reset_scene(self)
 
     def _build_side_overlays(self) -> None:
+        """Builds the side overlays for the library and inspector."""
         # Compat shim: use OverlayManager now
         self.overlays.build_overlays()
 
     def set_library_overlay_visible(self, visible: bool) -> None:
+        """Sets the visibility of the library overlay."""
         self.overlays.set_library_visible(visible)
 
     def set_inspector_overlay_visible(self, visible: bool) -> None:
+        """Sets the visibility of the inspector overlay."""
         self.overlays.set_inspector_visible(visible)
 
     def set_custom_overlay_visible(self, visible: bool) -> None:
+        """Sets the visibility of the custom overlay."""
         self.overlays.set_custom_visible(visible)
 
     def _setup_scene_visuals(self) -> None:
+        """Sets up the scene visuals."""
         self.visuals = SceneVisuals(self)
         self.visuals.setup()
 
     def _update_scene_visuals(self) -> None:
+        """Updates the scene visuals."""
         self.scene_controller.update_scene_visuals()
 
     def _update_zoom_status(self) -> None:
+        """Updates the zoom status."""
         # No status bar or zoom label; keep overlay minimal
         pass
 
     def fit_to_view(self) -> None:
+        """Fits the scene to the view."""
         self.view.resetTransform()
         self.view.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
         self.zoom_factor = self.view.transform().m11()
         self._update_zoom_status()
 
     def ensure_fit(self) -> None:
+        """Ensures the scene is fitted to the view."""
         QTimer.singleShot(0, self.fit_to_view)
 
     def set_scene_size(self) -> None:
+        """Sets the scene size."""
         scene_settings.set_scene_size(self)
 
     def set_background(self) -> None:
+        """Sets the background of the scene."""
         scene_commands.set_background(self)
 
     def _update_background(self):
+        """Updates the background of the scene."""
         # Délégation via SceneController (comportement inchangé)
         self.scene_controller.update_background()
 
     def toggle_rotation_handles(self, visible: bool) -> None:
+        """Toggles the visibility of the rotation handles."""
         self.scene_controller.set_rotation_handles_visible(visible)
 
     def update_scene_from_model(self) -> None:
+        """Updates the scene from the model."""
         index: int = self.scene_model.current_frame
         keyframes: Dict[int, Keyframe] = self.scene_model.keyframes
         if not keyframes:
@@ -210,12 +234,15 @@ class MainWindow(QMainWindow):
         self._apply_object_states(graphics_items, keyframes, index)
 
     def _apply_puppet_states(self, graphics_items: Dict[str, Any], keyframes: Dict[int, Keyframe], index: int) -> None:
+        """Applies the puppet states to the scene."""
         self.scene_controller.apply_puppet_states(graphics_items, keyframes, index)
 
     def _apply_object_states(self, graphics_items: Dict[str, Any], keyframes: Dict[int, Keyframe], index: int) -> None:
+        """Applies the object states to the scene."""
         self.scene_controller.apply_object_states(graphics_items, keyframes, index)
 
     def add_keyframe(self, frame_index: int) -> None:
+        """Adds a keyframe to the scene."""
         puppet_states: Dict[str, Dict[str, Dict[str, Any]]] = self.object_manager.capture_puppet_states()
         self.scene_model.add_keyframe(frame_index, puppet_states)
         # Overwrite objects with the on-screen capture so we don't serialize stale/global attachment
@@ -225,11 +252,14 @@ class MainWindow(QMainWindow):
         self.timeline_widget.add_keyframe_marker(frame_index)
 
     def select_object_in_inspector(self, name: str) -> None:
+        """Selects an object in the inspector."""
         selection_sync.select_object_in_inspector(self, name)
 
     def _on_scene_selection_changed(self) -> None:
+        """Handles the scene selection changed event."""
         selection_sync.scene_selection_changed(self)
     def _on_frame_update(self) -> None:
+        """Handles the frame update event."""
         self.update_scene_from_model()
         self.update_onion_skins()
 
@@ -247,16 +277,20 @@ class MainWindow(QMainWindow):
         self.settings.load()
 
     def set_onion_enabled(self, enabled: bool) -> None:
+        """Enables or disables onion skinning."""
         # Délégation via SceneController
         self.scene_controller.set_onion_enabled(enabled)
 
     def clear_onion_skins(self) -> None:
+        """Clears the onion skins."""
         self.scene_controller.clear_onion_skins()
 
     def update_onion_skins(self) -> None:
+        """Updates the onion skins."""
         self.scene_controller.update_onion_skins()
 
     # --- Settings Dialog ---
     def open_settings_dialog(self) -> None:
+        """Opens the settings dialog."""
         # Délègue entièrement au SettingsManager
         self.settings.open_dialog()

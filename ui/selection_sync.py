@@ -1,3 +1,5 @@
+"""Module for synchronizing selection between the scene and the inspector."""
+
 from __future__ import annotations
 
 from typing import Any

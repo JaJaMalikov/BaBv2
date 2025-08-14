@@ -1,3 +1,5 @@
+"""Module for managing application settings, including UI layout and theme."""
+
 from __future__ import annotations
 
 from typing import Any

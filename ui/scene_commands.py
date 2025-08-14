@@ -1,3 +1,5 @@
+"""Module for scene-related commands like resetting and setting the background."""
+
 from __future__ import annotations
 
 from typing import Any

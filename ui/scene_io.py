@@ -1,3 +1,5 @@
+"""Module for handling scene import and export operations."""
+
 from __future__ import annotations
 import json
 import logging
