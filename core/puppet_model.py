@@ -101,7 +101,16 @@ HANDLE_EXCEPTION = {
 
 class PuppetMember:
     """Node in the puppet hierarchy with pivot, bbox and z-order metadata."""
-    def __init__(self, name: str, parent: Optional['PuppetMember'] = None, pivot: Tuple[float, float] = (0.0, 0.0), bbox: Tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0), z_order: int = 0):
+
+    def __init__(
+        self,
+        name: str,
+        parent: Optional['PuppetMember'] = None,
+        pivot: Tuple[float, float] = (0.0, 0.0),
+        bbox: Tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0),
+        z_order: int = 0,
+    ) -> None:
+        """Initialize hierarchy node with pivot, bounding box and z-order."""
         self.name: str = name
         self.parent: Optional['PuppetMember'] = parent
         self.children: List['PuppetMember'] = []
@@ -117,12 +126,15 @@ class PuppetMember:
         child.rel_pos = (child.pivot[0] - self.pivot[0], child.pivot[1] - self.pivot[1])
 
     def __repr__(self) -> str:
+        """Return a debug representation of the member."""
         return f"<{self.name} pivot={self.pivot} z={self.z_order}>"
 
 
 class Puppet:
     """In-memory puppet composed of PuppetMember nodes built from an SVG file."""
+
     def __init__(self) -> None:
+        """Create an empty puppet ready to be populated from an SVG."""
         self.members: Dict[str, PuppetMember] = {}
         self.child_map: Dict[str, List[str]] = {}
 
@@ -167,6 +179,7 @@ class Puppet:
         return self.get_first_child_pivot(name)
 
     def print_hierarchy(self, member: Optional[PuppetMember] = None, indent: str = "") -> None:
+        """Print the puppet hierarchy starting from ``member`` (or roots)."""
         if member is None:
             for root in self.get_root_members():
                 self.print_hierarchy(root, indent)
@@ -178,6 +191,7 @@ class Puppet:
 
 
 def validate_svg_structure(svg_loader: 'SvgLoader', parent_map: Dict[str, Optional[str]], pivot_map: Dict[str, str]) -> None:
+    """Audit the SVG against parent/pivot maps and print discrepancies."""
     groups_in_svg: set[str] = set(svg_loader.get_groups())
     groups_in_map: set[str] = set(parent_map.keys())
     pivots_in_map: set[str] = set(pivot_map.values())
@@ -200,6 +214,7 @@ def validate_svg_structure(svg_loader: 'SvgLoader', parent_map: Dict[str, Option
 
 
 def main() -> None:
+    """Run a quick validation and print the puppet hierarchy for debugging."""
     svg_path: str = "assets/manululu.svg"
     loader: SvgLoader = SvgLoader(svg_path)
     validate_svg_structure(loader, PARENT_MAP, PIVOT_MAP)

@@ -17,16 +17,16 @@ class OverlayManager:
 
     # Construction / Positionnement
     def build_overlays(self) -> None:
-		"""Create library and inspector overlays and widgets."""
+        """Create library and inspector overlays and widgets."""
         self.win.library_overlay, self.win.library_widget, self.win.inspector_overlay, self.win.inspector_widget = panels.build_side_overlays(self.win)
 
     def position_overlays(self) -> None:
-		"""Position overlays within the main window."""
+        """Position overlays within the main window."""
         panels.position_overlays(self.win)
 
     # Visibilité
     def set_library_visible(self, visible: bool) -> None:
-	    """Show or hide the library overlay and update its action."""
+        """Show or hide the library overlay and update its action."""
         self.win.library_overlay.setVisible(visible)
         self.win.toggle_library_action.blockSignals(True)
         self.win.toggle_library_action.setChecked(visible)

@@ -1,3 +1,5 @@
+"""Graphical QGraphicsItems representing puppet pieces and handles."""
+
 from typing import Optional, Tuple, List, Any
 import math
 
@@ -14,8 +16,10 @@ PIVOT_Z_VALUE = 999
 
 
 class RotationHandle(QGraphicsEllipseItem):
-    """Circular handle used to rotate a PuppetPiece around its pivot."""
+    """Circular handle used to rotate a ``PuppetPiece`` around its pivot."""
+
     def __init__(self, piece: 'PuppetPiece') -> None:
+        """Create a rotation handle bound to ``piece``."""
         super().__init__(-10, -10, 20, 20)
         self.piece: 'PuppetPiece' = piece
         self.setBrush(QBrush(Qt.transparent))
@@ -26,6 +30,7 @@ class RotationHandle(QGraphicsEllipseItem):
         self.start_rotation: float = 0.0
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        """Record starting angle and rotation when interaction begins."""
         pivot_in_scene: QPointF = self.piece.mapToScene(self.piece.transformOriginPoint())
         mouse_in_scene: QPointF = event.scenePos()
         vector: QPointF = mouse_in_scene - pivot_in_scene
@@ -34,6 +39,7 @@ class RotationHandle(QGraphicsEllipseItem):
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        """Rotate the bound piece based on mouse movement."""
         pivot_in_scene: QPointF = self.piece.mapToScene(self.piece.transformOriginPoint())
         mouse_in_scene: QPointF = event.scenePos()
         vector: QPointF = mouse_in_scene - pivot_in_scene
@@ -42,13 +48,16 @@ class RotationHandle(QGraphicsEllipseItem):
         self.piece.rotate_piece(self.start_rotation + delta)
 
     def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        """Reset temporary rotation state after interaction."""
         self.start_angle = 0.0
         self.start_rotation = 0.0
         super().mouseReleaseEvent(event)
 
 class PivotHandle(QGraphicsEllipseItem):
-    """Small circle visualizing the pivot point of a PuppetPiece."""
+    """Small circle visualizing the pivot point of a ``PuppetPiece``."""
+
     def __init__(self) -> None:
+        """Construct a pivot handle with transparent styling."""
         super().__init__(-5, -5, 10, 10)
         self.setBrush(QBrush(Qt.transparent))
         self.setPen(QPen(Qt.transparent))
@@ -62,6 +71,7 @@ class PuppetPiece(QGraphicsSvgItem):
     update its position/rotation from the parent using precomputed relative
     offsets (rel_to_parent). It also owns optional rotation/pivot handles.
     """
+
     def __init__(
         self,
         svg_path: str,
@@ -70,6 +80,7 @@ class PuppetPiece(QGraphicsSvgItem):
         pivot_y: float = 0.0,
         renderer: Optional[QSvgRenderer] = None,
     ) -> None:
+        """Initialize the SVG item with pivot information and optional renderer."""
         if renderer is not None:
             super().__init__()
             self.setSharedRenderer(renderer)
@@ -139,6 +150,7 @@ class PuppetPiece(QGraphicsSvgItem):
             child.update_handle_positions()
 
     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: Any) -> Any:
+        """Propagate transform updates and handle positions when item changes."""
         if change in (
             QGraphicsItem.ItemPositionHasChanged,
             QGraphicsItem.ItemRotationHasChanged,
@@ -191,6 +203,7 @@ class PuppetPiece(QGraphicsSvgItem):
 
     # Deselect objects when starting to interact with a puppet piece to avoid accidental moves
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        """Ensure only puppet pieces remain selected when manipulating handles."""
         try:
             if not (event.modifiers() & (Qt.ShiftModifier | Qt.ControlModifier)):
                 sc = self.scene()
