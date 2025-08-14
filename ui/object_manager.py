@@ -75,7 +75,8 @@ class ObjectManager:
         for piece in pieces.values():
             if piece.parent_piece:
                 piece.update_transform_from_parent()
-            else: piece.update_handle_positions()
+            else:
+                piece.update_handle_positions()
 
         # Apply z offset if any (default 0)
         zoff: int = self.puppet_z_offsets.get(puppet_name, 0)
@@ -100,7 +101,8 @@ class ObjectManager:
                 piece.rel_to_parent = (piece.rel_to_parent[0] * ratio, piece.rel_to_parent[1] * ratio)
         for root_member in puppet.get_root_members():
             if (root_piece := self.graphics_items.get(f"{puppet_name}:{root_member.name}")):
-                for child in root_piece.children: child.update_transform_from_parent()
+                for child in root_piece.children:
+                    child.update_transform_from_parent()
 
     def delete_puppet(self, puppet_name: str) -> None:
         if (puppet := self.scene_model.puppets.get(puppet_name)):
@@ -184,7 +186,8 @@ class ObjectManager:
         return states
 
     def delete_object(self, name: str) -> None:
-        if (item := self.graphics_items.pop(name, None)): self.scene.removeItem(item)
+        if (item := self.graphics_items.pop(name, None)):
+            self.scene.removeItem(item)
         self.scene_model.remove_object(name)
 
     def duplicate_object(self, name: str) -> None:
@@ -307,9 +310,11 @@ class ObjectManager:
                         st = kf.objects[obj_name]
                         if st.get('attached_to') == list(prev_attachment) or st.get('attached_to') == tuple(prev_attachment) or st.get('attached_to') == prev_attachment:
                             # Only patch if missing or 0,0 to avoid overwriting intentional anim edits
-                            sx = st.get('x', 0.0); sy = st.get('y', 0.0)
+                            sx = st.get('x', 0.0)
+                            sy = st.get('y', 0.0)
                             try:
-                                sx = float(sx); sy = float(sy)
+                                sx = float(sx)
+                                sy = float(sy)
                             except (TypeError, ValueError):
                                 sx, sy = 0.0, 0.0
                             if (abs(sx) < 1e-9 and abs(sy) < 1e-9):
@@ -348,8 +353,10 @@ class ObjectManager:
         # Persist world transform into the model
         obj.detach()
         try:
-            obj.x = float(item.x()); obj.y = float(item.y())
-            obj.rotation = float(item.rotation()); obj.scale = float(item.scale())
+            obj.x = float(item.x())
+            obj.y = float(item.y())
+            obj.rotation = float(item.rotation())
+            obj.scale = float(item.scale())
             obj.z = int(item.zValue())
         except Exception as e:
             logging.debug("Failed to read item transform on detach for '%s': %s", obj_name, e)
@@ -430,7 +437,8 @@ class ObjectManager:
                 logging.debug("Reading graphics item state for '%s' failed: %s", name, e)
             state["attached_to"] = attached_to
             kf.objects[name] = state
-        if hasattr(self.win, "inspector_widget"): self.win.inspector_widget.refresh()
+        if hasattr(self.win, "inspector_widget"):
+            self.win.inspector_widget.refresh()
         return name
 
     def _add_library_item_to_scene(self, payload: Dict[str, Any]) -> None:

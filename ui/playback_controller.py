@@ -1,11 +1,5 @@
 from __future__ import annotations
 
-"""PlaybackController: façade légère autour de PlaybackHandler.
-
-Expose les mêmes signaux et méthodes clés afin d'alléger MainWindow et
-préparer d'éventuelles évolutions (renommage/extension) sans impacter le reste.
-"""
-
 from typing import Optional
 from PySide6.QtCore import QObject, Signal
 
@@ -13,6 +7,12 @@ from core.scene_model import SceneModel
 from ui.timeline_widget import TimelineWidget
 from ui.inspector_widget import InspectorWidget
 from ui.playback_handler import PlaybackHandler
+
+"""PlaybackController: façade légère autour de PlaybackHandler.
+
+Expose les mêmes signaux et méthodes clés afin d'alléger MainWindow et
+préparer d'éventuelles évolutions (renommage/extension) sans impacter le reste.
+"""
 
 
 class PlaybackController(QObject):

@@ -6,7 +6,6 @@ from PySide6.QtWidgets import QApplication
 
 from ui.settings_dialog import SettingsDialog
 from ui.styles import apply_stylesheet
-from . import actions as app_actions
 from ui.icons import (
     icon_scene_size, icon_background, icon_library, icon_inspector, icon_timeline,
     icon_save, icon_open, icon_reset_ui, icon_reset_scene

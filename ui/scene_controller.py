@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-"""SceneController: façade légère pour regrouper les opérations de scène.
-
-Objectif de ce premier incrément:
-- Centraliser l'accès à StateApplier, SceneVisuals et OnionSkinManager
-- Exposer de petites méthodes de délégation sans changer le comportement
-"""
-
 from typing import Any, Dict, Optional
 
 from core.puppet_piece import PuppetPiece
 from ui.state_applier import StateApplier
 from ui.scene_visuals import SceneVisuals
 from ui.onion_skin import OnionSkinManager
+
+"""SceneController: façade légère pour regrouper les opérations de scène.
+
+Objectif de ce premier incrément:
+- Centraliser l'accès à StateApplier, SceneVisuals et OnionSkinManager
+- Exposer de petites méthodes de délégation sans changer le comportement
+"""
 
 
 class SceneController:

@@ -1,15 +1,12 @@
 from __future__ import annotations
+from typing import Any
 
+from . import panels
 """OverlayManager: centralise la construction, le positionnement et la visibilité des overlays.
 
 Cette façade encapsule les appels existants (panels, zoomable_view) pour alléger MainWindow
 sans changer le comportement.
 """
-
-from typing import Any
-
-from . import panels
-
 
 class OverlayManager:
     def __init__(self, win: Any) -> None:
