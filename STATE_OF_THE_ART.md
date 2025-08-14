@@ -127,6 +127,8 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
 - Démarrage plus propre: la scène fait un fit automatique, le cadre/dimensions de la scène sont à nouveau visibles, pas de pantin par défaut.
 - Bibliothèque UX: double-clic sur un élément pour l'ajouter directement à la scène (en plus du glisser-déposer et menu contextuel).
 
+- Centralisation des poignées de rotation: `SceneController.set_rotation_handles_visible` gère désormais l'affichage des poignées de rotation au lieu de `MainWindow`. Un test unitaire couvre également `SceneController.set_scene_size`.
+
 ## État actuel et prochaines étapes possibles
 
 L'application a évolué d'un simple outil d'animation de marionnette à un **logiciel de composition de scène 2D fonctionnel et robuste**. L'interface a été professionnalisée et la gestion de plusieurs objets est désormais possible.

@@ -40,24 +40,27 @@
 - **Contrôleurs** :
   - Garder `MainWindow` comme orchestrateur léger (gestion de fenêtres, menus, connections de signaux).
   - Déporter la logique spécifique dans des gestionnaires dédiés :
-    - `SceneController` pour la synchronisation modèle → scène (`StateApplier`, `SceneVisuals`, `OnionSkinManager`).
-    - `UIController` ou `OverlayManager` pour la construction/positionnement des overlays, menus, paramètres.
-    - `PlaybackController` (renommer ou étendre `PlaybackHandler`) pour tout ce qui touche timeline et lecture.
+    - [x] `SceneController` pour la synchronisation modèle → scène (`StateApplier`, `SceneVisuals`, `OnionSkinManager`).
+    - [x] `UIController` ou `OverlayManager` pour la construction/positionnement des overlays, menus, paramètres.
+    - [x] `PlaybackController` (renommer ou étendre `PlaybackHandler`) pour tout ce qui touche timeline et lecture.
 
 ### 2. Centraliser la manipulation de la scène
 - **Regrouper tout le code de modification graphique** dans un module contrôleur (ex. `SceneController`) :
-  - Mise à jour du fond, dimension de scène, ajout/suppression d’items, onion skin.
+  - [x] Mise à jour du fond et dimension de scène
+  - [x] Onion skin
+  - [x] Visibilité des poignées de rotation
+  - [ ] Ajout/suppression d’items
   - `MainWindow` ne ferait que déléguer (`scene_controller.add_object(...)` etc.).
 - **`ObjectManager`** : limiter à la création/duplication/paramétrage des items (membres, objets).
   Les interactions avec le modèle (`SceneModel`) pourraient passer par un service intermédiaire pour réduire le couplage.
 
 ### 3. Réduire la taille de `MainWindow`
 - Extraire les blocs de code “utilitaires” en méthodes privées ou modules :
-  - Construction des overlays (`build_side_overlays`, `position_overlays`) déjà isolée : étendre la logique pour toute manipulation UI.
-  - Paramètres & sauvegarde d’état → `SettingsManager` (déjà existant), `open_settings_dialog`.
+  - [x] Construction des overlays (`build_side_overlays`, `position_overlays`) déjà isolée : étendre la logique pour toute manipulation UI.
+  - [x] Paramètres & sauvegarde d’état → `SettingsManager` (déjà existant), `open_settings_dialog`.
 - Remplacer les accès directs aux attributs par des signaux/slots, par ex. :
-  - `ZoomableView` émet un signal `zoom_requested` → `SceneController.zoom(factor)`.
-  - `TimelineWidget` émet des signaux → `PlaybackController` gère le modèle.
+  - [ ] `ZoomableView` émet un signal `zoom_requested` → `SceneController.zoom(factor)`.
+  - [ ] `TimelineWidget` émet des signaux → `PlaybackController` gère le modèle.
 
 ### 4. Organiser par fonctionnalités
 - Créer des **modules ou packages par fonctionnalité** (par ex. `animation`, `library`, `inspector`, `scene`).
@@ -66,11 +69,11 @@
 
 ### 5. Améliorer la testabilité et la maintenance
 - Introduire des interfaces/abstractions simples pour `SceneModel` (ex. via protocoles ou classes de base), facilitant les tests unitaires.
-- Ajouter des **tests ciblés** pour chaque contrôleur/widget extrait.
+- [x] Ajouter des **tests ciblés** pour chaque contrôleur/widget extrait. *(début: test `SceneController.set_scene_size`)*
 - Documenter chaque module avec un résumé de son rôle et des signaux émis/reçus.
 
 ### 6. Nettoyer et documenter
-- Compléter `STATE_OF_THE_ART.md` au fur et à mesure des refactors.
+- [x] Compléter `STATE_OF_THE_ART.md` au fur et à mesure des refactors.
 - Ajouter des docstrings courtes à chaque méthode non triviale.
-- Mettre en place un **guide de style interne** (ex. via `AGENTS.md`) pour uniformiser noms, commentaires et structure.
+- [x] Mettre en place un **guide de style interne** (ex. via `AGENTS.md`) pour uniformiser noms, commentaires et structure.
  

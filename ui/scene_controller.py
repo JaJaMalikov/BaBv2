@@ -9,6 +9,7 @@ Objectif de ce premier incrément:
 
 from typing import Any, Dict, Optional
 
+from core.puppet_piece import PuppetPiece
 from ui.state_applier import StateApplier
 from ui.scene_visuals import SceneVisuals
 from ui.onion_skin import OnionSkinManager
@@ -46,6 +47,17 @@ class SceneController:
 
     def update_onion_skins(self) -> None:
         self.onion.update()
+
+    # --- Poignées de rotation ---
+    def set_rotation_handles_visible(self, visible: bool) -> None:
+        """Afficher ou masquer les poignées de rotation des pantins."""
+        for item in self.win.object_manager.graphics_items.values():
+            if isinstance(item, PuppetPiece):
+                item.set_handle_visibility(visible)
+        try:
+            self.win.view.handles_btn.setChecked(visible)
+        except Exception:
+            pass
 
     # --- Application d'états (keyframes) ---
     def apply_puppet_states(self, graphics_items: Dict[str, Any], keyframes: Dict[int, Any], index: int) -> None:

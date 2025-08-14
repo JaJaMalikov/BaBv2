@@ -14,7 +14,6 @@ from PySide6.QtWidgets import (
 )
 
 import ui.scene_io as scene_io
-from core.puppet_piece import PuppetPiece
 from core.scene_model import SceneModel, Keyframe
 from ui import actions as app_actions
 from ui import scene_commands
@@ -202,10 +201,7 @@ class MainWindow(QMainWindow):
         self.scene_controller.update_background()
 
     def toggle_rotation_handles(self, visible: bool) -> None:
-        for item in self.object_manager.graphics_items.values():
-            if isinstance(item, PuppetPiece):
-                item.set_handle_visibility(visible)
-        self.view.handles_btn.setChecked(visible)
+        self.scene_controller.set_rotation_handles_visible(visible)
 
     def update_scene_from_model(self) -> None:
         index: int = self.scene_model.current_frame
