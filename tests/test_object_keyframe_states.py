@@ -25,6 +25,8 @@ def _puppet_piece(win: MainWindow, puppet: str, member: str):
 def test_object_state_is_per_keyframe(app):
     win = MainWindow()
 
+    win.object_manager.add_puppet(str(Path("assets/pantins/manu.svg").resolve()), "manu")
+
     # Ensure on frame 0
     win.playback_handler.go_to_frame(0)
 

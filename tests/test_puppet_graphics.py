@@ -7,6 +7,8 @@ import pytest
 import sys
 from pathlib import Path
 
+from core.puppet_model import Z_ORDER
+
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from ui.main_window import MainWindow
@@ -22,6 +24,8 @@ def app():
 
 def test_hierarchy_and_pivot(app):
     window = MainWindow()
+
+    window.object_manager.add_puppet(str(Path("assets/pantins/manu.svg").resolve()), "manu")
 
     gis = window.object_manager.graphics_items
     upper = gis["manu:haut_bras_droite"]
@@ -46,11 +50,12 @@ def test_hierarchy_and_pivot(app):
     assert elbow_pos_after.y() == pytest.approx(forearm_pos_after.y())
 
     # L'ordre d'affichage reste celui défini manuellement
-    assert upper.zValue() == -1
+    assert upper.zValue() == Z_ORDER.get("haut_bras_droite", -1)
 
 
 def test_puppet_translation(app):
     window = MainWindow()
+    window.object_manager.add_puppet(str(Path("assets/pantins/manu.svg").resolve()), "manu")
     gis = window.object_manager.graphics_items
     torso = gis["manu:torse"]
     hand = gis["manu:main_droite"]
