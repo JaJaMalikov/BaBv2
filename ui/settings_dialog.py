@@ -262,6 +262,8 @@ class SettingsDialog(QDialog):
         # Presets
         self.preset_combo = QComboBox()
         self.preset_combo.addItems(["Light", "Dark", "High Contrast", "Custom"])
+        # Dark is the default theme
+        self.preset_combo.setCurrentText("Dark")
         controls_layout.addRow("Preset:", self.preset_combo)
         # Color pickers (edit + button)
         self._swatches = {}

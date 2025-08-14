@@ -77,10 +77,10 @@ class SettingsManager:
             except Exception:
                 pass
         dlg.icon_size_spin.setValue(int(s.value("ui/icon_size", 32)))
-        theme = str(s.value("ui/theme", "light"))
+        theme = str(s.value("ui/theme", "dark"))
         try:
             presets_map = { 'light':'Light', 'dark':'Dark', 'custom':'Custom' }
-            dlg.preset_combo.setCurrentText(presets_map.get(theme, 'Light'))
+            dlg.preset_combo.setCurrentText(presets_map.get(theme, 'Dark'))
             dlg._load_preset_values(dlg.preset_combo.currentText())
         except Exception:
             pass
@@ -147,8 +147,25 @@ class SettingsManager:
             icon_dir = dlg.icon_dir_edit.text().strip()
             s.setValue("ui/icon_dir", icon_dir if icon_dir else "")
             s.setValue("ui/icon_size", int(dlg.icon_size_spin.value()))
-            theme = dlg.preset_combo.currentText().strip().lower() or 'light'
+            theme = dlg.preset_combo.currentText().strip().lower() or 'dark'
             s.setValue("ui/theme", theme)
+            # Persist icon colors based on theme
+            if theme == 'dark':
+                s.setValue('ui/icon_normal', '#E2E8F0')
+                s.setValue('ui/icon_hover', '#EF4444')
+                s.setValue('ui/icon_active', '#FFFFFF')
+            elif theme == 'light':
+                s.setValue('ui/icon_normal', '#4A5568')
+                s.setValue('ui/icon_hover', '#E53E3E')
+                s.setValue('ui/icon_active', '#FFFFFF')
+            elif theme == 'custom':
+                s.setValue('ui/icon_normal', dlg.text_edit.text() or '#E2E8F0')
+                s.setValue('ui/icon_hover', dlg.accent_edit.text() or '#EF4444')
+                s.setValue('ui/icon_active', '#FFFFFF')
+            else:
+                s.setValue('ui/icon_normal', '#4A5568')
+                s.setValue('ui/icon_hover', '#E53E3E')
+                s.setValue('ui/icon_active', '#FFFFFF')
             if theme == 'custom':
                 try:
                     from ui.styles import build_stylesheet
@@ -220,6 +237,7 @@ class SettingsManager:
             # Refresh icons everywhere
             try:
                 import ui.icons as app_icons
+                app_icons.load_colors_from_settings()
                 app_icons.clear_cache()
                 win.save_action.setIcon(icon_save())
                 win.load_action.setIcon(icon_open())

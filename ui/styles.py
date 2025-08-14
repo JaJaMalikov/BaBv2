@@ -257,8 +257,11 @@ def apply_stylesheet(app):
     """
     try:
         from PySide6.QtCore import QSettings
+        import ui.icons as app_icons
         s = QSettings("JaJa", "Macronotron")
-        theme = str(s.value("ui/theme", "light")).lower()
+        theme = str(s.value("ui/theme", "dark")).lower()
+        # Ensure icon colors follow the selected theme
+        app_icons.load_colors_from_settings()
         if theme == "custom":
             custom_css = s.value("ui/custom_stylesheet")
             if custom_css:
@@ -269,7 +272,7 @@ def apply_stylesheet(app):
                     logging.warning("Poppins font not found, using system default.")
                 return
     except Exception:
-        theme = "light"
+        theme = "dark"
     css = STYLE_SHEET_DARK if theme == "dark" else STYLE_SHEET_LIGHT
     app.setStyleSheet(css)
     try:

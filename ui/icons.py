@@ -13,10 +13,34 @@ from PySide6.QtCore import QSettings
 ICONS_DIR = Path("assets/icons")
 ICON_CACHE: Dict[str, QIcon] = {}
 
-# Define colors from our theme
+# Define colors from our theme (defaults for light)
 COLOR_NORMAL = "#4A5568"
 COLOR_HOVER = "#E53E3E"
 COLOR_ACTIVE = "#FFFFFF"
+
+def load_colors_from_settings() -> None:
+    """Load icon colors according to the current theme and settings."""
+    global COLOR_NORMAL, COLOR_HOVER, COLOR_ACTIVE
+    try:
+        s = QSettings("JaJa", "Macronotron")
+        theme = str(s.value("ui/theme", "dark")).lower()
+        if theme == "dark":
+            COLOR_NORMAL = str(s.value("ui/icon_normal", "#E2E8F0"))
+            COLOR_HOVER = str(s.value("ui/icon_hover", "#EF4444"))
+            COLOR_ACTIVE = str(s.value("ui/icon_active", "#FFFFFF"))
+        elif theme == "light":
+            COLOR_NORMAL = str(s.value("ui/icon_normal", "#4A5568"))
+            COLOR_HOVER = str(s.value("ui/icon_hover", "#E53E3E"))
+            COLOR_ACTIVE = str(s.value("ui/icon_active", "#FFFFFF"))
+        else:  # custom or other
+            COLOR_NORMAL = str(s.value("ui/icon_normal", "#4A5568"))
+            COLOR_HOVER = str(s.value("ui/icon_hover", "#E53E3E"))
+            COLOR_ACTIVE = str(s.value("ui/icon_active", "#FFFFFF"))
+    except Exception:
+        pass
+
+# Initialize colors on import
+load_colors_from_settings()
 
 def _render_svg(svg_data: str, size: QSize = QSize(32, 32)) -> QPixmap:
     """Renders SVG data to a QPixmap of a specific size."""
