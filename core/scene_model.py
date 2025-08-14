@@ -16,6 +16,7 @@ class SceneObject:
     (coordonnées locales au parent). Les coordonnées/valeurs sont des types
     simples pour faciliter la sérialisation JSON.
     """
+    
     def __init__(
         self,
         name: str,
@@ -27,6 +28,7 @@ class SceneObject:
         scale: float = 1.0,
         z: int = 0,
     ) -> None:
+        """Initialize a generic scene object with transform properties."""
         self.name = name
         self.obj_type = obj_type  # "image", "svg", "puppet"
         self.file_path = file_path
@@ -38,9 +40,11 @@ class SceneObject:
         self.attached_to: Optional[tuple[str, str]] = None  # (puppet_name, member_name) ou None
 
     def attach(self, puppet_name: str, member_name: str) -> None:
+        """Attach object to a puppet member by names."""
         self.attached_to = (puppet_name, member_name)
 
     def detach(self) -> None:
+        """Detach object from any puppet member."""
         self.attached_to = None
 
     def to_dict(self) -> Dict[str, Any]:
@@ -76,18 +80,23 @@ class SceneObject:
         return obj
 
 class Keyframe:
+    """Snapshot of the scene state at a given frame.
+
+    ``objects`` maps object names to their state (position, rotation, scale,
+    attachment, etc.). ``puppets`` maps puppet names to a dict of member states.
     """
-    Snapshot de l'état de la scène à un temps donné
-    objects: Dict[str, Dict[str, Any]] - name -> état (position, rotation, scale, attachment, etc.)
-    puppets: Dict[str, Dict[str, Dict[str, Any]]] - puppet_name -> { member_name -> { rot: ..., pos: ...} }
-    """
+
     def __init__(self, index: int) -> None:
+        """Create an empty keyframe at the given index."""
         self.index: int = index
         self.objects: Dict[str, Dict[str, Any]] = {}
         self.puppets: Dict[str, Dict[str, Dict[str, Any]]] = {}
 
 class SceneModel:
+    """Central store for puppets, objects and timeline keyframes."""
+
     def __init__(self) -> None:
+        """Initialize an empty scene with default settings."""
         self.puppets = {}    # name -> Puppet instance
         self.objects = {}    # name -> SceneObject
         self.keyframes = {}  # index -> Keyframe
@@ -103,26 +112,32 @@ class SceneModel:
     # PUPPETS ET OBJETS
     # -----------------------------
     def add_puppet(self, name: str, puppet: Puppet) -> None:
+        """Register a puppet in the scene by name."""
         self.puppets[name] = puppet
 
     def remove_puppet(self, name: str) -> None:
+        """Remove a puppet from the scene if present."""
         self.puppets.pop(name, None)
 
     def add_object(self, scene_object: SceneObject) -> None:
+        """Add a new scene object to the model."""
         self.objects[scene_object.name] = scene_object
 
     def remove_object(self, name: str) -> None:
+        """Remove a scene object by its name if it exists."""
         self.objects.pop(name, None)
 
     # -----------------------------
     # ATTACHEMENT
     # -----------------------------
     def attach_object(self, obj_name: str, puppet_name: str, member_name: str) -> None:
+        """Attach an object to a puppet member."""
         obj = self.objects.get(obj_name)
         if obj:
             obj.attach(puppet_name, member_name)
 
     def detach_object(self, obj_name: str) -> None:
+        """Detach an object from any puppet member."""
         obj = self.objects.get(obj_name)
         if obj:
             obj.detach()
@@ -131,6 +146,7 @@ class SceneModel:
     # KEYFRAMES ET TIMELINE
     # -----------------------------
     def add_keyframe(self, index: int, puppet_states: Optional[Dict[str, Dict[str, Dict[str, Any]]]] = None) -> Keyframe:
+        """Create or overwrite a keyframe at ``index`` with optional puppet states."""
         kf = self.keyframes.get(index)
         if not kf:
             kf = Keyframe(index)
@@ -145,9 +161,11 @@ class SceneModel:
         return kf
 
     def remove_keyframe(self, index: int) -> None:
+        """Delete the keyframe at ``index`` if present."""
         self.keyframes.pop(index, None)
 
     def go_to_frame(self, index: int) -> None:
+        """Set the current frame pointer without applying any state."""
         self.current_frame = index
         # La restauration de l'état se fera dans la MainWindow
         # qui a accès aux objets graphiques.
@@ -192,6 +210,7 @@ class SceneModel:
                     return False
         return True
     def to_dict(self) -> Dict[str, Any]:
+        """Serialize the whole scene into a JSON-friendly dictionary."""
         return {
             "settings": {
                 "start_frame": self.start_frame,
@@ -214,6 +233,7 @@ class SceneModel:
         }
 
     def from_dict(self, data: Dict[str, Any]) -> None:
+        """Load scene data from a dictionary produced by :meth:`to_dict`."""
         settings = data.get("settings", {})
         self.start_frame = settings.get("start_frame", 0)
         self.end_frame = settings.get("end_frame", 100)
@@ -240,11 +260,13 @@ class SceneModel:
         self.keyframes = dict(sorted(self.keyframes.items()))
 
     def export_json(self, file_path: str) -> None:
+        """Export the scene to a JSON file at ``file_path``."""
         import json
         with open(file_path, "w") as f:
             json.dump(self.to_dict(), f, indent=2)
 
     def import_json(self, file_path: str) -> bool:
+        """Load scene data from a JSON file, returning success."""
         import json
         try:
             with open(file_path, "r") as f:

@@ -1,3 +1,5 @@
+"""Utilities to inspect and extract data from SVG files."""
+
 from __future__ import annotations
 
 import logging
@@ -19,7 +21,10 @@ DEFAULT_NAMESPACES: Dict[str, str] = {"svg": SVG_NS}
 
 
 class SvgLoader:
+    """Load an SVG document and provide helpers to inspect its groups."""
+
     def __init__(self, svg_path: str) -> None:
+        """Initialize loader and parse the SVG file at ``svg_path``."""
         self.svg_path: str = svg_path
         self.tree: ET.ElementTree = ET.parse(svg_path)
         self.root: ET.Element = self.tree.getroot()
@@ -57,7 +62,7 @@ class SvgLoader:
         return bounds_rect.left(), bounds_rect.top()
 
     def get_groups(self) -> List[str]:
-        """Liste les identifiants de tous les groupes <g>."""
+        """List the identifiers of all ``<g>`` groups."""
         return [
             elem.attrib["id"]
             for elem in self.root.findall(".//svg:g", self.namespaces)
@@ -72,9 +77,7 @@ class SvgLoader:
         return self._rect_to_bbox(bounds_rect)
 
     def get_pivot(self, group_id: str) -> Point:
-        """
-        Retourne le centre de la bounding box du groupe (pivot).
-        """
+        """Return the center of a group's bounding box (pivot)."""
         bounding_box: Optional[BoundingBox] = self.get_group_bounding_box(group_id)
         if bounding_box is None:
             return 0.0, 0.0  # Cohérence: toujours des floats
@@ -84,7 +87,7 @@ class SvgLoader:
         return cx, cy
 
     def extract_group(self, group_id: str, output_path: str) -> Optional[Point]:
-        """Exporte « group_id » dans un fichier SVG autonome. Retourne l'offset (x_min, y_min)."""
+        """Export ``group_id`` into a standalone SVG file and return its offset."""
         group_elem: Optional[ET.Element] = self.root.find(
             f".//svg:g[@id='{group_id}']",
             self.namespaces,
@@ -123,11 +126,10 @@ class SvgLoader:
         return x_min, y_min
 
     def get_svg_viewbox(self) -> List[float]:
-        """
-        Retourne le viewBox du SVG sous la forme [min_x, min_y, width, height].
+        """Return the SVG viewBox as ``[min_x, min_y, width, height]``.
 
-        Si le viewBox est absent, retombe sur width/height (si présents),
-        sinon retourne [0.0, 0.0, 0.0, 0.0].
+        If the viewBox is missing, fall back to width/height attributes and
+        return ``[0.0, 0.0, 0.0, 0.0]`` when values are unavailable.
         """
         viewbox: Optional[str] = self.root.attrib.get("viewBox")
         if viewbox:
