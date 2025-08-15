@@ -5,6 +5,7 @@ This module contains pure data structures and serialization helpers used by the 
 
 from typing import Dict, Any, Optional
 import logging
+import json
 from dataclasses import dataclass, field, asdict
 from core.puppet_model import Puppet
 
@@ -254,15 +255,13 @@ class SceneModel:
 
     def export_json(self, file_path: str) -> None:
         """Export the scene to a JSON file at ``file_path``."""
-        import json
-        with open(file_path, "w") as f:
+        with open(file_path, "w", encoding="utf-8") as f:
             json.dump(self.to_dict(), f, indent=2)
 
     def import_json(self, file_path: str) -> bool:
         """Load scene data from a JSON file, returning success."""
-        import json
         try:
-            with open(file_path, "r") as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             # Valider avant d'appliquer pour éviter tout état partiel
             if not self._validate_data(data):
@@ -271,5 +270,5 @@ class SceneModel:
             self.from_dict(data)
             return True
         except (IOError, json.JSONDecodeError) as e:
-            logging.error(f"Erreur lors du chargement du fichier : {e}")
+            logging.error("Erreur lors du chargement du fichier : %s", e)
             return False

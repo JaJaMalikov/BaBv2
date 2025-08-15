@@ -114,12 +114,16 @@ class PuppetPiece(QGraphicsSvgItem):
             self.rotation_handle: Optional[RotationHandle] = RotationHandle(self)
             brect = self.boundingRect()
             if self.name == "torse":
-                self.handle_local_pos: QPointF = QPointF(brect.center().x(), brect.center().y() - 40)
+                self.handle_local_pos = QPointF(
+                    brect.center().x(),
+                    brect.center().y() - 40,
+                )
             else:
-                self.handle_local_pos: QPointF = brect.center()
+                self.handle_local_pos = brect.center()
         else:
             self.rotation_handle = None
-            self.handle_local_pos: Optional[QPointF] = None # Initialize if no rotation handle
+            # Initialize if no rotation handle
+            self.handle_local_pos: Optional[QPointF] = None
 
 
     def set_handle_visibility(self, visible: bool) -> None:
@@ -144,7 +148,7 @@ class PuppetPiece(QGraphicsSvgItem):
         """Update scene positions of the pivot and rotation handles."""
         pivot_pos: QPointF = self.mapToScene(self.pivot_x, self.pivot_y)
         self.pivot_handle.setPos(pivot_pos)
-        if self.rotation_handle and self.handle_local_pos: # Check handle_local_pos as well
+        if self.rotation_handle and self.handle_local_pos:
             handle_pos: QPointF = self.mapToScene(self.handle_local_pos)
             self.rotation_handle.setPos(handle_pos)
         for child in self.children:
@@ -162,7 +166,12 @@ class PuppetPiece(QGraphicsSvgItem):
                 child.update_transform_from_parent()
         return super().itemChange(change, value)
 
-    def set_parent_piece(self, parent: 'PuppetPiece', rel_x: float = 0.0, rel_y: float = 0.0) -> None:
+    def set_parent_piece(
+        self,
+        parent: "PuppetPiece",
+        rel_x: float = 0.0,
+        rel_y: float = 0.0,
+    ) -> None:
         """Define parent piece and relative offset in parent's local space."""
         self.parent_piece = parent
         self.rel_to_parent = (rel_x, rel_y)
@@ -204,7 +213,7 @@ class PuppetPiece(QGraphicsSvgItem):
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """Ensure only puppet pieces remain selected when manipulating handles."""
         try:
-            if not (event.modifiers() & (Qt.ShiftModifier | Qt.ControlModifier)):
+            if not event.modifiers() & (Qt.ShiftModifier | Qt.ControlModifier):
                 sc = self.scene()
                 if sc is not None:
                     for it in list(sc.selectedItems()):
