@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Optional, Protocol
+from typing import TYPE_CHECKING, Optional, Protocol, cast
 
 from PySide6.QtCore import QPointF
 from PySide6.QtWidgets import QGraphicsItem, QGraphicsScene
@@ -52,6 +52,7 @@ class SceneController:
         onion: OnionSkinManager | None = None,
         applier: StateApplier | None = None,
     ) -> None:
+        """Initialize the scene controller."""
         self.win = win
         self.visuals: SceneVisuals = visuals if visuals is not None else SceneVisuals(win)
         if visuals is None:
@@ -64,68 +65,88 @@ class SceneController:
 
     # --- Puppet operations -------------------------------------------------
     def add_puppet(self, file_path: str, puppet_name: str) -> None:
+        """Add a puppet to the scene."""
         self.puppet_ops.add_puppet(file_path, puppet_name)
 
     def scale_puppet(self, puppet_name: str, ratio: float) -> None:
+        """Scale a puppet by the given ratio."""
         self.puppet_ops.scale_puppet(puppet_name, ratio)
 
     def delete_puppet(self, puppet_name: str) -> None:
+        """Delete a puppet from the scene."""
         self.puppet_ops.delete_puppet(puppet_name)
 
     def duplicate_puppet(self, puppet_name: str) -> None:
+        """Duplicate a puppet."""
         self.puppet_ops.duplicate_puppet(puppet_name)
 
     def get_puppet_rotation(self, puppet_name: str) -> float:
-        return self.puppet_ops.get_puppet_rotation(puppet_name)
+        """Return the current rotation of a puppet."""
+        return cast(float, self.puppet_ops.get_puppet_rotation(puppet_name))
 
     def set_puppet_rotation(self, puppet_name: str, angle: float) -> None:
+        """Set the rotation angle of a puppet."""
         self.puppet_ops.set_puppet_rotation(puppet_name, angle)
 
     def set_puppet_z_offset(self, puppet_name: str, offset: int) -> None:
+        """Set the Z offset of a puppet."""
         self.puppet_ops.set_puppet_z_offset(puppet_name, offset)
 
     def set_rotation_handles_visible(self, visible: bool) -> None:
+        """Toggle visibility of rotation handles."""
         self.puppet_ops.set_rotation_handles_visible(visible)
 
     # --- Object operations -------------------------------------------------
     def delete_object(self, name: str) -> None:
+        """Delete an object."""
         self.object_ops.delete_object(name)
 
     def duplicate_object(self, name: str) -> None:
+        """Duplicate an object."""
         self.object_ops.duplicate_object(name)
 
     def attach_object_to_member(self, obj_name: str, puppet_name: str, member_name: str) -> None:
+        """Attach an object to a puppet member."""
         self.object_ops.attach_object_to_member(obj_name, puppet_name, member_name)
 
     def detach_object(self, obj_name: str) -> None:
+        """Detach an object from any parent."""
         self.object_ops.detach_object(obj_name)
 
     def _create_object_from_file(self, file_path: str, scene_pos: Optional[QPointF] = None) -> Optional[str]:
-        return self.object_ops.create_object_from_file(file_path, scene_pos)
+        """Create an object from a file."""
+        return cast(Optional[str], self.object_ops.create_object_from_file(file_path, scene_pos))
 
     def delete_object_from_current_frame(self, name: str) -> None:
+        """Delete an object from the current frame."""
         self.object_ops.delete_object_from_current_frame(name)
 
     # --- Library operations -----------------------------------------------
     def _add_library_item_to_scene(self, payload: LibraryPayload) -> None:
+        """Add a library item to the scene."""
         self.library_ops.add_library_item_to_scene(payload)
 
     def handle_library_drop(self, payload: LibraryPayload, pos: QPointF) -> None:
+        """Handle a library drop at the given position."""
         self.library_ops.handle_library_drop(payload, pos)
 
     # --- Visuals -----------------------------------------------------------
     def update_scene_visuals(self) -> None:
+        """Update scene visuals."""
         self.visuals.update_scene_visuals()
 
     def update_background(self) -> None:
+        """Update the scene background."""
         self.visuals.update_background()
 
     def set_background_path(self, path: Optional[str]) -> None:
+        """Set the path for the scene background."""
         self.win.scene_model.background_path = path
         self.update_background()
 
     # --- View & zoom ------------------------------------------------------
     def zoom(self, factor: float) -> None:
+        """Zoom the view by a factor."""
         self.win.view.scale(factor, factor)
         self.win.zoom_factor *= factor
         try:
@@ -135,12 +156,15 @@ class SceneController:
 
     # --- Onion skin -------------------------------------------------------
     def set_onion_enabled(self, enabled: bool) -> None:
+        """Enable or disable onion skinning."""
         self.onion.set_enabled(enabled)
 
     def clear_onion_skins(self) -> None:
+        """Clear all onion skins."""
         self.onion.clear()
 
     def update_onion_skins(self) -> None:
+        """Update onion skins."""
         self.onion.update()
 
     # --- State application -------------------------------------------------
@@ -150,6 +174,7 @@ class SceneController:
         keyframes: dict[int, Keyframe],
         index: int,
     ) -> None:
+        """Apply puppet states to graphics items."""
         self.applier.apply_puppet_states(graphics_items, keyframes, index)
 
     def apply_object_states(
@@ -158,10 +183,12 @@ class SceneController:
         keyframes: dict[int, Keyframe],
         index: int,
     ) -> None:
+        """Apply object states to graphics items."""
         self.applier.apply_object_states(graphics_items, keyframes, index)
 
     # --- Scene settings ---------------------------------------------------
     def set_scene_size(self, width: int, height: int) -> None:
+        """Set the scene dimensions."""
         self.win.scene_model.scene_width = int(width)
         self.win.scene_model.scene_height = int(height)
         self.win.scene.setSceneRect(0, 0, int(width), int(height))
