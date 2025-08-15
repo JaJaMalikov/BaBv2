@@ -17,15 +17,15 @@ def reset_scene(win: Any) -> None:
 
 def set_background(win: Any) -> None:
     """Open a file dialog to choose a background image and apply it."""
-    filePath: str
-    filePath, _ = QFileDialog.getOpenFileName(
+    file_path: str
+    file_path, _ = QFileDialog.getOpenFileName(
         win,
         "Charger une image d'arrière-plan",
         "",
         "Images (*.png *.jpg *.jpeg)",
     )
-    if filePath:
-        win.scene_controller.set_background_path(filePath)
+    if file_path:
+        win.scene_controller.set_background_path(file_path)
 
 def set_scene_size(win) -> None:
     """Prompt the user for scene width/height and apply to the scene.
