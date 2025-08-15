@@ -107,23 +107,27 @@ class Puppet:
         """Return members with no parent (roots)."""
         return [m for m in self.members.values() if m.parent is None]
 
-    def get_first_child_pivot(self, name: str) -> Tuple[float, float]:
-        """Return pivot of the first child of a member, or (0,0) if none."""
-        child_names = self.child_map.get(name, [])
-        if child_names:
-            target_member = self.members.get(child_names[0])
+    def _resolve_child_pivot(self, name: str, override: Optional[str] = None) -> Tuple[float, float]:
+        """Return pivot of ``override`` member or the first child of ``name``."""
+        target_name: Optional[str] = override
+        if not target_name:
+            child_names = self.child_map.get(name, [])
+            if child_names:
+                target_name = child_names[0]
+        if target_name:
+            target_member = self.members.get(target_name)
             if target_member:
                 return target_member.pivot
-        return (0.0, 0.0) # Return a default tuple of floats
+        return (0.0, 0.0)
+
+    def get_first_child_pivot(self, name: str) -> Tuple[float, float]:
+        """Return pivot of the first child of a member, or (0,0) if none."""
+        return self._resolve_child_pivot(name)
 
     def get_handle_target_pivot(self, name: str) -> Tuple[float, float]:
         """Pivot used for handle placement (exceptions or first child)."""
-        # Gère d'abord les exceptions, sinon prend le premier enfant
-        if name in HANDLE_EXCEPTION:
-            target_member = self.members.get(HANDLE_EXCEPTION[name])
-            if target_member:
-                return target_member.pivot
-        return self.get_first_child_pivot(name)
+        override = HANDLE_EXCEPTION.get(name)
+        return self._resolve_child_pivot(name, override)
 
     def print_hierarchy(self, member: Optional[PuppetMember] = None, indent: str = "") -> None:
         """Print the puppet hierarchy starting from ``member`` (or roots)."""
