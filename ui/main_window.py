@@ -22,7 +22,7 @@ from ui.object_manager import ObjectManager
 from ui.onion_skin import OnionSkinManager
 from ui.overlay_manager import OverlayManager
 from ui.playback_controller import PlaybackController
-from ui.scene.scene_controller import SceneController
+from ui.scene import SceneController
 from ui.scene.scene_visuals import SceneVisuals
 from ui.settings_manager import SettingsManager
 from ui.timeline_widget import TimelineWidget
