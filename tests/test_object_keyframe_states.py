@@ -5,9 +5,10 @@ from PySide6.QtWidgets import QApplication, QGraphicsItem
 import pytest
 import sys
 from pathlib import Path
-from ui.main_window import MainWindow
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
+
+from ui.main_window import MainWindow
 
 @pytest.fixture(scope="module")
 def app():
