@@ -18,8 +18,8 @@ def create_app(argv: List[str]) -> QApplication:
 def main(argv: List[str]) -> int:
     """Point d'entrée principal de l'application. Retourne un code de sortie."""
     app = create_app(argv)
-    main_window = MainWindow()
-    main_window.show()
+    macronotron = MainWindow()
+    macronotron.show()
     return app.exec()
 
 
