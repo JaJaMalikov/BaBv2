@@ -22,6 +22,73 @@ from ui.library.library_widget import LIB_MIME
 
 from typing import Optional, Any, Callable, Dict, List
 
+
+def make_tool_button(
+    parent: QWidget,
+    icon: Optional[QIcon] = None,
+    tooltip: str = "",
+    callback: Optional[Callable[[], None]] = None,
+    checkable: bool = False,
+    action: Optional[QAction] = None,
+    icon_size: int = 32,
+    button_size: Optional[int] = None,
+) -> QToolButton:
+    """Create a standardized ``QToolButton`` for overlay toolbars.
+
+    This helper centralizes the common configuration for tool buttons used
+    across the different overlays. It supports both simple icon/callback
+    buttons as well as buttons bound to a ``QAction``.
+
+    Parameters
+    ----------
+    parent:
+        Widget that will parent the created button.
+    icon:
+        Optional ``QIcon`` displayed on the button. Ignored if ``action`` is
+        provided.
+    tooltip:
+        Text shown when the user hovers the button.
+    callback:
+        Function invoked when the button is clicked. Ignored if ``action`` is
+        provided.
+    checkable:
+        Whether the button maintains an on/off state.
+    action:
+        Optional ``QAction`` associated with the button instead of a direct
+        callback.
+    icon_size:
+        Size of the icon in pixels.
+    button_size:
+        Size of the square button. If ``None``, it defaults to
+        ``max(28, icon_size + 4)``.
+
+    Returns
+    -------
+    QToolButton
+        The configured tool button ready to be added to a layout.
+    """
+
+    btn = QToolButton(parent)
+    if action:
+        btn.setDefaultAction(action)
+    elif icon:
+        btn.setIcon(icon)
+        if callback:
+            btn.clicked.connect(callback)
+    elif callback:
+        btn.clicked.connect(callback)
+
+    if tooltip:
+        btn.setToolTip(tooltip)
+    btn.setIconSize(QSize(icon_size, icon_size))
+    btn.setCheckable(checkable)
+    size = max(28, icon_size + 4) if button_size is None else button_size
+    btn.setFixedSize(size, size)
+    btn.setToolButtonStyle(Qt.ToolButtonIconOnly)
+    btn.setAutoRaise(True)
+    return btn
+
+
 class ZoomableView(QGraphicsView):
     zoom_requested = Signal(float)
     fit_requested = Signal()
@@ -47,35 +114,70 @@ class ZoomableView(QGraphicsView):
         icon_size: int = int(s.value("ui/icon_size", 32))
         button_size: int = max(28, icon_size + 4)
 
-        def make_btn(icon: Optional[QIcon], tooltip: str, cb: Optional[Callable[[], None]] = None, checkable: bool = False) -> QToolButton:
-            btn: QToolButton = QToolButton(self._overlay)
-            if icon:
-                btn.setIcon(icon)
-                btn.setIconSize(QSize(icon_size, icon_size))
-            btn.setToolTip(tooltip)
-            if cb:
-                btn.clicked.connect(cb)
-            btn.setCheckable(checkable)
-            btn.setFixedSize(button_size, button_size)
-            btn.setAutoRaise(True)
-            return btn
-
-        self.collapse_btn: QToolButton = make_btn(icon_close_menu(), "Replier/Déplier le panneau", checkable=True)
+        self.collapse_btn: QToolButton = make_tool_button(
+            self._overlay,
+            icon=icon_close_menu(),
+            tooltip="Replier/Déplier le panneau",
+            checkable=True,
+            icon_size=icon_size,
+            button_size=button_size,
+        )
         self.collapse_btn.setChecked(True)
         self.collapse_btn.toggled.connect(self.toggle_overlay_collapse)
         self.layout.addWidget(self.collapse_btn)
 
-        self.zoom_out_btn: QToolButton = make_btn(icon_minus(), "Zoom arrière (Ctrl+Molette)", lambda: self.zoom_requested.emit(0.8))
-        self.zoom_in_btn: QToolButton = make_btn(icon_plus(), "Zoom avant (Ctrl+Molette)", lambda: self.zoom_requested.emit(1.25))
-        self.fit_btn: QToolButton = make_btn(icon_fit(), "Ajuster à la vue", self.fit_requested.emit)
-        
-        self.handles_btn: QToolButton = make_btn(icon_rotate(), "Afficher/Masquer les poignées", checkable=True)
+        self.zoom_out_btn: QToolButton = make_tool_button(
+            self._overlay,
+            icon=icon_minus(),
+            tooltip="Zoom arrière (Ctrl+Molette)",
+            callback=lambda: self.zoom_requested.emit(0.8),
+            icon_size=icon_size,
+            button_size=button_size,
+        )
+        self.zoom_in_btn: QToolButton = make_tool_button(
+            self._overlay,
+            icon=icon_plus(),
+            tooltip="Zoom avant (Ctrl+Molette)",
+            callback=lambda: self.zoom_requested.emit(1.25),
+            icon_size=icon_size,
+            button_size=button_size,
+        )
+        self.fit_btn: QToolButton = make_tool_button(
+            self._overlay,
+            icon=icon_fit(),
+            tooltip="Ajuster à la vue",
+            callback=self.fit_requested.emit,
+            icon_size=icon_size,
+            button_size=button_size,
+        )
+
+        self.handles_btn: QToolButton = make_tool_button(
+            self._overlay,
+            icon=icon_rotate(),
+            tooltip="Afficher/Masquer les poignées",
+            checkable=True,
+            icon_size=icon_size,
+            button_size=button_size,
+        )
         self.handles_btn.toggled.connect(self.handles_toggled)
 
-        self.onion_btn: QToolButton = make_btn(icon_onion(), "Onion skin (fantômes)", checkable=True)
+        self.onion_btn: QToolButton = make_tool_button(
+            self._overlay,
+            icon=icon_onion(),
+            tooltip="Onion skin (fantômes)",
+            checkable=True,
+            icon_size=icon_size,
+            button_size=button_size,
+        )
         self.onion_btn.toggled.connect(self.onion_toggled)
 
-        self.tool_widgets: List[QWidget] = [self.zoom_out_btn, self.zoom_in_btn, self.fit_btn, self.handles_btn, self.onion_btn]
+        self.tool_widgets: List[QWidget] = [
+            self.zoom_out_btn,
+            self.zoom_in_btn,
+            self.fit_btn,
+            self.handles_btn,
+            self.onion_btn,
+        ]
         for w in self.tool_widgets:
             self.layout.addWidget(w)
 
@@ -92,38 +194,87 @@ class ZoomableView(QGraphicsView):
         icon_size: int = int(s.value("ui/icon_size", 32))
         button_size: int = max(28, icon_size + 4)
 
-        def make_btn(action: QAction, checkable: bool = False) -> QToolButton:
-            btn: QToolButton = QToolButton(self._main_tools_overlay)
-            btn.setDefaultAction(action)
-            btn.setIconSize(QSize(icon_size, icon_size))
-            btn.setCheckable(checkable)
-            btn.setFixedSize(button_size, button_size)
-            btn.setToolButtonStyle(Qt.ToolButtonIconOnly)
-            btn.setAutoRaise(True)
-            return btn
-
-        self.main_collapse_btn: QToolButton = QToolButton(self._main_tools_overlay)
-        self.main_collapse_btn.setIcon(icon_close_menu_inv())
-        self.main_collapse_btn.setIconSize(QSize(icon_size, icon_size))
-        self.main_collapse_btn.setCheckable(True)
+        self.main_collapse_btn: QToolButton = make_tool_button(
+            self._main_tools_overlay,
+            icon=icon_close_menu_inv(),
+            checkable=True,
+            icon_size=icon_size,
+            button_size=button_size,
+        )
         self.main_collapse_btn.setChecked(True)
-        self.main_collapse_btn.setFixedSize(button_size, button_size)
-        self.main_collapse_btn.setToolButtonStyle(Qt.ToolButtonIconOnly)
-        self.main_collapse_btn.setAutoRaise(True)
         self.main_collapse_btn.toggled.connect(self.toggle_main_tools_collapse)
 
-        save_btn: QToolButton = make_btn(main_window.save_action)
-        load_btn: QToolButton = make_btn(main_window.load_action)
-        scene_size_btn: QToolButton = make_btn(main_window.scene_size_action)
-        background_btn: QToolButton = make_btn(main_window.background_action)
-        settings_btn: QToolButton = make_btn(main_window.settings_action)
-        reset_scene_btn: QToolButton = make_btn(main_window.reset_scene_action)
-        reset_ui_btn: QToolButton = make_btn(main_window.reset_ui_action)
+        save_btn: QToolButton = make_tool_button(
+            self._main_tools_overlay,
+            action=main_window.save_action,
+            icon_size=icon_size,
+            button_size=button_size,
+        )
+        load_btn: QToolButton = make_tool_button(
+            self._main_tools_overlay,
+            action=main_window.load_action,
+            icon_size=icon_size,
+            button_size=button_size,
+        )
+        scene_size_btn: QToolButton = make_tool_button(
+            self._main_tools_overlay,
+            action=main_window.scene_size_action,
+            icon_size=icon_size,
+            button_size=button_size,
+        )
+        background_btn: QToolButton = make_tool_button(
+            self._main_tools_overlay,
+            action=main_window.background_action,
+            icon_size=icon_size,
+            button_size=button_size,
+        )
+        settings_btn: QToolButton = make_tool_button(
+            self._main_tools_overlay,
+            action=main_window.settings_action,
+            icon_size=icon_size,
+            button_size=button_size,
+        )
+        reset_scene_btn: QToolButton = make_tool_button(
+            self._main_tools_overlay,
+            action=main_window.reset_scene_action,
+            icon_size=icon_size,
+            button_size=button_size,
+        )
+        reset_ui_btn: QToolButton = make_tool_button(
+            self._main_tools_overlay,
+            action=main_window.reset_ui_action,
+            icon_size=icon_size,
+            button_size=button_size,
+        )
 
-        library_toggle_btn: QToolButton = make_btn(main_window.toggle_library_action, checkable=True)
-        inspector_toggle_btn: QToolButton = make_btn(main_window.toggle_inspector_action, checkable=True)
-        timeline_toggle_btn: QToolButton = make_btn(main_window.timeline_dock.toggleViewAction(), checkable=True)
-        custom_toggle_btn: QToolButton = make_btn(main_window.toggle_custom_action, checkable=True)
+        library_toggle_btn: QToolButton = make_tool_button(
+            self._main_tools_overlay,
+            action=main_window.toggle_library_action,
+            checkable=True,
+            icon_size=icon_size,
+            button_size=button_size,
+        )
+        inspector_toggle_btn: QToolButton = make_tool_button(
+            self._main_tools_overlay,
+            action=main_window.toggle_inspector_action,
+            checkable=True,
+            icon_size=icon_size,
+            button_size=button_size,
+        )
+        timeline_toggle_btn: QToolButton = make_tool_button(
+            self._main_tools_overlay,
+            action=main_window.timeline_dock.toggleViewAction(),
+            checkable=True,
+            icon_size=icon_size,
+            button_size=button_size,
+        )
+        custom_toggle_btn: QToolButton = make_tool_button(
+            self._main_tools_overlay,
+            action=main_window.toggle_custom_action,
+            checkable=True,
+            icon_size=icon_size,
+            button_size=button_size,
+        )
 
         library_toggle_btn.setChecked(main_window.library_overlay.isVisible())
         inspector_toggle_btn.setChecked(main_window.inspector_overlay.isVisible())
