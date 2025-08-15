@@ -6,6 +6,7 @@ import pytest
 from PySide6.QtWidgets import QApplication, QGraphicsItem
 
 from ui.main_window import MainWindow
+import core.puppet_model as puppet_model
 
 @pytest.fixture(scope="module")
 def app():
@@ -68,3 +69,13 @@ def test_puppet_translation(_app):
 
     assert moved.x() == pytest.approx(original.x() + 50)
     assert moved.y() == pytest.approx(original.y() + 20)
+
+
+def test_handle_target_pivot_exception(_app, monkeypatch):
+    """Ensure HANDLE_EXCEPTION mapping returns the overridden pivot."""
+    window = MainWindow()
+    window.scene_controller.add_puppet(str(Path("assets/pantins/manu.svg").resolve()), "manu")
+    puppet = window.scene_model.puppets["manu"]
+
+    monkeypatch.setitem(puppet_model.HANDLE_EXCEPTION, "torse", "tete")
+    assert puppet.get_handle_target_pivot("torse") == puppet.members["tete"].pivot
