@@ -144,6 +144,10 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
   construire le mapping parent → enfants plus simplement.
 - Refactor Dock Timeline : création de `ui/docks.setup_timeline_dock` et délégation depuis `MainWindow` pour factoriser la
   configuration du dock de timeline.
+- Initialisation séquencée : `MainWindow` expose désormais `setup_core_components`
+  pour créer modèle, scène et `ObjectManager` avant tout autre élément.
+  L'ordre d'appel des méthodes `_setup_*` est documenté et exécuté via une
+  liste de hooks pour clarifier le démarrage.
 
 ## État actuel et prochaines étapes possibles
 
