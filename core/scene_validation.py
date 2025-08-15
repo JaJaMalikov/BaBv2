@@ -1,0 +1,66 @@
+"""Validation helpers for scene import/export structures."""
+from __future__ import annotations
+
+import logging
+from typing import Any
+
+
+def validate_settings(data: Any) -> bool:
+    """Validate scene settings structure.
+
+    ``data`` should be a mapping of setting keys to integer values. Unknown keys
+    are ignored. ``None`` is accepted and treated as valid to allow optional
+    sections in the JSON.
+    """
+    if data is None:
+        return True
+    if not isinstance(data, dict):
+        logging.error("settings: expected dict, got %s", type(data).__name__)
+        return False
+    for key in ("start_frame", "end_frame", "fps", "scene_width", "scene_height"):
+        if key in data and not isinstance(data[key], int):
+            logging.error("settings: %s must be int", key)
+            return False
+    return True
+
+
+def validate_objects(data: Any) -> bool:
+    """Validate objects mapping structure.
+
+    ``data`` should map object names (strings) to dictionaries describing their
+    state. ``None`` is accepted as a valid value meaning no objects.
+    """
+    if data is None:
+        return True
+    if not isinstance(data, dict):
+        logging.error(
+            "objects: expected dict mapping str -> dict, got %s", type(data).__name__
+        )
+        return False
+    for name, obj in data.items():
+        if not isinstance(name, str) or not isinstance(obj, dict):
+            logging.error("objects: invalid entry %r -> %r", name, obj)
+            return False
+    return True
+
+
+def validate_keyframes(data: Any) -> bool:
+    """Validate keyframes list structure.
+
+    ``data`` should be a list of dictionaries, each containing an optional
+    integer ``index``.
+    """
+    if data is None:
+        return True
+    if not isinstance(data, list):
+        logging.error("keyframes: expected list, got %s", type(data).__name__)
+        return False
+    for kf in data:
+        if not isinstance(kf, dict):
+            logging.error("keyframes: each item must be dict, got %r", kf)
+            return False
+        idx = kf.get("index")
+        if idx is not None and not isinstance(idx, int):
+            logging.error("keyframes: 'index' must be int, got %r", idx)
+            return False
+    return True

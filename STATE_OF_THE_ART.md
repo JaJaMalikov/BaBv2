@@ -152,6 +152,10 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
   assurant l'échange d'icône, la visibilité des boutons et la conservation de la
   position latérale des panneaux.
 
+- Validation JSON centralisée : extraction des règles de `_validate_data`
+  vers `core/scene_validation.py` avec des fonctions dédiées
+  (`validate_settings`, `validate_objects`, `validate_keyframes`) et tests unitaires.
+
 ## État actuel et prochaines étapes possibles
 
 L'application a évolué d'un simple outil d'animation de marionnette à un **logiciel de composition de scène 2D fonctionnel et robuste**. L'interface a été professionnalisée et la gestion de plusieurs objets est désormais possible.
