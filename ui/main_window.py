@@ -39,34 +39,51 @@ class MainWindow(QMainWindow):
     inspector, and library. It holds the central `SceneModel` and manages
     interactions between different parts of the UI.
     """
+
     def __init__(self) -> None:
         """Initializes the main window, scene, and all UI components."""
         super().__init__()
         self.setWindowTitle("Borne and the Bayrou - Disco MIX")
-        self._setup_scene()
-        self._setup_overlays()
-        self.timeline_widget: TimelineWidget = setup_timeline_dock(self)
-        self._setup_playback()
-        self._setup_actions()
-        self._setup_tool_overlays()
-        self._setup_scene_visuals()
-        self._setup_scene_controller()
+
+        # Core components (model, scene, object manager) must exist before
+        # any other setup step.  They are grouped into a dedicated function so
+        # tests can rely on their availability.
+        self.setup_core_components()
+
+        # Ordered list of setup hooks documenting the startup sequence.
+        self._setup_hooks = [
+            self._setup_scene,
+            self._setup_overlays,
+            lambda: setattr(self, "timeline_widget", setup_timeline_dock(self)),
+            self._setup_playback,
+            self._setup_actions,
+            self._setup_tool_overlays,
+            self._setup_scene_visuals,
+            self._setup_scene_controller,
+        ]
+        for hook in self._setup_hooks:
+            hook()
+
         self._connect_actions()
         self._startup_sequence()
         self._setup_settings()
         self._apply_startup_preferences()
 
-    def _setup_scene(self) -> None:
-        """Initializes the scene, view and related state."""
+    # --- Core setup -----------------------------------------------------
+    def setup_core_components(self) -> None:
+        """Create the scene model, Qt scene and object manager."""
         self.scene_model: SceneModel = SceneModel()
+        self.scene: QGraphicsScene = QGraphicsScene()
+        self.scene.setSceneRect(
+            0, 0, self.scene_model.scene_width, self.scene_model.scene_height
+        )
+        self.object_manager: ObjectManager = ObjectManager(self)
+
+    def _setup_scene(self) -> None:
+        """Initializes the view and related state."""
         self.zoom_factor: float = 1.0
         self._suspend_item_updates: bool = False
         self._settings_loaded: bool = False
-
-        self.scene: QGraphicsScene = QGraphicsScene()
-        self.scene.setSceneRect(0, 0, self.scene_model.scene_width, self.scene_model.scene_height)
-
-        self.object_manager: ObjectManager = ObjectManager(self)
 
         self.view: ZoomableView = ZoomableView(self.scene, self)
         self.view.setRenderHint(QPainter.Antialiasing)
