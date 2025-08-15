@@ -44,7 +44,21 @@ class MainWindow(QMainWindow):
         """Initializes the main window, scene, and all UI components."""
         super().__init__()
         self.setWindowTitle("Borne and the Bayrou - Disco MIX")
+        self._setup_scene()
+        self._setup_overlays()
+        self._setup_timeline_dock()
+        self._setup_playback()
+        self._setup_actions()
+        self._setup_tool_overlays()
+        self._setup_scene_visuals()
+        self._setup_scene_controller()
+        self._connect_actions()
+        self._startup_sequence()
+        self._setup_settings()
+        self._apply_startup_preferences()
 
+    def _setup_scene(self) -> None:
+        """Initializes the scene, view and related state."""
         self.scene_model: SceneModel = SceneModel()
         self.zoom_factor: float = 1.0
         self._suspend_item_updates: bool = False
@@ -62,13 +76,6 @@ class MainWindow(QMainWindow):
         self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.view.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
-        # Build large overlays (library, inspector) before actions so toggles can bind
-        self.overlays = OverlayManager(self)
-        self.overlays.build_overlays()
-
-        # Onion skin manager
-        self.onion: OnionSkinManager = OnionSkinManager(self)
-
         main_widget: QWidget = QWidget()
         layout: QVBoxLayout = QVBoxLayout(main_widget)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -76,6 +83,14 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.view)
         self.setCentralWidget(main_widget)
 
+    def _setup_overlays(self) -> None:
+        """Initializes overlay and onion skin managers."""
+        self.overlays = OverlayManager(self)
+        self.overlays.build_overlays()
+        self.onion: OnionSkinManager = OnionSkinManager(self)
+
+    def _setup_timeline_dock(self) -> None:
+        """Creates and configures the timeline dock widget."""
         self.timeline_dock: QDockWidget = QDockWidget("", self)
         self.timeline_dock.setObjectName("dock_timeline")
         self.timeline_widget: TimelineWidget = TimelineWidget()
@@ -88,22 +103,36 @@ class MainWindow(QMainWindow):
             logging.debug("Custom title bar not set on dock: %s", e)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.timeline_dock)
 
-        # Inspector and Library now live as overlays (see _build_side_overlays)
+    def _setup_playback(self) -> None:
+        """Initializes the playback controller."""
+        self.playback_handler: PlaybackController = PlaybackController(
+            self.scene_model, self.timeline_widget, self.inspector_widget, self
+        )
 
-        self.playback_handler: PlaybackController = PlaybackController(self.scene_model, self.timeline_widget, self.inspector_widget, self)
-
+    def _setup_actions(self) -> None:
+        """Builds application actions."""
         app_actions.build_actions(self)
+
+    def _setup_tool_overlays(self) -> None:
+        """Builds tool overlays for the view."""
         self.view._build_main_tools_overlay(self)
-        # Build optional custom overlay
         try:
             self.view._build_custom_tools_overlay(self)
         except RuntimeError as e:
             logging.debug("Custom overlay not built: %s", e)
-        self._setup_scene_visuals()
-        # Scene controller façade (agrège visuals, onion, applier)
-        self.scene_controller: SceneController = SceneController(self, visuals=self.visuals, onion=self.onion)
+
+    def _setup_scene_controller(self) -> None:
+        """Creates the scene controller facade."""
+        self.scene_controller: SceneController = SceneController(
+            self, visuals=self.visuals, onion=self.onion
+        )
+
+    def _connect_actions(self) -> None:
+        """Connects application actions to their slots."""
         app_actions.connect_signals(self)
-        # --- Startup Sequence ---
+
+    def _startup_sequence(self) -> None:
+        """Runs the UI startup sequence."""
         self.showMaximized()
         self.timeline_dock.show()
         self.timeline_dock.visibilityChanged.connect(lambda _: self.ensure_fit())
@@ -113,20 +142,20 @@ class MainWindow(QMainWindow):
         self.ensure_fit()
         self.scene.selectionChanged.connect(self._on_scene_selection_changed)
 
-        # Settings manager
+    def _setup_settings(self) -> None:
+        """Initializes the settings manager and loads settings."""
         self.settings = SettingsManager(self)
         self.load_settings()
-        # State applier désormais exposé via SceneController
-        # Apply startup preferences (onion, overlays menu)
+
+    def _apply_startup_preferences(self) -> None:
+        """Applies stored startup preferences."""
         try:
             from PySide6.QtCore import QSettings
             s = QSettings("JaJa", "Macronotron")
-            # Onion
             self.onion.prev_count = int(s.value("onion/prev_count", self.onion.prev_count))
             self.onion.next_count = int(s.value("onion/next_count", self.onion.next_count))
             self.onion.opacity_prev = float(s.value("onion/opacity_prev", self.onion.opacity_prev))
             self.onion.opacity_next = float(s.value("onion/opacity_next", self.onion.opacity_next))
-            # Overlays menu settings applied during build via manager
             self.overlays.apply_menu_settings()
         except (RuntimeError, ValueError, ImportError):
             logging.exception("Failed to apply startup preferences")
