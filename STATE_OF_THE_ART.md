@@ -80,8 +80,6 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
 
 ## Mises à jour récentes
 
-- Mise en place d'une intégration continue via GitHub Actions exécutant l'installation des dépendances, pylint et pytest.
-
 - Externalisation de la configuration des marionnettes : hiérarchie, pivots et z-order sont désormais définis dans `core/puppet_config.json` et chargés dynamiquement par `Puppet`.
 - Correction du chargement JSON: `SceneModel.import_json` peuple désormais correctement le modèle via `from_dict` et retourne un booléen de succès.
 - Nettoyage: suppression de code inatteignable dans `SceneModel.import_json` et sécurisation de `ui/object_item.py` pour éviter une référence potentiellement non définie dans les logs.
