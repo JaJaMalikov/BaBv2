@@ -10,10 +10,8 @@ from PySide6.QtWidgets import (
     QGraphicsScene,
     QVBoxLayout,
     QWidget,
-    QDockWidget,
     QFrame,
     QMessageBox,
-    QWidget as _QW,
 )
 
 from ui.scene import scene_io, actions as scene_actions
@@ -28,6 +26,7 @@ from ui.scene.scene_controller import SceneController
 from ui.scene.scene_visuals import SceneVisuals
 from ui.settings_manager import SettingsManager
 from ui.timeline_widget import TimelineWidget
+from ui.docks import setup_timeline_dock
 from ui.zoomable_view import ZoomableView
 from ui.library import actions as library_actions
 from ui.inspector import actions as inspector_actions
@@ -46,7 +45,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Borne and the Bayrou - Disco MIX")
         self._setup_scene()
         self._setup_overlays()
-        self._setup_timeline_dock()
+        self.timeline_widget: TimelineWidget = setup_timeline_dock(self)
         self._setup_playback()
         self._setup_actions()
         self._setup_tool_overlays()
@@ -88,19 +87,6 @@ class MainWindow(QMainWindow):
         self.overlays = OverlayManager(self)
         self.overlays.build_overlays()
         self.onion: OnionSkinManager = OnionSkinManager(self)
-
-    def _setup_timeline_dock(self) -> None:
-        """Creates and configures the timeline dock widget."""
-        self.timeline_dock: QDockWidget = QDockWidget("", self)
-        self.timeline_dock.setObjectName("dock_timeline")
-        self.timeline_widget: TimelineWidget = TimelineWidget()
-        self.timeline_dock.setWidget(self.timeline_widget)
-        self.timeline_dock.setFeatures(QDockWidget.DockWidgetClosable)
-        try:
-            self.timeline_dock.setTitleBarWidget(_QW())
-        except (ImportError, RuntimeError) as e:
-            logging.debug("Custom title bar not set on dock: %s", e)
-        self.addDockWidget(Qt.BottomDockWidgetArea, self.timeline_dock)
 
     def _setup_playback(self) -> None:
         """Initializes the playback controller."""
