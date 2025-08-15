@@ -2,6 +2,8 @@
    ** 🤑 Le MACRON‑O‑TRON 3000 🤑 **
 </h1>
 
+[![CI](https://github.com/OWNER/BaBv2/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/BaBv2/actions/workflows/ci.yml)
+
 
 ![apercu](https://github.com/user-attachments/assets/243fd05d-de03-4068-abe9-b780baf8999f)
 
