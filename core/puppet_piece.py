@@ -1,6 +1,7 @@
 """Graphical QGraphicsItems representing puppet pieces and handles."""
 
 from typing import Optional, Tuple, List, Any
+import logging
 import math
 
 from PySide6.QtWidgets import QGraphicsEllipseItem, QGraphicsSceneMouseEvent, QGraphicsItem
@@ -212,6 +213,6 @@ class PuppetPiece(QGraphicsSvgItem):
                         # Keep selection on puppet pieces; clear for other items (objects)
                         if not isinstance(it, PuppetPiece):
                             it.setSelected(False)
-        except Exception:
-            pass
+        except (RuntimeError, AttributeError):
+            logging.exception("Failed to sanitize selection in mousePressEvent")
         super().mousePressEvent(event)

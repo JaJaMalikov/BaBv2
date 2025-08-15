@@ -253,7 +253,7 @@ class InspectorWidget(QWidget):
                 obj.rotation = value
                 try:
                     item.setTransformOriginPoint(item.boundingRect().center())
-                except Exception as e:
+                except RuntimeError as e:
                     logging.debug("Failed to set transform origin in inspector: %s", e)
                 item.setRotation(value)
         else:
@@ -341,7 +341,7 @@ class InspectorWidget(QWidget):
             try:
                 pu, me = attached
                 return pu, me
-            except Exception as e:
+            except ValueError as e:
                 logging.debug("Invalid 'attached_to' format in inspector: %s", e)
                 return (None, None)
         return (None, None)

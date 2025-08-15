@@ -133,7 +133,7 @@ class LibraryWidget(QWidget):
                 
                 try:
                     item.setIcon(QIcon(str(f)))
-                except Exception as e:
+                except OSError as e:
                     logging.debug("Failed to load icon for '%s': %s", f, e)
                 
                 item.setToolTip(str(f))

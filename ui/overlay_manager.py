@@ -5,6 +5,7 @@ sans changer le comportement.
 """
 
 from __future__ import annotations
+import logging
 from typing import Any
 
 from . import panels
@@ -58,13 +59,13 @@ class OverlayManager:
         try:
             self.win.view.apply_menu_settings_main()
             self.win.view.apply_menu_settings_quick()
-        except Exception:
-            pass
+        except (RuntimeError, AttributeError):
+            logging.exception("Failed to apply menu settings")
 
     def refresh_overlay_icons(self) -> None:
         """Refresh overlay icons according to current theme."""
         try:
             self.win.view.refresh_overlay_icons(self.win)
-        except Exception:
-            pass
+        except (RuntimeError, AttributeError):
+            logging.exception("Failed to refresh overlay icons")
 

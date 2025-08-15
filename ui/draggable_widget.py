@@ -18,7 +18,7 @@ class DraggableOverlay(QWidget):
             shadow.setOffset(0, 4)
             shadow.setColor(QColor(0, 0, 0, 150))
             self.setGraphicsEffect(shadow)
-        except Exception as e:
+        except RuntimeError as e:
             logging.debug("Shadow effect unavailable: %s", e)
         self._drag_start_position = None
 

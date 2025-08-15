@@ -84,7 +84,7 @@ class MainWindow(QMainWindow):
         try:
             from PySide6.QtWidgets import QWidget as _QW
             self.timeline_dock.setTitleBarWidget(_QW())
-        except Exception as e:
+        except (ImportError, RuntimeError) as e:
             logging.debug("Custom title bar not set on dock: %s", e)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.timeline_dock)
 
@@ -97,7 +97,7 @@ class MainWindow(QMainWindow):
         # Build optional custom overlay
         try:
             self.view._build_custom_tools_overlay(self)
-        except Exception as e:
+        except RuntimeError as e:
             logging.debug("Custom overlay not built: %s", e)
         self._setup_scene_visuals()
         # Scene controller façade (agrège visuals, onion, applier)
@@ -128,8 +128,8 @@ class MainWindow(QMainWindow):
             self.onion.opacity_next = float(s.value("onion/opacity_next", self.onion.opacity_next))
             # Overlays menu settings applied during build via manager
             self.overlays.apply_menu_settings()
-        except Exception:
-            pass
+        except (RuntimeError, ValueError, ImportError):
+            logging.exception("Failed to apply startup preferences")
 
     def showEvent(self, event: QEvent) -> None:
         """Ensures the view is fitted and overlays are positioned on show."""
@@ -137,7 +137,7 @@ class MainWindow(QMainWindow):
         def _layout_then_fit():
             try:
                 self.resizeDocks([self.timeline_dock], [int(max(140, self.height()*0.22))], Qt.Vertical)
-            except Exception as e:
+            except RuntimeError as e:
                 logging.debug("Failed to resize docks: %s", e)
             self.fit_to_view()
             self._position_overlays()

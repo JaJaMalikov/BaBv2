@@ -56,7 +56,7 @@ class ObjectManager:
                 try:
                     puppet_name, member_name = key.split(":", 1)
                     piece_owner[val] = (puppet_name, member_name)
-                except Exception as e:
+                except ValueError as e:
                     logging.debug("Split key '%s' failed: %s", key, e)
         for name, obj in self.scene_model.objects.items():
             gi: Optional[QGraphicsItem] = self.graphics_items.get(name)
@@ -72,7 +72,7 @@ class ObjectManager:
                     data["rotation"] = float(gi.rotation())
                     data["scale"] = float(gi.scale())
                     data["z"] = int(gi.zValue())
-                except Exception as e:
+                except RuntimeError as e:
                     logging.debug("Reading graphics item state for '%s' failed: %s", name, e)
                 data["attached_to"] = attached_to
                 states[name] = data
@@ -93,5 +93,5 @@ class ObjectManager:
         # Ensure marker exists
         try:
             self.win.timeline_widget.add_keyframe_marker(cur)
-        except Exception as e:
+        except RuntimeError as e:
             logging.debug("Failed to add keyframe marker at %s: %s", cur, e)
