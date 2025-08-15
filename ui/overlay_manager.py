@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from . import panels
+from ui import panels
 
 class OverlayManager:
     """Manages the creation, positioning, and visibility of overlays."""
@@ -23,8 +23,12 @@ class OverlayManager:
     # Construction / Positionnement
     def build_overlays(self) -> None:
         """Create library and inspector overlays and widgets."""
-        self.win.library_overlay, self.win.library_widget, self.win.inspector_overlay, self.win.inspector_widget = panels.build_side_overlays(self.win)
-
+        (
+            self.win.library_overlay,
+            self.win.library_widget,
+            self.win.inspector_overlay,
+            self.win.inspector_widget,
+        ) = panels.build_side_overlays(self.win)
     def position_overlays(self) -> None:
         """Position overlays within the main window."""
         panels.position_overlays(self.win)
@@ -68,4 +72,3 @@ class OverlayManager:
             self.win.view.refresh_overlay_icons(self.win)
         except (RuntimeError, AttributeError):
             logging.exception("Failed to refresh overlay icons")
-
