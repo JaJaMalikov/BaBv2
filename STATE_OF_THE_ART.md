@@ -134,6 +134,8 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
 
 - Refactor `SceneObject` et `Keyframe` : conversion en `dataclasses` afin de simplifier l'initialisation et la sérialisation.
 
+- Renforcement du traitement d'erreurs : remplacement des `except Exception` génériques par des exceptions ciblées ou des journaux détaillés.
+
 ## État actuel et prochaines étapes possibles
 
 L'application a évolué d'un simple outil d'animation de marionnette à un **logiciel de composition de scène 2D fonctionnel et robuste**. L'interface a été professionnalisée et la gestion de plusieurs objets est désormais possible.

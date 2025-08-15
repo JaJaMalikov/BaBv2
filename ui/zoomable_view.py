@@ -353,8 +353,8 @@ class ZoomableView(QGraphicsView):
             if csize:
                 cw = int(csize.width()) if hasattr(csize, 'width') else int(csize[0])
                 ch = int(csize.height()) if hasattr(csize, 'height') else int(csize[1])
-        except Exception:
-            pass
+        except (TypeError, ValueError, AttributeError):
+            logging.exception("Invalid custom overlay size in settings")
         if cpos and hasattr(cpos, 'x'):
             self._custom_tools_overlay.setGeometry(int(cpos.x()), int(cpos.y()), cw, ch)
         else:
@@ -415,8 +415,8 @@ class ZoomableView(QGraphicsView):
 
             # Main tools overlay: actions carry icons; ensure collapse icon correct
             self.toggle_main_tools_collapse(self.main_collapse_btn.isChecked())
-        except Exception:
-            pass
+        except (RuntimeError, AttributeError):
+            logging.exception("Failed to refresh overlay icons")
         # Also update icon sizes
         self.apply_icon_size()
 
@@ -438,8 +438,8 @@ class ZoomableView(QGraphicsView):
                 for btn in self._custom_tools_overlay.findChildren(QToolButton):
                     btn.setIconSize(QSize(icon_size, icon_size))
                     btn.setFixedSize(button_size, button_size)
-        except Exception:
-            pass
+        except (RuntimeError, AttributeError):
+            logging.exception("Failed to apply custom icon sizes")
 
     def apply_menu_settings_main(self) -> None:
         """Apply visibility settings for main tools overlay based on QSettings."""
@@ -480,8 +480,8 @@ class ZoomableView(QGraphicsView):
                 self.main_tools_layout.addWidget(btn)
                 self.main_tool_buttons.append(btn)
             self.main_tools_layout.addWidget(self.main_collapse_btn)
-        except Exception:
-            pass
+        except (RuntimeError, AttributeError):
+            logging.exception("Failed to apply main menu settings")
 
     def apply_menu_settings_quick(self) -> None:
         """Apply visibility settings for quick overlay buttons based on QSettings."""
@@ -516,8 +516,8 @@ class ZoomableView(QGraphicsView):
                 btn = self.quick_buttons_map.get(key)
                 if btn:
                     self.layout.addWidget(btn)
-        except Exception:
-            pass
+        except (RuntimeError, AttributeError):
+            logging.exception("Failed to apply quick menu settings")
 
     def wheelEvent(self, event: QWheelEvent) -> None:
         if event.modifiers() == Qt.ControlModifier:
@@ -572,8 +572,8 @@ class ZoomableView(QGraphicsView):
                 data: bytes = bytes(event.mimeData().data(LIB_MIME))
                 payload: Dict[str, Any] = json.loads(data.decode('utf-8'))
                 self.item_dropped.emit(payload, event.position())
-            except Exception as e:
-                logging.error(f"Drop failed: {e}")
+            except (json.JSONDecodeError, TypeError, ValueError) as e:
+                logging.exception("Drop failed")
             event.acceptProposedAction()
         else:
             super().dropEvent(event)

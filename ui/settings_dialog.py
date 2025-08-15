@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Optional, Any
 
 from PySide6.QtWidgets import (
@@ -529,8 +530,8 @@ class SettingsDialog(QDialog):
             self.preview_root.setStyleSheet(css)
             # Move focus to input to demonstrate accent focus border
             self.prev_input.setFocus()
-        except Exception:
-            pass
+        except (RuntimeError, AttributeError):
+            logging.exception("Theme preview failed")
 
     def _save_params_as_custom(self) -> None:
         from PySide6.QtCore import QSettings
@@ -574,7 +575,8 @@ class SettingsDialog(QDialog):
                 # Keep border via stylesheet; set pixmap for fill
                 sw.setStyleSheet("QLabel{border:1px solid #A0AEC0; border-radius:3px; background:transparent;}")
                 sw.setPixmap(pix)
-            except Exception:
+            except (ValueError, TypeError, RuntimeError) as e:
+                logging.exception("Panel swatch render failed")
                 # Fallback to flat color
                 col = edit.text().strip() or '#FFFFFF'
                 if not col.startswith('#') and not col.startswith('rgb'):
@@ -595,8 +597,8 @@ class SettingsDialog(QDialog):
         # Re-render panel swatch when opacity changes
         try:
             self.opacity_spin.valueChanged.connect(lambda _=None: self._update_swatch(self.panel_edit))
-        except Exception:
-            pass
+        except (RuntimeError, AttributeError):
+            logging.exception("Failed to connect opacity spin change")
 
     # --- Icon lists (builder) ---
     def _apply_list_icon_size(self) -> None:
@@ -605,8 +607,8 @@ class SettingsDialog(QDialog):
             lw.setIconSize(QSize(size, size))
             try:
                 lw.viewport().update()
-            except Exception:
-                pass
+            except (RuntimeError, AttributeError):
+                logging.exception("Viewport update failed for icon list")
 
     def _init_icon_lists(self) -> None:
         from ui.icons import (
@@ -787,5 +789,5 @@ class SettingsDialog(QDialog):
                 mw.view.refresh_overlay_icons(mw)
                 mw.view.apply_menu_settings_main()
                 mw.view.apply_menu_settings_quick()
-        except Exception:
-            pass
+        except (RuntimeError, ImportError, AttributeError):
+            logging.exception("Failed to refresh icons at runtime")
