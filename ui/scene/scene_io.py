@@ -14,17 +14,17 @@ if TYPE_CHECKING:
 
 def save_scene(win: 'MainWindow') -> None:
     """Opens a dialog to save the current scene to a JSON file."""
-    filePath: str
-    filePath, _ = QFileDialog.getSaveFileName(win, "Sauvegarder la scène", "", "JSON Files (*.json)")
-    if filePath:
-        export_scene(win, filePath)
+    file_path: str
+    file_path, _ = QFileDialog.getSaveFileName(win, "Sauvegarder la scène", "", "JSON Files (*.json)")
+    if file_path:
+        export_scene(win, file_path)
 
 def load_scene(win: 'MainWindow') -> None:
     """Opens a dialog to load a scene from a JSON file."""
-    filePath: str
-    filePath, _ = QFileDialog.getOpenFileName(win, "Charger une scène", "", "JSON Files (*.json)")
-    if filePath:
-        import_scene(win, filePath)
+    file_path: str
+    file_path, _ = QFileDialog.getOpenFileName(win, "Charger une scène", "", "JSON Files (*.json)")
+    if file_path:
+        import_scene(win, file_path)
 
 def export_scene(win: 'MainWindow', file_path: str) -> None:
     """Exports the current scene state to a JSON file."""
