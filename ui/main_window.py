@@ -244,12 +244,8 @@ class MainWindow(QMainWindow):
 
     def add_keyframe(self, frame_index: int) -> None:
         """Adds a keyframe to the scene."""
-        puppet_states: Dict[str, Dict[str, Dict[str, Any]]] = self.object_manager.capture_puppet_states()
-        self.scene_model.add_keyframe(frame_index, puppet_states)
-        # Overwrite objects with the on-screen capture so we don't serialize stale/global attachment
-        kf: Optional[Keyframe] = self.scene_model.keyframes.get(frame_index)
-        if kf is not None:
-            kf.objects = self.object_manager.capture_visible_object_states()
+        state = self.object_manager.capture_scene_state()
+        self.scene_model.add_keyframe(frame_index, state)
         self.timeline_widget.add_keyframe_marker(frame_index)
 
     def select_object_in_inspector(self, name: str) -> None:

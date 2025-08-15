@@ -123,17 +123,32 @@ class SceneModel:
     # -----------------------------
     # KEYFRAMES ET TIMELINE
     # -----------------------------
-    def add_keyframe(self, index: int, puppet_states: Optional[Dict[str, Dict[str, Dict[str, Any]]]] = None) -> Keyframe:
-        """Create or overwrite a keyframe at ``index`` with optional puppet states."""
+    def add_keyframe(self, index: int, state: Optional[Dict[str, Dict[str, Dict[str, Any]]]] = None) -> Keyframe:
+        """Create or overwrite a keyframe at ``index`` with captured puppet and object states.
+
+        ``state`` is expected to contain two keys:
+
+        - ``"objects"``: mapping object name -> serialized state
+        - ``"puppets"``: mapping puppet name -> member states
+
+        When ``state`` is ``None`` the current ``SceneObject`` instances are
+        serialized directly. This fallback allows pure ``SceneModel`` tests to
+        operate without an ``ObjectManager``.
+        """
         kf = self.keyframes.get(index)
         if not kf:
             kf = Keyframe(index)
             self.keyframes[index] = kf
 
-        for name, obj in self.objects.items():
-            kf.objects[name] = obj.to_dict()
+        if state is None:
+            object_states = {name: obj.to_dict() for name, obj in self.objects.items()}
+            puppet_states = {}
+        else:
+            object_states = state.get("objects", {})
+            puppet_states = state.get("puppets", {})
 
-        kf.puppets = puppet_states or {}
+        kf.objects = object_states
+        kf.puppets = puppet_states
 
         self.keyframes = dict(sorted(self.keyframes.items()))
         return kf
