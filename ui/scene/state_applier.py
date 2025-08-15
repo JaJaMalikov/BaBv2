@@ -29,6 +29,69 @@ class StateApplier:
             delta -= 360.0
         return a + delta * t
 
+    def _set_object_parent(
+        self,
+        gi: QGraphicsItem,
+        attachment: Optional[Tuple[str, str]],
+        graphics_items: Dict[str, Any],
+    ) -> None:
+        """Ensure the graphics item's parent matches the attachment info."""
+        if attachment:
+            puppet_name, member_name = attachment
+            parent_piece: Optional[PuppetPiece] = graphics_items.get(
+                f"{puppet_name}:{member_name}"
+            )
+            if parent_piece is not None and gi.parentItem() is not parent_piece:
+                gi.setParentItem(parent_piece)
+        else:
+            if gi.parentItem() is not None:
+                gi.setParentItem(None)
+
+    def _interpolate_object(
+        self,
+        gi: QGraphicsItem,
+        prev_st: Dict[str, Any],
+        next_st: Dict[str, Any],
+        t: float,
+        attachment: Optional[Tuple[str, str]],
+        graphics_items: Dict[str, Any],
+    ) -> None:
+        """Interpolate transforms between two states for a graphics item."""
+        self._set_object_parent(gi, attachment, graphics_items)
+        px, py = float(prev_st.get("x", 0.0)), float(prev_st.get("y", 0.0))
+        nx, ny = float(next_st.get("x", px)), float(next_st.get("y", py))
+        gi.setPos(px + (nx - px) * t, py + (ny - py) * t)
+        prot = float(prev_st.get("rotation", 0.0))
+        nrot = float(next_st.get("rotation", prot))
+        gi.setRotation(self._lerp_angle(prot, nrot, t))
+        psc = float(prev_st.get("scale", 1.0))
+        nsc = float(next_st.get("scale", psc))
+        gi.setScale(psc + (nsc - psc) * t)
+        gi.setZValue(int(prev_st.get("z", int(gi.zValue()))))
+
+    def _apply_object_step(
+        self,
+        gi: QGraphicsItem,
+        prev_st: Dict[str, Any],
+        attachment: Optional[Tuple[str, str]],
+        graphics_items: Dict[str, Any],
+    ) -> None:
+        """Apply a state without interpolation for a graphics item."""
+        self._set_object_parent(gi, attachment, graphics_items)
+        if attachment:
+            gi.setPos(
+                float(prev_st.get("x", 0.0)),
+                float(prev_st.get("y", 0.0)),
+            )
+        else:
+            gi.setPos(
+                float(prev_st.get("x", gi.x())),
+                float(prev_st.get("y", gi.y())),
+            )
+        gi.setRotation(float(prev_st.get("rotation", gi.rotation())))
+        gi.setScale(float(prev_st.get("scale", gi.scale())))
+        gi.setZValue(int(prev_st.get("z", int(gi.zValue()))))
+
     def apply_puppet_states(self, graphics_items: Dict[str, Any], keyframes: Dict[int, Keyframe], index: int) -> None:
         sorted_indices: List[int] = sorted(keyframes.keys())
         prev_kf_index: int = next((i for i in reversed(sorted_indices) if i <= index), -1)
@@ -133,54 +196,11 @@ class StateApplier:
                 next_att: Optional[Tuple[str, str]] = next_st.get('attached_to') if next_st is not None else None
                 same_space: bool = (prev_att == next_att)
 
-                if do_interp and same_space:
-                    t: float = (index - float(prev_idx)) / (float(next_idx - prev_idx))
-                    if prev_att:
-                        puppet_name, member_name = prev_att
-                        parent_piece: Optional[PuppetPiece] = graphics_items.get(f"{puppet_name}:{member_name}")
-                        if parent_piece is not None and gi.parentItem() is not parent_piece:
-                            gi.setParentItem(parent_piece)
-                        # Interpolate local transforms
-                        px, py = float(prev_st.get('x', 0.0)), float(prev_st.get('y', 0.0))
-                        nx, ny = float(next_st.get('x', px)), float(next_st.get('y', py))
-                        gi.setPos(px + (nx - px) * t, py + (ny - py) * t)
-                        prot = float(prev_st.get('rotation', 0.0))
-                        nrot = float(next_st.get('rotation', prot))
-                        gi.setRotation(self._lerp_angle(prot, nrot, t))
-                        psc = float(prev_st.get('scale', 1.0))
-                        nsc = float(next_st.get('scale', psc))
-                        gi.setScale(psc + (nsc - psc) * t)
-                        # Z: keep previous to avoid flicker
-                        gi.setZValue(int(prev_st.get('z', int(gi.zValue()))))
-                    else:
-                        # Free object in scene coordinates
-                        if gi.parentItem() is not None:
-                            gi.setParentItem(None)
-                        px, py = float(prev_st.get('x', 0.0)), float(prev_st.get('y', 0.0))
-                        nx, ny = float(next_st.get('x', px)), float(next_st.get('y', py))
-                        gi.setPos(px + (nx - px) * t, py + (ny - py) * t)
-                        prot = float(prev_st.get('rotation', 0.0))
-                        nrot = float(next_st.get('rotation', prot))
-                        gi.setRotation(self._lerp_angle(prot, nrot, t))
-                        psc = float(prev_st.get('scale', 1.0))
-                        nsc = float(next_st.get('scale', psc))
-                        gi.setScale(psc + (nsc - psc) * t)
-                        gi.setZValue(int(prev_st.get('z', int(gi.zValue()))))
+                if do_interp and same_space and next_st is not None:
+                    t: float = (index - float(prev_idx)) / float(next_idx - prev_idx)
+                    self._interpolate_object(gi, prev_st, next_st, t, prev_att, graphics_items)
                 else:
-                    # Step: apply previous state in its space
-                    if prev_att:
-                        puppet_name, member_name = prev_att
-                        parent_piece: Optional[PuppetPiece] = graphics_items.get(f"{puppet_name}:{member_name}")
-                        if parent_piece is not None and gi.parentItem() is not parent_piece:
-                            gi.setParentItem(parent_piece)
-                        gi.setPos(float(prev_st.get('x', 0.0)), float(prev_st.get('y', 0.0)))
-                    else:
-                        if gi.parentItem() is not None:
-                            gi.setParentItem(None)
-                        gi.setPos(float(prev_st.get('x', gi.x())), float(prev_st.get('y', gi.y())))
-                    gi.setRotation(float(prev_st.get('rotation', gi.rotation())))
-                    gi.setScale(float(prev_st.get('scale', gi.scale())))
-                    gi.setZValue(int(prev_st.get('z', int(gi.zValue()))))
+                    self._apply_object_step(gi, prev_st, prev_att, graphics_items)
 
                 updated += 1
         finally:
