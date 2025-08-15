@@ -142,6 +142,8 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
 
 - Refactor Puppet : `PuppetMember` converti en `dataclass` et `compute_child_map` utilise désormais `defaultdict` pour
   construire le mapping parent → enfants plus simplement.
+- Refactor Dock Timeline : création de `ui/docks.setup_timeline_dock` et délégation depuis `MainWindow` pour factoriser la
+  configuration du dock de timeline.
 
 ## État actuel et prochaines étapes possibles
 
