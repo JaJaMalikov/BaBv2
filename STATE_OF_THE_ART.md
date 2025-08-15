@@ -135,6 +135,7 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
 - Refactor `SceneObject` et `Keyframe` : conversion en `dataclasses` afin de simplifier l'initialisation et la sérialisation.
 
 - Renforcement du traitement d'erreurs : remplacement des `except Exception` génériques par des exceptions ciblées ou des journaux détaillés.
+- Typage renforcé : introduction de `MainWindowProtocol` pour documenter les attributs attendus par `SceneController` et éliminer l'usage de `Any`.
 
 ## État actuel et prochaines étapes possibles
 
