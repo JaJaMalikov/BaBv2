@@ -5,39 +5,28 @@ This module contains pure data structures and serialization helpers used by the 
 
 from typing import Dict, Any, Optional
 import logging
+from dataclasses import dataclass, field, asdict
 from core.puppet_model import Puppet
 
 
+@dataclass
 class SceneObject:
-    """
-    Un objet générique de la scène (image, SVG, décor, etc.).
+    """Représente un objet générique de la scène.
 
-    Peut être libre (coordonnées en scène) ou attaché à un membre de pantin
-    (coordonnées locales au parent). Les coordonnées/valeurs sont des types
-    simples pour faciliter la sérialisation JSON.
+    Un ``SceneObject`` peut être libre (coordonnées en scène) ou attaché à un
+    membre de pantin (coordonnées locales au parent). Les coordonnées/valeurs
+    restent des types simples pour une sérialisation JSON facile.
     """
-    
-    def __init__(
-        self,
-        name: str,
-        obj_type: str,
-        file_path: str,
-        x: float = 0,
-        y: float = 0,
-        rotation: float = 0,
-        scale: float = 1.0,
-        z: int = 0,
-    ) -> None:
-        """Initialize a generic scene object with transform properties."""
-        self.name = name
-        self.obj_type = obj_type  # "image", "svg", "puppet"
-        self.file_path = file_path
-        self.x = x
-        self.y = y
-        self.rotation = rotation
-        self.scale = scale
-        self.z = z
-        self.attached_to: Optional[tuple[str, str]] = None  # (puppet_name, member_name) ou None
+
+    name: str
+    obj_type: str  # "image", "svg", "puppet"
+    file_path: str
+    x: float = 0
+    y: float = 0
+    rotation: float = 0
+    scale: float = 1.0
+    z: int = 0
+    attached_to: Optional[tuple[str, str]] = None  # (puppet_name, member_name) ou None
 
     def attach(self, puppet_name: str, member_name: str) -> None:
         """Attach object to a puppet member by names."""
@@ -49,17 +38,7 @@ class SceneObject:
 
     def to_dict(self) -> Dict[str, Any]:
         """Sérialise l'objet pour l'export JSON."""
-        return {
-            "name": self.name,
-            "obj_type": self.obj_type,
-            "file_path": self.file_path,
-            "x": self.x,
-            "y": self.y,
-            "rotation": self.rotation,
-            "scale": self.scale,
-            "z": self.z,
-            "attached_to": self.attached_to,
-        }
+        return asdict(self)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "SceneObject":
@@ -79,18 +58,17 @@ class SceneObject:
             obj.attached_to = tuple(attached)
         return obj
 
+@dataclass
 class Keyframe:
     """Snapshot of the scene state at a given frame.
 
     ``objects`` maps object names to their state (position, rotation, scale,
-    attachment, etc.). ``puppets`` maps puppet names to a dict of member states.
+    attachment, etc.). ``puppets`` maps puppet names to un dict d'états de membres.
     """
 
-    def __init__(self, index: int) -> None:
-        """Create an empty keyframe at the given index."""
-        self.index: int = index
-        self.objects: Dict[str, Dict[str, Any]] = {}
-        self.puppets: Dict[str, Dict[str, Dict[str, Any]]] = {}
+    index: int
+    objects: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    puppets: Dict[str, Dict[str, Dict[str, Any]]] = field(default_factory=dict)
 
 class SceneModel:
     """Central store for puppets, objects and timeline keyframes."""
