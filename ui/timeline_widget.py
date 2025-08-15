@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from typing import Optional, Set, Any, List
+from typing import Optional, Set, Any, List, Dict
 
 from PySide6.QtCore import Qt, Signal, QRectF, QPointF, QRect, QEvent
 from PySide6.QtGui import (
@@ -65,6 +65,15 @@ class TimelineWidget(QWidget):
         self._scroll_frames: float = 0.0
         self._hover_kf: Optional[int] = None
         self._dragging_playhead: bool = False
+
+        self._ruler_rect_cache: QRect = QRect()
+        self._timeline_rect_cache: QRect = QRect()
+        self._play_area_rect: QRect = QRect()
+        self._update_rects()
+
+        self._hud_cache: Dict[int, str] = {}
+        self._hover_frame: Optional[int] = None
+        self._hover_pos: Optional[QPointF] = None
 
         self.toolbar: QWidget = QWidget(self)
         self.toolbar.setFixedHeight(TOOLBAR_H)
@@ -152,31 +161,46 @@ class TimelineWidget(QWidget):
     def resizeEvent(self, e: QEvent) -> None:
         super().resizeEvent(e)
         self.toolbar.setGeometry(0, self.height() - TOOLBAR_H, self.width(), TOOLBAR_H)
+        self._update_rects()
+
+    def _update_rects(self) -> None:
+        """Recompute cached ruler and timeline rectangles."""
+        self._ruler_rect_cache = QRect(0, 0, self.width(), RULER_H)
+        self._timeline_rect_cache = QRect(0, RULER_H, self.width(), TRACK_H)
+        self._play_area_rect = self._ruler_rect_cache.united(self._timeline_rect_cache)
 
     def set_current_frame(self, frame_index: int) -> None:
         frame_index = max(self._start, min(self._end, int(frame_index)))
         if self._current == frame_index:
             self._sync_frame_widgets()
             return
+        old_x: float = self._frame_to_x(self._current)
         self._current = frame_index
+        new_x: float = self._frame_to_x(self._current)
         self._sync_frame_widgets()
         self.frameChanged.emit(frame_index)
-        self.update()
+        update_rect: QRect = QRect(
+            int(min(old_x, new_x)) - PLAYHEAD_W,
+            0,
+            int(abs(new_x - old_x)) + PLAYHEAD_W * 2,
+            self.height() - TOOLBAR_H,
+        )
+        self.update(update_rect)
 
     def add_keyframe_marker(self, frame_index: int) -> None:
         self._kfs.add(int(frame_index))
         self._update_delete_button()
-        self.update()
+        self.update(self._timeline_rect())
 
     def remove_keyframe_marker(self, frame_index: int) -> None:
         self._kfs.discard(int(frame_index))
         self._update_delete_button()
-        self.update()
+        self.update(self._timeline_rect())
 
     def clear_keyframes(self) -> None:
         self._kfs.clear()
         self._update_delete_button()
-        self.update()
+        self.update(self._timeline_rect())
 
     def _sync_frame_widgets(self) -> None:
         if self.frame_spin.value() != self._current:
@@ -202,7 +226,7 @@ class TimelineWidget(QWidget):
             self._scroll_frames = max(0.0, self._scroll_frames)
             self.set_current_frame(min(max(self._current, s), e))
             self.rangeChanged.emit(s, e)
-            self.update()
+            self.update(self._play_area_rect)
 
     def _on_play_clicked(self, checked: bool) -> None:
         if checked:
@@ -237,8 +261,11 @@ class TimelineWidget(QWidget):
         else: # wrap around
             self.set_current_frame(sorted_kfs[0])
 
-    def _timeline_rect(self) -> QRect: return QRect(0, RULER_H, self.width(), TRACK_H)
-    def _ruler_rect(self) -> QRect: return QRect(0, 0, self.width(), RULER_H)
+    def _timeline_rect(self) -> QRect:
+        return self._timeline_rect_cache
+
+    def _ruler_rect(self) -> QRect:
+        return self._ruler_rect_cache
     def _frame_to_x(self, frame: float) -> float: return (frame - self._start - self._scroll_frames) * self._px_per_frame
     def _x_to_frame(self, x: float) -> int:
         f = x / max(1e-6, self._px_per_frame) + self._start + self._scroll_frames
@@ -267,15 +294,16 @@ class TimelineWidget(QWidget):
         px: float = self._frame_to_x(self._current)
         p.setPen(QPen(PLAYHEAD, PLAYHEAD_W))
         p.drawLine(int(px), 0, int(px), self.height() - TOOLBAR_H)
-        if self.underMouse():
-            pos: QPointF = self.mapFromGlobal(self.cursor().pos())
-            if self._ruler_rect().contains(pos) or self._timeline_rect().contains(pos):
-                fx: int = self._x_to_frame(pos.x())
-                hud: str = f"{fx} | {self._format_time(fx)}"
+        if self.underMouse() and self._hover_pos is not None:
+            if ruler_rect.contains(self._hover_pos.toPoint()) or timeline_rect.contains(self._hover_pos.toPoint()):
+                fx: int = self._hover_frame if self._hover_frame is not None else self._x_to_frame(self._hover_pos.x())
+                hud: str = self._hud_cache.get(fx)
+                if hud is None:
+                    hud = self._hud_cache.setdefault(fx, f"{fx} | {self._format_time(fx)}")
                 metrics: Any = p.fontMetrics()
                 w: int = metrics.horizontalAdvance(hud) + 10
                 h: int = metrics.height() + 6
-                x: int = int(min(max(6, pos.x() - w//2), self.width() - w - 6))
+                x: int = int(min(max(6, self._hover_pos.x() - w // 2), self.width() - w - 6))
                 y: int = 6
                 p.setPen(Qt.NoPen)
                 p.setBrush(QColor(0, 0, 0, 160))
@@ -323,16 +351,35 @@ class TimelineWidget(QWidget):
         super().mousePressEvent(e)
 
     def mouseMoveEvent(self, e: QMouseEvent) -> None:
+        pos: QPointF = e.position()
         if self._dragging_playhead:
-            self.set_current_frame(self._x_to_frame(e.position().x()))
+            self._hover_pos = pos
+            self._hover_frame = self._x_to_frame(pos.x())
+            if self._hover_frame not in self._hud_cache:
+                self._hud_cache[self._hover_frame] = f"{self._hover_frame} | {self._format_time(self._hover_frame)}"
+            self.set_current_frame(self._hover_frame)
         else:
-            self._hover_kf = self._kf_at_pos(e.position())
-        self.update()
+            old_hover: Optional[int] = self._hover_kf
+            self._hover_kf = self._kf_at_pos(pos)
+            self._hover_pos = pos
+            self._hover_frame = self._x_to_frame(pos.x())
+            if self._hover_frame not in self._hud_cache:
+                self._hud_cache[self._hover_frame] = f"{self._hover_frame} | {self._format_time(self._hover_frame)}"
+            self.update(self._ruler_rect())
+            if old_hover != self._hover_kf:
+                self.update(self._timeline_rect())
 
     def mouseReleaseEvent(self, e: QMouseEvent) -> None:
         if e.button() == Qt.LeftButton:
             self._dragging_playhead = False
         super().mouseReleaseEvent(e)
+
+    def leaveEvent(self, e: QEvent) -> None:  # type: ignore[override]
+        self._hover_kf = None
+        self._hover_frame = None
+        self._hover_pos = None
+        self.update(self._play_area_rect)
+        super().leaveEvent(e)
 
     def wheelEvent(self, e: QWheelEvent) -> None:
         pos: QPointF = e.position()
@@ -345,7 +392,7 @@ class TimelineWidget(QWidget):
         else:
             self._scroll_frames -= steps * 15
         self._scroll_frames = max(0.0, self._scroll_frames)
-        self.update()
+        self.update(self._play_area_rect)
 
     def keyPressEvent(self, e: QKeyEvent) -> None:
         if e.key() == Qt.Key_Space:

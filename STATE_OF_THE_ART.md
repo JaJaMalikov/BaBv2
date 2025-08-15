@@ -152,6 +152,9 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
   assurant l'échange d'icône, la visibilité des boutons et la conservation de la
   position latérale des panneaux.
 
+- Timeline optimisée : pré-calcul des rectangles règle/piste, mise en cache des chaînes HUD
+  et rafraîchissement limité aux zones modifiées pour réduire les repaints.
+
 ## État actuel et prochaines étapes possibles
 
 L'application a évolué d'un simple outil d'animation de marionnette à un **logiciel de composition de scène 2D fonctionnel et robuste**. L'interface a été professionnalisée et la gestion de plusieurs objets est désormais possible.
