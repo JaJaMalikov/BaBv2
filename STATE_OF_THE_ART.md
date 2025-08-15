@@ -140,6 +140,9 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
 - Typage renforcé : introduction de `MainWindowProtocol` pour documenter les attributs attendus par `SceneController` et éliminer l'usage de `Any`.
 - Calcul des transformations des membres : remplacement des trigonométries manuelles par `QTransform` pour composer rotation et translation des pantins.
 
+- Refactor Puppet : `PuppetMember` converti en `dataclass` et `compute_child_map` utilise désormais `defaultdict` pour
+  construire le mapping parent → enfants plus simplement.
+
 ## État actuel et prochaines étapes possibles
 
 L'application a évolué d'un simple outil d'animation de marionnette à un **logiciel de composition de scène 2D fonctionnel et robuste**. L'interface a été professionnalisée et la gestion de plusieurs objets est désormais possible.
