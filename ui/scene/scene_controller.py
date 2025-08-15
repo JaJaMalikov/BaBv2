@@ -9,24 +9,58 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Optional, Protocol, TypedDict
 
 from PySide6.QtCore import QPointF
-from PySide6.QtWidgets import QGraphicsItem
+from PySide6.QtWidgets import QGraphicsItem, QGraphicsScene
+from PySide6.QtSvg import QSvgRenderer
 
 from core.puppet_model import PARENT_MAP, PIVOT_MAP, Z_ORDER, Puppet, PuppetMember
 from core.puppet_piece import PuppetPiece
-from core.scene_model import Keyframe, SceneObject
+from core.scene_model import Keyframe, SceneObject, SceneModel
 from core.svg_loader import SvgLoader
 from ..object_item import ObjectPixmapItem, ObjectSvgItem
 from .state_applier import StateApplier
 from .scene_visuals import SceneVisuals
 from ..onion_skin import OnionSkinManager
 
+if TYPE_CHECKING:
+    from ..object_manager import ObjectManager
+    from ..zoomable_view import ZoomableView
+
+
+class InspectorWidgetProtocol(Protocol):
+    def refresh(self) -> None:
+        ...
+
+
+class MainWindowProtocol(Protocol):
+    scene: QGraphicsScene
+    scene_model: SceneModel
+    object_manager: ObjectManager
+    view: ZoomableView
+    zoom_factor: float
+    _suspend_item_updates: bool
+    inspector_widget: InspectorWidgetProtocol
+
+    def add_keyframe(self, index: int) -> None:
+        ...
+
+    def _update_background(self) -> None:
+        ...
+
+    def _update_zoom_status(self) -> None:
+        ...
+
+
+class LibraryPayload(TypedDict, total=False):
+    kind: str
+    path: str
+
 
 class SceneController:
     """A facade for grouping scene operations."""
-    def __init__(self, win: Any, *, visuals: SceneVisuals | None = None, onion: OnionSkinManager | None = None, applier: StateApplier | None = None) -> None:
+    def __init__(self, win: MainWindowProtocol, *, visuals: SceneVisuals | None = None, onion: OnionSkinManager | None = None, applier: StateApplier | None = None) -> None:
         """Initializes the scene controller.
 
         Args:
@@ -55,7 +89,7 @@ class SceneController:
         """
         puppet: Puppet = Puppet()
         loader: SvgLoader = SvgLoader(file_path)
-        renderer: Any = loader.renderer  # QSvgRenderer
+        renderer: QSvgRenderer = loader.renderer
         self.win.object_manager.renderers[puppet_name] = renderer
         puppet.build_from_svg(loader, PARENT_MAP, PIVOT_MAP, Z_ORDER)
         self.win.scene_model.add_puppet(puppet_name, puppet)
@@ -63,12 +97,11 @@ class SceneController:
         self.win.object_manager.puppet_paths[puppet_name] = file_path
         self.win.object_manager.puppet_z_offsets[puppet_name] = 0
         self._add_puppet_graphics(puppet_name, puppet, file_path, renderer, loader)
-        if hasattr(self.win, "inspector_widget"):
-            self.win.inspector_widget.refresh()
+        self.win.inspector_widget.refresh()
 
-    def _add_puppet_graphics(self, puppet_name: str, puppet: Puppet, file_path: str, renderer: Any, loader: SvgLoader) -> None:
+    def _add_puppet_graphics(self, puppet_name: str, puppet: Puppet, file_path: str, renderer: QSvgRenderer, loader: SvgLoader) -> None:
         """Adds the graphical representation of a puppet to the scene."""
-        pieces: Dict[str, PuppetPiece] = {}
+        pieces: dict[str, PuppetPiece] = {}
         for name, member in puppet.members.items():
             offset_x, offset_y = loader.get_group_offset(name) or (0.0, 0.0)
             pivot_x, pivot_y = member.pivot[0] - offset_x, member.pivot[1] - offset_y
@@ -451,7 +484,7 @@ class SceneController:
                             break
                         except ValueError as e:
                             logging.debug("Parsing puppet/member from key '%s' failed: %s", key, e)
-            state: Dict[str, Any] = obj.to_dict()
+            state: dict[str, object] = obj.to_dict()
             try:
                 state["x"] = float(gi.x())
                 state["y"] = float(gi.y())
@@ -462,20 +495,19 @@ class SceneController:
                 logging.debug("Reading graphics item state for '%s' failed: %s", name, e)
             state["attached_to"] = attached_to
             kf.objects[name] = state
-        if hasattr(self.win, "inspector_widget"):
-            self.win.inspector_widget.refresh()
+        self.win.inspector_widget.refresh()
         return name
 
-    def _add_library_item_to_scene(self, payload: Dict[str, Any]) -> None:
+    def _add_library_item_to_scene(self, payload: LibraryPayload) -> None:
         """Adds a library item to the scene."""
         self._add_library_payload(payload, scene_pos=None)
 
-    def handle_library_drop(self, payload: Dict[str, Any], pos: QPointF) -> None:
+    def handle_library_drop(self, payload: LibraryPayload, pos: QPointF) -> None:
         """Handles a library item drop event."""
         scene_pt: QPointF = self.win.view.mapToScene(pos.toPoint())
         self._add_library_payload(payload, scene_pos=scene_pt)
 
-    def _add_library_payload(self, payload: Dict[str, Any], scene_pos: Optional[QPointF]) -> None:
+    def _add_library_payload(self, payload: LibraryPayload, scene_pos: QPointF | None) -> None:
         """Adds a library payload to the scene."""
         kind: Optional[str] = payload.get('kind')
         path: Optional[str] = payload.get('path')
@@ -566,11 +598,11 @@ class SceneController:
             logging.exception("Failed to sync handles button state")
 
     # --- Application d'états (keyframes) ---
-    def apply_puppet_states(self, graphics_items: Dict[str, Any], keyframes: Dict[int, Any], index: int) -> None:
+    def apply_puppet_states(self, graphics_items: dict[str, QGraphicsItem], keyframes: dict[int, Keyframe], index: int) -> None:
         """Applies puppet states from a keyframe to the scene."""
         self.applier.apply_puppet_states(graphics_items, keyframes, index)
 
-    def apply_object_states(self, graphics_items: Dict[str, Any], keyframes: Dict[int, Any], index: int) -> None:
+    def apply_object_states(self, graphics_items: dict[str, QGraphicsItem], keyframes: dict[int, Keyframe], index: int) -> None:
         """Applies object states from a keyframe to the scene."""
         self.applier.apply_object_states(graphics_items, keyframes, index)
 
