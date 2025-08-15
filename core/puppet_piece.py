@@ -30,6 +30,7 @@ class RotationHandle(QGraphicsEllipseItem):
         self.start_angle: float = 0.0
         self.start_rotation: float = 0.0
 
+    # pylint: disable=invalid-name
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """Record starting angle and rotation when interaction begins."""
         pivot_in_scene: QPointF = self.piece.mapToScene(self.piece.transformOriginPoint())
@@ -39,6 +40,7 @@ class RotationHandle(QGraphicsEllipseItem):
         self.start_rotation = self.piece.local_rotation
         super().mousePressEvent(event)
 
+    # pylint: disable=invalid-name
     def mouseMoveEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """Rotate the bound piece based on mouse movement."""
         pivot_in_scene: QPointF = self.piece.mapToScene(self.piece.transformOriginPoint())
@@ -48,12 +50,14 @@ class RotationHandle(QGraphicsEllipseItem):
         delta: float = current_angle - self.start_angle
         self.piece.rotate_piece(self.start_rotation + delta)
 
+    # pylint: disable=invalid-name
     def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """Reset temporary rotation state after interaction."""
         self.start_angle = 0.0
         self.start_rotation = 0.0
         super().mouseReleaseEvent(event)
 
+# pylint: disable=R0903
 class PivotHandle(QGraphicsEllipseItem):
     """Small circle visualizing the pivot point of a ``PuppetPiece``."""
 
@@ -65,6 +69,7 @@ class PivotHandle(QGraphicsEllipseItem):
         self.setZValue(PIVOT_Z_VALUE)
 
 
+# pylint: disable=R0902
 class PuppetPiece(QGraphicsSvgItem):
     """Graphical item representing a puppet member (SVG group).
 
@@ -73,6 +78,7 @@ class PuppetPiece(QGraphicsSvgItem):
     offsets (rel_to_parent). It also owns optional rotation/pivot handles.
     """
 
+    # pylint: disable=R0913, R0917
     def __init__(
         self,
         svg_path: str,
@@ -154,6 +160,7 @@ class PuppetPiece(QGraphicsSvgItem):
         for child in self.children:
             child.update_handle_positions()
 
+    # pylint: disable=invalid-name
     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: Any) -> Any:
         """Propagate transform updates and handle positions when item changes."""
         if change in (
@@ -210,6 +217,7 @@ class PuppetPiece(QGraphicsSvgItem):
             child.update_transform_from_parent()
 
     # Deselect objects when starting to interact with a puppet piece to avoid accidental moves
+    # pylint: disable=invalid-name
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """Ensure only puppet pieces remain selected when manipulating handles."""
         try:

@@ -54,7 +54,7 @@ def set_scene_size(win) -> None:
     # Déléguer au SceneController pour centraliser la logique
     try:
         win.scene_controller.set_scene_size(int(width), int(height))
-    except (AttributeError, TypeError) as exc:
+    except (AttributeError, TypeError):
         logging.exception("SceneController set_scene_size failed")
         # Fallback en cas d'indisponibilité (sécurité)
         win.scene_model.scene_width = int(width)

@@ -1,31 +1,35 @@
-import os
-os.environ["QT_QPA_PLATFORM"] = "offscreen"
+"""Tests for the ObjectManager class."""
+
+from pathlib import Path
 
 import pytest
 from PySide6.QtWidgets import QApplication
-from pathlib import Path
 
 from ui.main_window import MainWindow
 
 
 @pytest.fixture(scope="module")
 def app():
-    app = QApplication.instance()
-    if app is None:
-        app = QApplication([])
-    return app
+    """Create a QApplication instance for the tests."""
+    qapp = QApplication.instance()
+    if qapp is None:
+        qapp = QApplication([])
+    return qapp
 
 
-def test_capture_visible_object_states(app):
+def test_capture_visible_object_states(_app):
+    """Test that the visible object states are captured correctly."""
     win = MainWindow()
     win.scene_controller.add_puppet(str(Path("assets/pantins/manu.svg").resolve()), "manu")
 
     free_path = str(Path("assets/objets/Faucille.svg").resolve())
+    # pylint: disable=protected-access
     free_name = win.scene_controller._create_object_from_file(free_path)
     free_item = win.object_manager.graphics_items[free_name]
     free_item.setPos(100.0, 200.0)
 
     attached_path = str(Path("assets/objets/Marteau.svg").resolve())
+    # pylint: disable=protected-access
     attached_name = win.scene_controller._create_object_from_file(attached_path)
     win.scene_controller.attach_object_to_member(attached_name, "manu", "main_droite")
     attached_item = win.object_manager.graphics_items[attached_name]

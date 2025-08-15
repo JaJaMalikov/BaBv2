@@ -11,6 +11,7 @@ from core.puppet_model import Puppet
 
 
 @dataclass
+# pylint: disable=R0902
 class SceneObject:
     """Représente un objet générique de la scène.
 
@@ -71,6 +72,7 @@ class Keyframe:
     objects: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     puppets: Dict[str, Dict[str, Dict[str, Any]]] = field(default_factory=dict)
 
+# pylint: disable=R0902
 class SceneModel:
     """Central store for puppets, objects and timeline keyframes."""
 
@@ -124,7 +126,9 @@ class SceneModel:
     # -----------------------------
     # KEYFRAMES ET TIMELINE
     # -----------------------------
-    def add_keyframe(self, index: int, state: Optional[Dict[str, Dict[str, Dict[str, Any]]]] = None) -> Keyframe:
+    def add_keyframe(
+        self, index: int, state: Optional[Dict[str, Dict[str, Dict[str, Any]]]] = None
+    ) -> Keyframe:
         """Create or overwrite a keyframe at ``index`` with captured puppet and object states.
 
         ``state`` is expected to contain two keys:
@@ -167,6 +171,7 @@ class SceneModel:
     # -----------------------------
     # IMPORT/EXPORT
     # -----------------------------
+    # pylint: disable=R0911, R0912
     def _validate_data(self, data: Any) -> bool:
         """Validate minimally the loaded scene JSON structure without mutating state.
 

@@ -1,3 +1,5 @@
+"""Module for managing objects in the scene."""
+
 from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Dict, Optional, Any
@@ -11,6 +13,7 @@ if TYPE_CHECKING:
     from ui.main_window import MainWindow
 
 
+# pylint: disable=R0902
 class ObjectManager:
     """Manages puppets and objects (creation, deletion, manipulation) in the scene."""
     def __init__(self, win: MainWindow) -> None:
@@ -45,8 +48,10 @@ class ObjectManager:
 
     # --- Snapshot helpers ---
     def capture_visible_object_states(self) -> Dict[str, Dict[str, Any]]:
-        """Capture the on-screen state for visible objects, including attachment derived from parentItem.
-        Uses local coords when attached and scene coords when free (consistent with runtime usage).
+        """Capture the on-screen state for visible objects.
+
+        This includes attachment derived from parentItem.
+        Uses local coords when attached and scene coords when free.
         """
         states: Dict[str, Dict[str, Any]] = {}
         # Build a reverse map from PuppetPiece to (puppet, member)
@@ -62,9 +67,7 @@ class ObjectManager:
             gi: Optional[QGraphicsItem] = self.graphics_items.get(name)
             if gi and gi.isVisible():
                 parent = gi.parentItem()
-                attached_to = None
-                if parent in piece_owner:
-                    attached_to = piece_owner[parent]
+                attached_to = piece_owner.get(parent)
                 data = obj.to_dict()
                 try:
                     data["x"] = float(gi.x())

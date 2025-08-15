@@ -35,7 +35,10 @@ class SvgLoader:
     # Helpers privés
     # -------------------------
     def _get_bounds_rect(self, element_id: str) -> Optional[QRectF]:
-        """Retourne le QRectF des bounds pour un élément identifié, ou None si non trouvé/invalide."""
+        """Retourne le QRectF des bounds pour un élément identifié.
+
+        Retourne None si non trouvé/invalide.
+        """
         bounds_rect: QRectF = self.renderer.boundsOnElement(element_id)
         if bounds_rect.isNull():
             return None

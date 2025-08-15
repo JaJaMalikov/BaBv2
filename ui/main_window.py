@@ -1,9 +1,9 @@
 """Main window of the application, orchestrating UI components and scene management."""
 
 import logging
-from typing import Optional, Any, Dict
+from typing import Any, Dict
 
-from PySide6.QtCore import Qt, QTimer, QEvent
+from PySide6.QtCore import Qt, QTimer, QEvent, QSettings
 from PySide6.QtGui import QPainter
 from PySide6.QtWidgets import (
     QMainWindow,
@@ -13,12 +13,12 @@ from PySide6.QtWidgets import (
     QDockWidget,
     QFrame,
     QMessageBox,
+    QWidget as _QW,
 )
 
-from ui.scene import scene_io
+from ui.scene import scene_io, actions as scene_actions
 from core.scene_model import SceneModel, Keyframe
 from ui import actions as app_actions
-from ui.scene import actions as scene_actions
 from ui import selection_sync
 from ui.object_manager import ObjectManager
 from ui.onion_skin import OnionSkinManager
@@ -97,7 +97,6 @@ class MainWindow(QMainWindow):
         self.timeline_dock.setWidget(self.timeline_widget)
         self.timeline_dock.setFeatures(QDockWidget.DockWidgetClosable)
         try:
-            from PySide6.QtWidgets import QWidget as _QW
             self.timeline_dock.setTitleBarWidget(_QW())
         except (ImportError, RuntimeError) as e:
             logging.debug("Custom title bar not set on dock: %s", e)
@@ -150,7 +149,6 @@ class MainWindow(QMainWindow):
     def _apply_startup_preferences(self) -> None:
         """Applies stored startup preferences."""
         try:
-            from PySide6.QtCore import QSettings
             s = QSettings("JaJa", "Macronotron")
             self.onion.prev_count = int(s.value("onion/prev_count", self.onion.prev_count))
             self.onion.next_count = int(s.value("onion/next_count", self.onion.next_count))

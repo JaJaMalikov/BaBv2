@@ -1,28 +1,27 @@
-import os
-os.environ["QT_QPA_PLATFORM"] = "offscreen"
+"""Tests for object keyframe states."""
 
-from PySide6.QtWidgets import QApplication, QGraphicsItem
-import pytest
-import sys
 from pathlib import Path
 
-sys.path.append(str(Path(__file__).resolve().parents[1]))
+import pytest
+from PySide6.QtWidgets import QApplication, QGraphicsItem
 
 from ui.main_window import MainWindow
 
 @pytest.fixture(scope="module")
 def app():
-    app = QApplication.instance()
-    if app is None:
-        app = QApplication([])
-    return app
+    """Create a QApplication instance for the tests."""
+    qapp = QApplication.instance()
+    if qapp is None:
+        qapp = QApplication([])
+    return qapp
 
 
 def _puppet_piece(win: MainWindow, puppet: str, member: str):
     return win.object_manager.graphics_items.get(f"{puppet}:{member}")
 
 
-def test_object_state_is_per_keyframe(app):
+def test_object_state_is_per_keyframe(_app):
+    """Test that object state is correctly saved and restored per keyframe."""
     win = MainWindow()
 
     win.scene_controller.add_puppet(str(Path("assets/pantins/manu.svg").resolve()), "manu")
@@ -32,6 +31,7 @@ def test_object_state_is_per_keyframe(app):
 
     # Create a free object at a known position
     obj_path = str(Path("assets/objets/Faucille.svg").resolve())
+    # pylint: disable=protected-access
     name = win.scene_controller._create_object_from_file(obj_path)
     assert name in win.object_manager.graphics_items
     item = win.object_manager.graphics_items[name]
@@ -90,4 +90,3 @@ def test_object_state_is_per_keyframe(app):
     assert item10.parentItem() is None
     assert item10.x() == pytest.approx(345.0)
     assert item10.y() == pytest.approx(456.0)
-

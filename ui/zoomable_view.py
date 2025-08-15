@@ -2,6 +2,8 @@
 
 import logging
 import json
+from typing import Optional, Any, Callable, Dict, List
+
 from PySide6.QtWidgets import (
     QGraphicsView,
     QWidget,
@@ -18,9 +20,6 @@ from ui.icons import (
     icon_open_menu, icon_close_menu, icon_close_menu_inv
 )
 from ui.library.library_widget import LIB_MIME
-
-
-from typing import Optional, Any, Callable, Dict, List
 
 
 def make_tool_button(
@@ -572,7 +571,7 @@ class ZoomableView(QGraphicsView):
                 data: bytes = bytes(event.mimeData().data(LIB_MIME))
                 payload: Dict[str, Any] = json.loads(data.decode('utf-8'))
                 self.item_dropped.emit(payload, event.position())
-            except (json.JSONDecodeError, TypeError, ValueError) as e:
+            except (json.JSONDecodeError, TypeError, ValueError):
                 logging.exception("Drop failed")
             event.acceptProposedAction()
         else:

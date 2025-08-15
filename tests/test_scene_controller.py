@@ -1,26 +1,23 @@
-import os
-import sys
-from pathlib import Path
+"""Tests for the SceneController class."""
 
-os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
-from PySide6.QtWidgets import QApplication
 import pytest
-
-sys.path.append(str(Path(__file__).resolve().parents[1]))
+from PySide6.QtWidgets import QApplication
 
 from ui.main_window import MainWindow
 
 
 @pytest.fixture(scope="module")
 def app():
-    app = QApplication.instance()
-    if app is None:
-        app = QApplication([])
-    return app
+    """Create a QApplication instance for the tests."""
+    qapp = QApplication.instance()
+    if qapp is None:
+        qapp = QApplication([])
+    return qapp
 
 
-def test_set_scene_size_updates_model_and_scene(app):
+def test_set_scene_size_updates_model_and_scene(_app):
+    """Test that setting the scene size updates the model and the scene."""
     win = MainWindow()
     win.scene_controller.set_scene_size(800, 600)
     assert win.scene_model.scene_width == 800

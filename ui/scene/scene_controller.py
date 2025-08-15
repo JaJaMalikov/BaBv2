@@ -143,7 +143,7 @@ class SceneController:
                 member = puppet.members[name]
                 try:
                     piece.setZValue(member.z_order + zoff)
-                except (RuntimeError, TypeError) as exc:
+                except (RuntimeError, TypeError):
                     logging.exception("Failed to set Z value for %s", name)
 
     def scale_puppet(self, puppet_name: str, ratio: float) -> None:
@@ -232,7 +232,7 @@ class SceneController:
             if piece:
                 try:
                     piece.setZValue(member.z_order + int(offset))
-                except (RuntimeError, TypeError) as exc:
+                except (RuntimeError, TypeError):
                     logging.exception("Failed to apply Z offset for %s", member_name)
 
     def delete_object(self, name: str) -> None:
@@ -517,7 +517,7 @@ class SceneController:
         if kind == 'background':
             try:
                 self.set_background_path(path)
-            except (OSError, RuntimeError) as exc:
+            except (OSError, RuntimeError):
                 logging.exception("Failed to set background path")
                 # Fallback for older code paths
                 self.win.scene_model.background_path = path

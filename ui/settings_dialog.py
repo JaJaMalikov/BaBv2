@@ -8,10 +8,14 @@ from typing import Optional, Any
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QFormLayout, QDialogButtonBox, QSpinBox, QDoubleSpinBox, QHBoxLayout,
     QLineEdit, QPushButton, QFileDialog, QGroupBox, QCheckBox, QTabWidget,
-    QListWidget, QListWidgetItem, QAbstractItemView, QScrollArea, QWidget, QComboBox, QListView, QLabel, QSplitter
+    QListWidget, QListWidgetItem, QAbstractItemView, QScrollArea, QWidget,
+    QComboBox, QListView, QLabel, QSplitter, QToolButton, QColorDialog
 )
-from PySide6.QtCore import Qt, QSize, QRectF
+from PySide6.QtCore import Qt, QSize, QRectF, QSettings
 from PySide6.QtGui import QIcon, QColor, QPainter, QPixmap, QPainterPath
+
+from ui.draggable_widget import PanelOverlay, DraggableHeader
+from ui.styles import build_stylesheet
 
 class IconStrip(QListWidget):
     """Icon list that arranges items in 1 or 2 rows, with labels under icons.
@@ -327,9 +331,6 @@ class SettingsDialog(QDialog):
         title = QLabel("Aperçu du thème")
         preview_layout.addWidget(title)
 
-        # Import preview-specific widgets to match stylesheet selectors
-        from ui.draggable_widget import PanelOverlay, DraggableHeader
-
         # Fake workspace background (shows bg color behind semi-transparent panel)
         bg_wrap = QWidget()
         bg_layout = QVBoxLayout(bg_wrap)
@@ -356,7 +357,6 @@ class SettingsDialog(QDialog):
         gb_form.setLabelAlignment(Qt.AlignRight)
 
         # ToolButtons bar to show hover/checked/accent
-        from PySide6.QtWidgets import QToolButton
         tb_bar = QHBoxLayout()
         tb1 = QToolButton()
         tb1.setText("Outil 1")
@@ -463,7 +463,6 @@ class SettingsDialog(QDialog):
 
     # --- Styles helpers (simple) ---
     def _pick_color_into(self, edit: QLineEdit) -> None:
-        from PySide6.QtWidgets import QColorDialog
         col = QColorDialog.getColor()
         if col.isValid():
             edit.setText(col.name())
@@ -523,7 +522,6 @@ class SettingsDialog(QDialog):
         # Custom keeps current entries
 
     def _preview_theme(self) -> None:
-        from ui.styles import build_stylesheet
         css = build_stylesheet(self._params_from_ui())
         # Apply to dedicated preview container so we don't affect the whole dialog
         try:
@@ -534,8 +532,6 @@ class SettingsDialog(QDialog):
             logging.exception("Theme preview failed")
 
     def _save_params_as_custom(self) -> None:
-        from PySide6.QtCore import QSettings
-        from ui.styles import build_stylesheet
         css = build_stylesheet(self._params_from_ui())
         s = QSettings("JaJa", "Macronotron")
         s.setValue('ui/custom_stylesheet', css)
@@ -575,7 +571,7 @@ class SettingsDialog(QDialog):
                 # Keep border via stylesheet; set pixmap for fill
                 sw.setStyleSheet("QLabel{border:1px solid #A0AEC0; border-radius:3px; background:transparent;}")
                 sw.setPixmap(pix)
-            except (ValueError, TypeError, RuntimeError) as e:
+            except (ValueError, TypeError, RuntimeError):
                 logging.exception("Panel swatch render failed")
                 # Fallback to flat color
                 col = edit.text().strip() or '#FFFFFF'
@@ -693,7 +689,6 @@ class SettingsDialog(QDialog):
 
     def _populate_icons_list(self) -> None:
         from ui.icons import get_icon
-        from PySide6.QtCore import QSettings
         self.list_icons.clear()
         s = QSettings("JaJa", "Macronotron")
         for key in self._icon_keys:
@@ -708,7 +703,6 @@ class SettingsDialog(QDialog):
             self.list_icons.addItem(it)
 
     def _on_icon_item_changed(self, current: Optional[QListWidgetItem], previous: Optional[QListWidgetItem]) -> None:
-        from PySide6.QtCore import QSettings
         if not current:
             self.lbl_key.setText("—")
             self.lbl_path.setText("")
@@ -727,7 +721,6 @@ class SettingsDialog(QDialog):
         path, _ = QFileDialog.getOpenFileName(self, "Choisir une icône", "", "Images (*.svg *.png *.jpg *.bmp *.ico)")
         if not path:
             return
-        from PySide6.QtCore import QSettings
         s = QSettings("JaJa", "Macronotron")
         s.setValue(f"ui/icon_override/{key}", path)
         self.lbl_path.setText(path)
@@ -739,7 +732,6 @@ class SettingsDialog(QDialog):
         if not item:
             return
         key = item.data(Qt.UserRole)
-        from PySide6.QtCore import QSettings
         s = QSettings("JaJa", "Macronotron")
         s.remove(f"ui/icon_override/{key}")
         self.lbl_path.setText("")
@@ -747,7 +739,6 @@ class SettingsDialog(QDialog):
         self._populate_icons_list()
 
     def _reset_all_icons(self) -> None:
-        from PySide6.QtCore import QSettings
         s = QSettings("JaJa", "Macronotron")
         s.beginGroup("ui/icon_override")
         s.remove("")

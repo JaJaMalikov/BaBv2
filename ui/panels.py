@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import logging
-from typing import Tuple
+from typing import Tuple, Optional
 
 from pathlib import Path
 from PySide6.QtWidgets import QVBoxLayout
+from PySide6.QtCore import QSettings, QRect
 
 from ui.draggable_widget import PanelOverlay, DraggableHeader
 from ui.library.library_widget import LibraryWidget
@@ -52,12 +53,26 @@ def build_side_overlays(win) -> Tuple[PanelOverlay, LibraryWidget, PanelOverlay,
 
     return library_overlay, library_widget, inspector_overlay, inspector_widget
 
+def _get_overlay_geometry(s: QSettings, name: str) -> Optional[QRect]:
+    """Get overlay geometry from settings."""
+    size_val = s.value(f"ui/default/{name}_size")
+    pos_val = s.value(f"ui/default/{name}_pos")
+
+    w, h = 290, 550
+    if size_val:
+        try:
+            w = int(size_val.width()) if hasattr(size_val, 'width') else int(size_val[0])
+            h = int(size_val.height()) if hasattr(size_val, 'height') else int(size_val[1])
+        except (TypeError, ValueError, AttributeError):
+            pass
+
+    if pos_val and hasattr(pos_val, 'x'):
+        return QRect(int(pos_val.x()), int(pos_val.y()), w, h)
+
+    return None
 
 def position_overlays(win) -> None:
-    """Position default Library/Inspector overlays and adjust tool overlays.
-
-    Keeps behavior identical to previous inline implementation in MainWindow._position_overlays.
-    """
+    """Position default Library/Inspector overlays and adjust tool overlays."""
     if getattr(win, "_settings_loaded", False):
         return
 
@@ -66,31 +81,21 @@ def position_overlays(win) -> None:
 
     margin = 10
     try:
-        from PySide6.QtCore import QSettings
         s = QSettings("JaJa", "Macronotron")
-        lib_size = s.value("ui/default/library_size")
-        insp_size = s.value("ui/default/inspector_size")
-        lib_pos = s.value("ui/default/library_pos")
-        insp_pos = s.value("ui/default/inspector_pos")
-        lib_w, lib_h = 290, 550
-        insp_w, insp_h = 290, 550
-        try:
-            if lib_size:
-                lib_w = int(lib_size.width()) if hasattr(lib_size, 'width') else int(lib_size[0])
-                lib_h = int(lib_size.height()) if hasattr(lib_size, 'height') else int(lib_size[1])
-            if insp_size:
-                insp_w = int(insp_size.width()) if hasattr(insp_size, 'width') else int(insp_size[0])
-                insp_h = int(insp_size.height()) if hasattr(insp_size, 'height') else int(insp_size[1])
-        except (TypeError, ValueError, AttributeError):
-            logging.exception("Failed to read default overlay sizes")
-        if lib_pos and hasattr(lib_pos, 'x'):
-            win.library_overlay.setGeometry(int(lib_pos.x()), int(lib_pos.y()), lib_w, lib_h)
+        lib_geom = _get_overlay_geometry(s, "library")
+        insp_geom = _get_overlay_geometry(s, "inspector")
+
+        if lib_geom:
+            win.library_overlay.setGeometry(lib_geom)
         else:
-            win.library_overlay.setGeometry(margin, margin, lib_w, lib_h)
-        if insp_pos and hasattr(insp_pos, 'x'):
-            win.inspector_overlay.setGeometry(int(insp_pos.x()), int(insp_pos.y()), insp_w, insp_h)
+            win.library_overlay.setGeometry(margin, margin, 290, 550)
+
+        if insp_geom:
+            win.inspector_overlay.setGeometry(insp_geom)
         else:
-            win.inspector_overlay.setGeometry(win.width() - insp_w - margin, margin, insp_w, insp_h)
+            win.inspector_overlay.setGeometry(
+                win.width() - 290 - margin, margin, 290, 550
+            )
 
         left_bound = win.library_overlay.geometry().right() + margin
         right_bound = win.inspector_overlay.geometry().left() - margin

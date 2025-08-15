@@ -33,6 +33,7 @@ HANDLE_EXCEPTION = {
 class PuppetMember:
     """Node in the puppet hierarchy with pivot, bbox and z-order metadata."""
 
+    # pylint: disable=R0913, R0917
     def __init__(
         self,
         name: str,
@@ -72,7 +73,10 @@ class Puppet:
         self.z_order_map: Dict[str, int] = {}
         self.child_map: Dict[str, List[str]] = {}
 
-        cfg_path = Path(config_path) if config_path else Path(__file__).with_name("puppet_config.json")
+        if config_path:
+            cfg_path = Path(config_path)
+        else:
+            cfg_path = Path(__file__).with_name("puppet_config.json")
         try:
             with cfg_path.open("r", encoding="utf-8") as fh:
                 data = json.load(fh)
@@ -134,13 +138,16 @@ class Puppet:
             for root in self.get_root_members():
                 self.print_hierarchy(root, indent)
         else:
-            logger.info(f"{indent}- {member.name} (pivot={member.pivot} z={member.z_order})")
+            logger.info("%s- %s (pivot=%s z=%s)", indent, member.name, member.pivot, member.z_order)
             for child in member.children:
                 self.print_hierarchy(child, indent + "  ")
 
 
-
-def validate_svg_structure(svg_loader: 'SvgLoader', parent_map: Dict[str, Optional[str]], pivot_map: Dict[str, str]) -> None:
+def validate_svg_structure(
+    svg_loader: 'SvgLoader',
+    parent_map: Dict[str, Optional[str]],
+    pivot_map: Dict[str, str]
+) -> None:
     """Audit the SVG against parent/pivot maps and print discrepancies."""
     groups_in_svg: set[str] = set(svg_loader.get_groups())
     groups_in_map: set[str] = set(parent_map.keys())
@@ -151,13 +158,20 @@ def validate_svg_structure(svg_loader: 'SvgLoader', parent_map: Dict[str, Option
 
     logger.info("\n--- Audit Structure SVG ---")
     if missing_in_svg:
-        logger.warning("❌ Groupes définis dans parent_map absents du SVG : %s", missing_in_svg)
+        logger.warning(
+            "❌ Groupes définis dans parent_map absents du SVG : %s", missing_in_svg
+        )
     else:
         logger.info("✅ Tous les groupes du parent_map existent dans le SVG.")
     if extra_in_svg:
-        logger.warning("⚠️ Groupes présents dans le SVG mais non utilisés dans parent_map : %s", extra_in_svg)
+        logger.warning(
+            "⚠️ Groupes présents dans le SVG mais non utilisés dans parent_map : %s",
+            extra_in_svg
+        )
     if pivots_missing:
-        logger.warning("❌ Pivots définis dans pivot_map absents du SVG : %s", pivots_missing)
+        logger.warning(
+            "❌ Pivots définis dans pivot_map absents du SVG : %s", pivots_missing
+        )
     else:
         logger.info("✅ Tous les pivots du pivot_map existent dans le SVG.")
     logger.info("-----------------------------\n")

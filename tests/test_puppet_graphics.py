@@ -1,25 +1,23 @@
-import os
-os.environ["QT_QPA_PLATFORM"] = "offscreen"
+"Tests for puppet graphics items."
 
-from PySide6.QtWidgets import QApplication, QGraphicsItem
-import pytest
-
-import sys
 from pathlib import Path
 
-sys.path.append(str(Path(__file__).resolve().parents[1]))
+import pytest
+from PySide6.QtWidgets import QApplication, QGraphicsItem
 
 from ui.main_window import MainWindow
 
 @pytest.fixture(scope="module")
 def app():
-    app = QApplication.instance()
-    if app is None:
-        app = QApplication([])
-    return app
+    """Create a QApplication instance for the tests."""
+    qapp = QApplication.instance()
+    if qapp is None:
+        qapp = QApplication([])
+    return qapp
 
 
-def test_hierarchy_and_pivot(app):
+def test_hierarchy_and_pivot(_app):
+    """Test that the puppet hierarchy and pivots are correctly set up."""
     window = MainWindow()
 
     window.scene_controller.add_puppet(str(Path("assets/pantins/manu.svg").resolve()), "manu")
@@ -39,7 +37,7 @@ def test_hierarchy_and_pivot(app):
     assert elbow_pos.x() == pytest.approx(forearm_pos.x())
     assert elbow_pos.y() == pytest.approx(forearm_pos.y())
 
-    # Après rotation du bras, le coude et l\'avant-bras restent solidaires
+    # Après rotation du bras, le coude et l\avant-bras restent solidaires
     upper.rotate_piece(45)
     elbow_pos_after = elbow.mapToScene(elbow.transformOriginPoint())
     forearm_pos_after = forearm.mapToScene(forearm.transformOriginPoint())
@@ -53,7 +51,8 @@ def test_hierarchy_and_pivot(app):
     assert upper.zValue() == puppet.z_order_map.get("haut_bras_droite", -1)
 
 
-def test_puppet_translation(app):
+def test_puppet_translation(_app):
+    """Test that translating the root of a puppet moves the whole puppet."""
     window = MainWindow()
     window.scene_controller.add_puppet(str(Path("assets/pantins/manu.svg").resolve()), "manu")
     gis = window.object_manager.graphics_items

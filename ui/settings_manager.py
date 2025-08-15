@@ -8,11 +8,13 @@ from PySide6.QtCore import QSettings, QSize, QPoint
 from PySide6.QtWidgets import QApplication
 
 from ui.settings_dialog import SettingsDialog
-from ui.styles import apply_stylesheet
+from ui.styles import apply_stylesheet, build_stylesheet
+
 from ui.icons import (
     icon_scene_size, icon_background, icon_library, icon_inspector, icon_timeline,
     icon_save, icon_open, icon_reset_ui, icon_reset_scene
 )
+import ui.icons as app_icons
 
 
 class SettingsManager:
@@ -83,7 +85,7 @@ class SettingsManager:
             presets_map = { 'light':'Light', 'dark':'Dark', 'custom':'Custom' }
             dlg.preset_combo.setCurrentText(presets_map.get(theme, 'Light'))
             dlg._load_preset_values(dlg.preset_combo.currentText())
-        except (RuntimeError, AttributeError) as e:
+        except (RuntimeError, AttributeError):
             logging.exception("Failed to load preset values")
         # Default sizes from current overlays
         try:
@@ -140,7 +142,7 @@ class SettingsManager:
             dlg.next_count.setValue(int(s.value("onion/next_count", 1)))
             dlg.opacity_prev.setValue(float(s.value("onion/opacity_prev", 0.25)))
             dlg.opacity_next.setValue(float(s.value("onion/opacity_next", 0.18)))
-        except (ValueError, TypeError) as e:
+        except (ValueError, TypeError):
             logging.exception("Failed to load onion settings")
 
         if dlg.exec() == SettingsDialog.Accepted:
@@ -152,7 +154,6 @@ class SettingsManager:
             s.setValue("ui/theme", theme)
             if theme == 'custom':
                 try:
-                    from ui.styles import build_stylesheet
                     css = build_stylesheet({
                         'bg_color': dlg.bg_edit.text() or '#E2E8F0',
                         'text_color': dlg.text_edit.text() or '#1A202C',
@@ -215,12 +216,11 @@ class SettingsManager:
                 win.onion.opacity_prev = float(dlg.opacity_prev.value())
                 win.onion.opacity_next = float(dlg.opacity_next.value())
                 win.update_onion_skins()
-            except (RuntimeError, ValueError) as e:
+            except (RuntimeError, ValueError):
                 logging.exception("Failed to apply onion settings")
 
             # Refresh icons everywhere
             try:
-                import ui.icons as app_icons
                 app_icons.clear_cache()
                 win.save_action.setIcon(icon_save())
                 win.load_action.setIcon(icon_open())

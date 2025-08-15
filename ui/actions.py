@@ -12,7 +12,7 @@ from ui.library import actions as library_actions
 from ui.inspector import actions as inspector_actions
 from ui.icons import (
     icon_scene_size, icon_background, icon_library, icon_inspector, icon_timeline,
-    icon_save, icon_open, icon_reset_ui, icon_reset_scene,
+    icon_save, icon_open, icon_reset_ui, icon_reset_scene, get_icon
 )
 
 
@@ -30,7 +30,6 @@ def build_actions(win: Any) -> None:
     win.scene_size_action = QAction(icon_scene_size(), "Taille Scène", win)
     win.background_action = QAction(icon_background(), "Image de fond", win)
     # Use 'layers' icon as settings indicator
-    from ui.icons import get_icon
     win.settings_action = QAction(get_icon('layers'), "Paramètres", win)
 
     win.reset_scene_action = QAction(icon_reset_scene(), "Réinitialiser la scène", win)
@@ -51,7 +50,6 @@ def build_actions(win: Any) -> None:
     win.timeline_dock.toggleViewAction().setIcon(icon_timeline())
 
     # Custom overlay toggle
-    from ui.icons import get_icon
     win.toggle_custom_action = QAction(get_icon('layers'), "Custom", win)
     win.toggle_custom_action.setCheckable(True)
 
