@@ -7,7 +7,7 @@ import math
 from PySide6.QtWidgets import QGraphicsEllipseItem, QGraphicsSceneMouseEvent, QGraphicsItem
 from PySide6.QtSvgWidgets import QGraphicsSvgItem
 from PySide6.QtCore import Qt, QPointF
-from PySide6.QtGui import QBrush, QPen, QColor
+from PySide6.QtGui import QBrush, QPen, QColor, QTransform
 from PySide6.QtSvg import QSvgRenderer # Added for type hinting
 
 # --- Constantes ---
@@ -176,16 +176,14 @@ class PuppetPiece(QGraphicsSvgItem):
 
         parent: 'PuppetPiece' = self.parent_piece
         parent_rotation: float = parent.rotation()
-        angle_rad: float = math.radians(parent_rotation)
         dx, dy = self.rel_to_parent
-        cos_a: float = math.cos(angle_rad)
-        sin_a: float = math.sin(angle_rad)
-        rotated_dx: float = dx * cos_a - dy * sin_a
-        rotated_dy: float = dx * sin_a + dy * cos_a
+        transform: QTransform = QTransform()
+        transform.rotate(parent_rotation)
+        transform.translate(dx, dy)
+        offset: QPointF = transform.map(QPointF(0.0, 0.0))
         parent_pivot: QPointF = parent.mapToScene(parent.transformOriginPoint())
-        scene_x: float = parent_pivot.x() + rotated_dx
-        scene_y: float = parent_pivot.y() + rotated_dy
-        self.setPos(scene_x - self.pivot_x, scene_y - self.pivot_y)
+        scene_pos: QPointF = parent_pivot + offset - QPointF(self.pivot_x, self.pivot_y)
+        self.setPos(scene_pos)
         self.setRotation(parent_rotation + self.local_rotation)
         self.update_handle_positions()
         for child in self.children:
