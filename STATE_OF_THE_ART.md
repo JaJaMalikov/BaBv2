@@ -148,6 +148,9 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
   pour créer modèle, scène et `ObjectManager` avant tout autre élément.
   L'ordre d'appel des méthodes `_setup_*` est documenté et exécuté via une
   liste de hooks pour clarifier le démarrage.
+- Refactor Overlays : extraction de la logique de repli dans `_set_overlay_collapsed`,
+  assurant l'échange d'icône, la visibilité des boutons et la conservation de la
+  position latérale des panneaux.
 
 ## État actuel et prochaines étapes possibles
 

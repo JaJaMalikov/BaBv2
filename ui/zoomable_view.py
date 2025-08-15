@@ -296,36 +296,47 @@ class ZoomableView(QGraphicsView):
         visible = s.value("ui/menu/custom/visible")
         self._custom_tools_overlay.setVisible(visible in [True, 'true', '1'])
 
-    def toggle_overlay_collapse(self, checked: bool) -> None:
-        icon: QIcon = icon_close_menu() if checked else icon_open_menu()
-        self.collapse_btn.setIcon(icon)
-        for w in self.tool_widgets:
-            w.setVisible(checked)
-        self._overlay.adjustSize()
-
-    def toggle_main_tools_collapse(self, checked: bool) -> None:
-        icon: QIcon = icon_close_menu_inv() if checked else icon_open_menu()
-        self.main_collapse_btn.setIcon(icon)
-
-        overlay = getattr(self, "_main_tools_overlay", None)
-        if not overlay:
+    def _set_overlay_collapsed(
+        self,
+        overlay: Optional[DraggableOverlay],
+        buttons: List[QWidget],
+        collapse_btn: QToolButton,
+        checked: bool,
+    ) -> None:
+        """Shared logic for collapsing overlays."""
+        if overlay is None:
             return
+
+        # Determine which icon to use for the collapse button
+        if collapse_btn is getattr(self, "main_collapse_btn", None):
+            collapse_btn.setIcon(icon_close_menu_inv() if checked else icon_open_menu())
+        else:
+            collapse_btn.setIcon(icon_close_menu() if checked else icon_open_menu())
 
         # Store the position of the right edge before resizing
         old_right_x = overlay.geometry().right()
 
         # Hide/show the tool buttons
-        for w in getattr(self, "main_tool_buttons", []):
+        for w in buttons:
             w.setVisible(checked)
 
         # Adjust the overlay's size to fit the new content
         overlay.adjustSize()
 
-        # Calculate the new top-left x-position to keep the right edge stationary
-        new_x = old_right_x - overlay.width()
+        # Keep the right edge stationary for the main tools overlay
+        if overlay is getattr(self, "_main_tools_overlay", None):
+            new_x = old_right_x - overlay.width()
+            overlay.move(new_x, overlay.y())
 
-        # Move the overlay to the new position
-        overlay.move(new_x, overlay.y())
+    def toggle_overlay_collapse(self, checked: bool) -> None:
+        self._set_overlay_collapsed(self._overlay, self.tool_widgets, self.collapse_btn, checked)
+
+    def toggle_main_tools_collapse(self, checked: bool) -> None:
+        overlay = getattr(self, "_main_tools_overlay", None)
+        if not overlay:
+            return
+        buttons = getattr(self, "main_tool_buttons", [])
+        self._set_overlay_collapsed(overlay, buttons, self.main_collapse_btn, checked)
 
     # Removed zoom label (cleaner overlay)
 
