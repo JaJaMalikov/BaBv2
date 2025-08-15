@@ -1,5 +1,5 @@
+from ui.scene import SceneController
 """Tests for the SceneController class."""
-
 
 import pytest
 from PySide6.QtWidgets import QApplication
@@ -19,6 +19,7 @@ def app():
 def test_set_scene_size_updates_model_and_scene(_app):
     """Test that setting the scene size updates the model and the scene."""
     win = MainWindow()
+    assert isinstance(win.scene_controller, SceneController)
     win.scene_controller.set_scene_size(800, 600)
     assert win.scene_model.scene_width == 800
     assert win.scene_model.scene_height == 600
