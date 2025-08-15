@@ -1,87 +1,18 @@
 """Static puppet data structures and SVG-driven hierarchy building.
 
-This module defines Puppet, PuppetMember and default maps used to construct
-the puppet hierarchy from an SVG file (groups and pivots).
+This module defines Puppet, PuppetMember and utility helpers used to build
+the puppet hierarchy from an SVG file. The hierarchy, pivot and z-order data
+are stored externally in ``puppet_config.json`` and loaded at runtime.
 """
 
 from typing import Dict, List, Optional, Tuple
-from core.svg_loader import SvgLoader
+from pathlib import Path
+import json
 import logging
 
+from core.svg_loader import SvgLoader
+
 logger = logging.getLogger(__name__)
-
-
-PARENT_MAP: Dict[str, Optional[str]] = {
-    "torse": None,
-    "cou": "torse",
-    "tete": "cou",
-    "epaule_droite": "torse",
-    "haut_bras_droite": "epaule_droite",
-    "coude_droite": "haut_bras_droite",
-    "avant_bras_droite": "coude_droite",
-    "poignet_droite": "avant_bras_droite",
-    "main_droite": "poignet_droite",
-    "epaule_gauche": "torse",
-    "haut_bras_gauche": "epaule_gauche",
-    "coude_gauche": "haut_bras_gauche",
-    "avant_bras_gauche": "coude_gauche",
-    "poignet_gauche": "avant_bras_gauche",
-    "main_gauche": "poignet_gauche",
-    "hanche_droite": "torse",
-    "cuisse_droite": "hanche_droite",
-    "genou_droite": "cuisse_droite",
-    "tibia_droite": "genou_droite",
-    "cheville_droite": "tibia_droite",
-    "pied_droite": "cheville_droite",
-    "hanche_gauche": "torse",
-    "cuisse_gauche": "hanche_gauche",
-    "genou_gauche": "cuisse_gauche",
-    "tibia_gauche": "cuisse_gauche",
-    "cheville_gauche": "tibia_gauche",
-    "pied_gauche": "cheville_gauche",
-}
-
-PIVOT_MAP: Dict[str, str] = {
-    "tete": "cou",
-    "haut_bras_droite": "epaule_droite",
-    "avant_bras_droite": "coude_droite",
-    "haut_bras_gauche": "epaule_gauche",
-    "avant_bras_gauche": "coude_gauche",
-    "cuisse_droite": "hanche_droite",
-    "tibia_droite": "genou_droite",
-    "cuisse_gauche": "hanche_gauche",
-    "tibia_gauche": "genou_gauche",
-    "main_droite": "poignet_droite",
-    "main_gauche": "poignet_gauche",
-    "pied_droite": "cheville_droite",
-    "pied_gauche": "cheville_gauche"
-}
-
-Z_ORDER: Dict[str, int] = {
-    "torse": 0,  
-    "cou": 0,
-    "tete": 1,
-    "epaule_droite": 0,
-    "haut_bras_droite": 2,
-    "coude_droite": 0,
-    "avant_bras_droite": 3,
-    "main_droite": 2,
-    "epaule_gauche": 0,
-    "haut_bras_gauche": 2,
-    "coude_gauche": 0,
-    "avant_bras_gauche": 3,
-    "main_gauche": 2,
-    "hanche_droite": 0,
-    "cuisse_droite": -1,
-    "genou_droite": 0,
-    "tibia_droite": 1,
-    "pied_droite": 2,
-    "hanche_gauche": 0,
-    "cuisse_gauche": -1,
-    "genou_gauche": 0,
-    "tibia_gauche": 1,
-    "pied_gauche": 2,
-}
 
 
 def compute_child_map(parent_map: Dict[str, Optional[str]]) -> Dict[str, List[str]]:
@@ -91,9 +22,6 @@ def compute_child_map(parent_map: Dict[str, Optional[str]]) -> Dict[str, List[st
         if parent:
             child_map.setdefault(parent, []).append(child)
     return child_map
-
-
-CHILD_MAP = compute_child_map(PARENT_MAP)
 
 # Mapping d'exception possible pour certains segments (ex : "torse" → "cou")
 HANDLE_EXCEPTION = {
@@ -136,24 +64,43 @@ class PuppetMember:
 class Puppet:
     """In-memory puppet composed of PuppetMember nodes built from an SVG file."""
 
-    def __init__(self) -> None:
-        """Create an empty puppet ready to be populated from an SVG."""
+    def __init__(self, config_path: Optional[str | Path] = None) -> None:
+        """Create an empty puppet and load configuration from JSON."""
         self.members: Dict[str, PuppetMember] = {}
+        self.parent_map: Dict[str, Optional[str]] = {}
+        self.pivot_map: Dict[str, str] = {}
+        self.z_order_map: Dict[str, int] = {}
         self.child_map: Dict[str, List[str]] = {}
 
-    def build_from_svg(self, svg_loader: 'SvgLoader', parent_map: Dict[str, Optional[str]], pivot_map: Optional[Dict[str, str]] = None, z_order_map: Optional[Dict[str, int]] = None) -> None:
-        """Populate members from an SVG using provided maps for hierarchy/pivots/z-order."""
-        self.child_map = compute_child_map(parent_map)
+        cfg_path = Path(config_path) if config_path else Path(__file__).with_name("puppet_config.json")
+        try:
+            with cfg_path.open("r", encoding="utf-8") as fh:
+                data = json.load(fh)
+        except FileNotFoundError:
+            logger.error("Puppet config file not found: %s", cfg_path)
+            data = {}
+        except json.JSONDecodeError:
+            logger.error("Invalid puppet config JSON: %s", cfg_path)
+            data = {}
+
+        self.parent_map = data.get("parent", {})
+        self.pivot_map = data.get("pivot", {})
+        self.z_order_map = data.get("z_order", {})
+        self.child_map = compute_child_map(self.parent_map)
+
+    def build_from_svg(self, svg_loader: 'SvgLoader') -> None:
+        """Populate members from an SVG using the loaded configuration."""
         groups = svg_loader.get_groups()
         for group_id in groups:
-            if group_id not in parent_map:
+            if group_id not in self.parent_map:
                 continue
             bbox = svg_loader.get_group_bounding_box(group_id) or (0.0, 0.0, 0.0, 0.0)
-            pivot_group = pivot_map[group_id] if pivot_map and group_id in pivot_map else group_id
+            pivot_group = self.pivot_map.get(group_id, group_id)
             pivot = svg_loader.get_pivot(pivot_group)
-            z_order = z_order_map.get(group_id, 0) if z_order_map else 0
+            z_order = self.z_order_map.get(group_id, 0)
             self.members[group_id] = PuppetMember(group_id, None, pivot, bbox, z_order)
-        for child, parent in parent_map.items():
+
+        for child, parent in self.parent_map.items():
             child_member = self.members.get(child)
             parent_member = self.members.get(parent) if parent else None
             if child_member and parent_member:
@@ -220,9 +167,9 @@ def main() -> None:
     """Run a quick validation and print the puppet hierarchy for debugging."""
     svg_path: str = "assets/manululu.svg"
     loader: SvgLoader = SvgLoader(svg_path)
-    validate_svg_structure(loader, PARENT_MAP, PIVOT_MAP)
     puppet: Puppet = Puppet()
-    puppet.build_from_svg(loader, PARENT_MAP, PIVOT_MAP, Z_ORDER)
+    validate_svg_structure(loader, puppet.parent_map, puppet.pivot_map)
+    puppet.build_from_svg(loader)
     logger.info("Hiérarchie des membres (z-order inclus) :")
     puppet.print_hierarchy()
 

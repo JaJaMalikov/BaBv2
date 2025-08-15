@@ -7,10 +7,9 @@ import pytest
 import sys
 from pathlib import Path
 
-from core.puppet_model import Z_ORDER
-from ui.main_window import MainWindow
-
 sys.path.append(str(Path(__file__).resolve().parents[1]))
+
+from ui.main_window import MainWindow
 
 @pytest.fixture(scope="module")
 def app():
@@ -48,7 +47,8 @@ def test_hierarchy_and_pivot(app):
     assert elbow_pos_after.y() == pytest.approx(forearm_pos_after.y())
 
     # L'ordre d'affichage reste celui défini manuellement
-    assert upper.zValue() == Z_ORDER.get("haut_bras_droite", -1)
+    puppet = window.scene_model.puppets["manu"]
+    assert upper.zValue() == puppet.z_order_map.get("haut_bras_droite", -1)
 
 
 def test_puppet_translation(app):

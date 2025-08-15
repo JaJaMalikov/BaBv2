@@ -15,7 +15,7 @@ from PySide6.QtCore import QPointF
 from PySide6.QtWidgets import QGraphicsItem, QGraphicsScene
 from PySide6.QtSvg import QSvgRenderer
 
-from core.puppet_model import PARENT_MAP, PIVOT_MAP, Z_ORDER, Puppet, PuppetMember
+from core.puppet_model import Puppet, PuppetMember
 from core.puppet_piece import PuppetPiece
 from core.scene_model import Keyframe, SceneObject, SceneModel
 from core.svg_loader import SvgLoader
@@ -91,7 +91,7 @@ class SceneController:
         loader: SvgLoader = SvgLoader(file_path)
         renderer: QSvgRenderer = loader.renderer
         self.win.object_manager.renderers[puppet_name] = renderer
-        puppet.build_from_svg(loader, PARENT_MAP, PIVOT_MAP, Z_ORDER)
+        puppet.build_from_svg(loader)
         self.win.scene_model.add_puppet(puppet_name, puppet)
         self.win.object_manager.puppet_scales[puppet_name] = 1.0
         self.win.object_manager.puppet_paths[puppet_name] = file_path

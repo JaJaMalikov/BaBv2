@@ -37,7 +37,7 @@ The application follows a Model-View-Controller-like pattern:
 ## Development Conventions
 
 - **Project Structure:** Code is organized into a `core` directory for business logic, a `ui` directory for graphical components, and a `tests` directory for unit tests. Maintain this separation.
-- **Puppet Definition:** Puppets are defined from layers in an SVG file. The hierarchy, pivot points, and Z-order are manually defined in dictionaries within `core/puppet_model.py` (`PARENT_MAP`, `PIVOT_MAP`, `Z_ORDER`). To add a new puppet, its parts must be added to these maps.
+- **Puppet Definition:** Puppets are defined from layers in an SVG file. The hierarchy, pivot points and Z-order are stored in `core/puppet_config.json` and loaded by `core/puppet_model.py`. To add a new puppet, update this configuration file.
 - **Data Persistence:** The animation scene, including all keyframes and timeline settings (FPS, start/end frames), is serialized to a JSON file via the `SceneModel`.
 - **UI Styling:** The UI is styled using `qt-material`. Changes should be tested against this styling.
 - **User Preferences:** The user handles running the development server themselves. Do not execute commands like `npm run dev` or similar.

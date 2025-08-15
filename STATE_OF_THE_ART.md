@@ -80,6 +80,7 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
 
 ## Mises à jour récentes
 
+- Externalisation de la configuration des marionnettes : hiérarchie, pivots et z-order sont désormais définis dans `core/puppet_config.json` et chargés dynamiquement par `Puppet`.
 - Correction du chargement JSON: `SceneModel.import_json` peuple désormais correctement le modèle via `from_dict` et retourne un booléen de succès.
 - Nettoyage: suppression de code inatteignable dans `SceneModel.import_json` et sécurisation de `ui/object_item.py` pour éviter une référence potentiellement non définie dans les logs.
 - Logging renforcé: remplacement des `print` par `logging` dans `ui/scene_io.py` (sauvegarde/chargement) et `core/svg_loader.py` (export de groupe), avec gestion plus précise des exceptions et messages contextualisés. Ajout de logs non intrusifs (niveau debug/warning) dans `ui/main_window.py`, `ui/library_widget.py`, `ui/inspector_widget.py`, `ui/draggable_widget.py`, `ui/object_manager.py` et `ui/icons.py` pour éviter les silences en cas d'erreurs non critiques.
