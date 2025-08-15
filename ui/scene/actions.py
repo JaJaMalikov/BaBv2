@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
+import logging
 from PySide6.QtWidgets import QFileDialog, QInputDialog
 
 from . import scene_io
@@ -53,7 +54,8 @@ def set_scene_size(win) -> None:
     # Déléguer au SceneController pour centraliser la logique
     try:
         win.scene_controller.set_scene_size(int(width), int(height))
-    except Exception:
+    except (AttributeError, TypeError) as exc:
+        logging.exception("SceneController set_scene_size failed")
         # Fallback en cas d'indisponibilité (sécurité)
         win.scene_model.scene_width = int(width)
         win.scene_model.scene_height = int(height)

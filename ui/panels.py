@@ -81,8 +81,8 @@ def position_overlays(win) -> None:
             if insp_size:
                 insp_w = int(insp_size.width()) if hasattr(insp_size, 'width') else int(insp_size[0])
                 insp_h = int(insp_size.height()) if hasattr(insp_size, 'height') else int(insp_size[1])
-        except Exception:
-            pass
+        except (TypeError, ValueError, AttributeError):
+            logging.exception("Failed to read default overlay sizes")
         if lib_pos and hasattr(lib_pos, 'x'):
             win.library_overlay.setGeometry(int(lib_pos.x()), int(lib_pos.y()), lib_w, lib_h)
         else:
@@ -106,5 +106,5 @@ def position_overlays(win) -> None:
             mov.adjustSize()
             mov.move(max(left_bound, right_bound - mov.width()), margin)
             mov.raise_()
-    except Exception as e:
+    except RuntimeError as e:
         logging.debug("Overlay positioning skipped: %s", e)

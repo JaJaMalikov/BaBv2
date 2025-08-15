@@ -110,8 +110,8 @@ class SceneController:
                 member = puppet.members[name]
                 try:
                     piece.setZValue(member.z_order + zoff)
-                except Exception:
-                    pass
+                except (RuntimeError, TypeError) as exc:
+                    logging.exception("Failed to set Z value for %s", name)
 
     def scale_puppet(self, puppet_name: str, ratio: float) -> None:
         """Scales a puppet by a given ratio."""
@@ -199,8 +199,8 @@ class SceneController:
             if piece:
                 try:
                     piece.setZValue(member.z_order + int(offset))
-                except Exception:
-                    pass
+                except (RuntimeError, TypeError) as exc:
+                    logging.exception("Failed to apply Z offset for %s", member_name)
 
     def delete_object(self, name: str) -> None:
         """Deletes an object from the scene."""
@@ -246,7 +246,7 @@ class SceneController:
         # setZValue should not typically fail, but adding a check for robustness
         try:
             item.setZValue(getattr(obj, 'z', 0))
-        except Exception as e:
+        except RuntimeError as e:
             logging.error(f"Error setting Z-value for {obj.name}: {e}")
         item.setFlag(QGraphicsItem.ItemIsMovable, True)
         item.setFlag(QGraphicsItem.ItemIsSelectable, True)
@@ -289,8 +289,8 @@ class SceneController:
                 # Prefer uniform scaling: pick average
                 lscale = (lx + ly) * 0.5 if ly > 0 else lx
                 item.setScale(lscale)
-            except Exception:
-                pass
+            except (RuntimeError, ZeroDivisionError, AttributeError):
+                logging.exception("Failed to adjust item transform during attach")
             local_pt: QPointF = parent_piece.mapFromScene(scene_pt)
             item.setPos(local_pt - item.transformOriginPoint())
         finally:
@@ -303,7 +303,7 @@ class SceneController:
             obj.rotation = float(item.rotation())
             obj.scale = float(item.scale())
             obj.z = int(item.zValue())
-        except Exception as e:
+        except RuntimeError as e:
             logging.debug("Failed to read item transform on attach for '%s': %s", obj_name, e)
         cur_idx = self.win.scene_model.current_frame
         if cur_idx not in self.win.scene_model.keyframes:
@@ -343,7 +343,7 @@ class SceneController:
                                 st['x'] = local_x
                                 st['y'] = local_y
                                 kf.objects[obj_name] = st
-            except Exception as e:
+            except (KeyError, TypeError, ValueError) as e:
                 logging.debug("While patching legacy keyframes for '%s': %s", obj_name, e)
         # Bake world rotation/scale/z to avoid visual jump on detach
         from math import atan2, degrees, sqrt
@@ -363,12 +363,12 @@ class SceneController:
                 lscale = (world_sx + world_sy) * 0.5
                 item.setScale(lscale)
                 item.setRotation(world_rot)
-            except Exception:
-                pass
+            except (RuntimeError, AttributeError):
+                logging.exception("Failed to adjust transform during detach")
             try:
                 item.setZValue(float(item.zValue()) + float(parent_z))
-            except Exception:
-                pass
+            except (RuntimeError, TypeError, ValueError):
+                logging.exception("Failed to adjust Z during detach")
             item.setPos(scene_pt - item.transformOriginPoint())
         finally:
             self.win._suspend_item_updates = False
@@ -380,7 +380,7 @@ class SceneController:
             obj.rotation = float(item.rotation())
             obj.scale = float(item.scale())
             obj.z = int(item.zValue())
-        except Exception as e:
+        except RuntimeError as e:
             logging.debug("Failed to read item transform on detach for '%s': %s", obj_name, e)
         cur_idx = self.win.scene_model.current_frame
         if cur_idx not in self.win.scene_model.keyframes:
@@ -449,7 +449,7 @@ class SceneController:
                             puppet_name, member_name = key.split(":", 1)
                             attached_to = (puppet_name, member_name)
                             break
-                        except Exception as e:
+                        except ValueError as e:
                             logging.debug("Parsing puppet/member from key '%s' failed: %s", key, e)
             state: Dict[str, Any] = obj.to_dict()
             try:
@@ -458,7 +458,7 @@ class SceneController:
                 state["rotation"] = float(gi.rotation())
                 state["scale"] = float(gi.scale())
                 state["z"] = int(gi.zValue())
-            except Exception as e:
+            except RuntimeError as e:
                 logging.debug("Reading graphics item state for '%s' failed: %s", name, e)
             state["attached_to"] = attached_to
             kf.objects[name] = state
@@ -485,7 +485,8 @@ class SceneController:
         if kind == 'background':
             try:
                 self.set_background_path(path)
-            except Exception:
+            except (OSError, RuntimeError) as exc:
+                logging.exception("Failed to set background path")
                 # Fallback for older code paths
                 self.win.scene_model.background_path = path
                 self.win._update_background()
@@ -501,7 +502,7 @@ class SceneController:
                     root_piece: Optional[PuppetPiece] = self.win.object_manager.graphics_items.get(f"{name}:{root_member_name}")
                     if root_piece:
                         root_piece.setPos(scene_pos.x(), scene_pos.y())
-                except Exception as e:
+                except (KeyError, AttributeError, RuntimeError) as e:
                     logging.error(f"Positioning puppet failed: {e}")
         else:
             logging.error(f"Unknown library kind: {kind}")
@@ -537,8 +538,8 @@ class SceneController:
         self.win.zoom_factor *= factor
         try:
             self.win._update_zoom_status()
-        except Exception:
-            pass
+        except (RuntimeError, AttributeError):
+            logging.exception("Failed to update zoom status")
 
     # --- Délégations onion skin ---
     def set_onion_enabled(self, enabled: bool) -> None:
@@ -561,8 +562,8 @@ class SceneController:
                 item.set_handle_visibility(visible)
         try:
             self.win.view.handles_btn.setChecked(visible)
-        except Exception:
-            pass
+        except (RuntimeError, AttributeError):
+            logging.exception("Failed to sync handles button state")
 
     # --- Application d'états (keyframes) ---
     def apply_puppet_states(self, graphics_items: Dict[str, Any], keyframes: Dict[int, Any], index: int) -> None:
@@ -587,5 +588,5 @@ class SceneController:
         self.update_background()
         try:
             self.win._update_zoom_status()
-        except Exception:
-            pass
+        except (RuntimeError, AttributeError):
+            logging.exception("Failed to update zoom status after scene resize")

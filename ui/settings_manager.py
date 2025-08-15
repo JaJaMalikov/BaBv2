@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
+import logging
 from PySide6.QtCore import QSettings, QSize, QPoint
 from PySide6.QtWidgets import QApplication
 
@@ -74,16 +75,16 @@ class SettingsManager:
         if icon_dir:
             try:
                 dlg.icon_dir_edit.setText(str(icon_dir))
-            except Exception:
-                pass
+            except (RuntimeError, AttributeError):
+                logging.exception("Failed to set icon directory text")
         dlg.icon_size_spin.setValue(int(s.value("ui/icon_size", 32)))
         theme = str(s.value("ui/theme", "light"))
         try:
             presets_map = { 'light':'Light', 'dark':'Dark', 'custom':'Custom' }
             dlg.preset_combo.setCurrentText(presets_map.get(theme, 'Light'))
             dlg._load_preset_values(dlg.preset_combo.currentText())
-        except Exception:
-            pass
+        except (RuntimeError, AttributeError) as e:
+            logging.exception("Failed to load preset values")
         # Default sizes from current overlays
         try:
             dlg.lib_w.setValue(win.library_overlay.width())
@@ -101,8 +102,8 @@ class SettingsManager:
                 dlg.cust_y.setValue(cust.y())
                 dlg.cust_w.setValue(cust.width())
                 dlg.cust_h.setValue(cust.height())
-        except Exception:
-            pass
+        except (RuntimeError, AttributeError):
+            logging.exception("Failed to load default overlay sizes")
 
         # Menu builder defaults
         def getb(key: str, default: bool = True) -> bool:
@@ -130,8 +131,8 @@ class SettingsManager:
             dlg.populate_icon_list(dlg.list_main_order, main_order, main_vis, dlg._main_specs)
             dlg.populate_icon_list(dlg.list_quick_order, quick_order, quick_vis, dlg._quick_specs)
             dlg.populate_icon_list(dlg.list_custom_order, custom_order, custom_vis, dlg._custom_specs)
-        except Exception:
-            pass
+        except (RuntimeError, AttributeError):
+            logging.exception("Failed to populate icon lists")
 
         # Onion values
         try:
@@ -139,8 +140,8 @@ class SettingsManager:
             dlg.next_count.setValue(int(s.value("onion/next_count", 1)))
             dlg.opacity_prev.setValue(float(s.value("onion/opacity_prev", 0.25)))
             dlg.opacity_next.setValue(float(s.value("onion/opacity_next", 0.18)))
-        except Exception:
-            pass
+        except (ValueError, TypeError) as e:
+            logging.exception("Failed to load onion settings")
 
         if dlg.exec() == SettingsDialog.Accepted:
             # UI: icon directory and default overlay sizes
@@ -165,8 +166,8 @@ class SettingsManager:
                         'font_size': dlg.font_spin.value(),
                     })
                     s.setValue('ui/custom_stylesheet', css)
-                except Exception:
-                    pass
+                except (RuntimeError, ImportError, ValueError):
+                    logging.exception("Failed to build custom stylesheet")
             # Default sizes/positions
             s.setValue("ui/default/library_size", QSize(max(150, dlg.lib_w.value()), max(150, dlg.lib_h.value())))
             s.setValue("ui/default/inspector_size", QSize(max(150, dlg.insp_w.value()), max(150, dlg.insp_h.value())))
@@ -186,8 +187,8 @@ class SettingsManager:
                 if cust is not None:
                     cust.resize(max(100, dlg.cust_w.value()), max(60, dlg.cust_h.value()))
                     cust.move(max(0, dlg.cust_x.value()), max(0, dlg.cust_y.value()))
-            except Exception:
-                pass
+            except (RuntimeError, AttributeError):
+                logging.exception("Failed to apply overlay geometry")
 
             # Custom overlay visibility
             s.setValue("ui/menu/custom/visible", dlg.cb_custom_visible.isChecked())
@@ -214,8 +215,8 @@ class SettingsManager:
                 win.onion.opacity_prev = float(dlg.opacity_prev.value())
                 win.onion.opacity_next = float(dlg.opacity_next.value())
                 win.update_onion_skins()
-            except Exception:
-                pass
+            except (RuntimeError, ValueError) as e:
+                logging.exception("Failed to apply onion settings")
 
             # Refresh icons everywhere
             try:
@@ -235,14 +236,14 @@ class SettingsManager:
                 win.view.apply_menu_settings_quick()
                 try:
                     win.view._build_custom_tools_overlay(win)
-                except Exception:
-                    pass
+                except RuntimeError:
+                    logging.exception("Failed to build custom tools overlay")
                 win.set_custom_overlay_visible(bool(s.value("ui/menu/custom/visible") in [True,'true','1']))
-            except Exception:
-                pass
+            except (RuntimeError, ImportError, AttributeError):
+                logging.exception("Failed to refresh icons globally")
 
             # Apply theme immediately
             try:
                 apply_stylesheet(QApplication.instance())
-            except Exception:
-                pass
+            except (RuntimeError, ImportError):
+                logging.exception("Failed to apply stylesheet immediately")

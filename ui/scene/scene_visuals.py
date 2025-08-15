@@ -58,6 +58,6 @@ class SceneVisuals:
             self.win.ensure_fit()
         except FileNotFoundError as e:
             logging.error("Failed to load background image: %s", e)
-        except Exception as e:
-            logging.error("Unexpected error while updating background: %s", e)
+        except (OSError, RuntimeError, ValueError):
+            logging.exception("Unexpected error while updating background")
 

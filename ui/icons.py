@@ -38,7 +38,8 @@ def _create_icon(name: str) -> QIcon:
         s = QSettings("JaJa", "Macronotron")
         override_path = s.value(f"ui/icon_override/{name}")
         icon_dir_override = s.value("ui/icon_dir")
-    except Exception:
+    except (RuntimeError, ValueError) as e:
+        logging.exception("Failed to read icon overrides")
         override_path = None
         icon_dir_override = None
 
@@ -69,7 +70,7 @@ def _create_icon(name: str) -> QIcon:
                     icon = QIcon(pix)
                     ICON_CACHE[name] = icon
                     return icon
-            except Exception as e:
+            except (OSError, ValueError, RuntimeError) as e:
                 logging.warning("Failed loading override for %s: %s", name, e)
 
     # Otherwise, locate in override directory or default assets (SVG expected)

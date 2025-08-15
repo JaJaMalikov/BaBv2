@@ -268,7 +268,8 @@ def apply_stylesheet(app):
                 except RuntimeError:
                     logging.warning("Poppins font not found, using system default.")
                 return
-    except Exception:
+    except (RuntimeError, ValueError) as exc:
+        logging.exception("Failed to read theme from settings")
         theme = "light"
     css = STYLE_SHEET_DARK if theme == "dark" else STYLE_SHEET_LIGHT
     app.setStyleSheet(css)

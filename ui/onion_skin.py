@@ -54,7 +54,7 @@ class OnionSkinManager:
             try:
                 if it and it.parentItem() is None and it.scene() is self.win.scene:
                     self.win.scene.removeItem(it)
-            except Exception as e:
+            except RuntimeError as e:
                 logging.debug("Failed removing onion item: %s", e)
         self._onion_items.clear()
 
@@ -214,7 +214,7 @@ class OnionSkinManager:
                             item.setPos(st.get('x', getattr(base_obj, 'x', 0.0)), st.get('y', getattr(base_obj, 'y', 0.0)))
                             self.win.scene.addItem(item)
                             self._onion_items.append(item)
-                    except Exception as e:
+                    except (RuntimeError, AttributeError, KeyError) as e:
                         logging.error("Onion attach failed for object %s: %s", name, e)
                 else:
                     # Free object in world coordinates
@@ -224,5 +224,5 @@ class OnionSkinManager:
                     item.setPos(st.get('x', getattr(base_obj, 'x', 0.0)), st.get('y', getattr(base_obj, 'y', 0.0)))
                     self.win.scene.addItem(item)
                     self._onion_items.append(item)
-            except Exception as e:
+            except (RuntimeError, OSError, KeyError) as e:
                 logging.error("Onion object clone failed for %s: %s", name, e)

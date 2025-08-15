@@ -52,7 +52,7 @@ class _ObjectItemMixin:
                     # Sync selection with inspector
                     if change == QGraphicsItem.ItemSelectedHasChanged and bool(value):
                         mw.select_object_in_inspector(name)
-            except Exception as e:
+            except RuntimeError as e:
                 logging.error(f"Error in itemChange for {name}: {e}")
         return super().itemChange(change, value)
 

@@ -35,7 +35,7 @@ def export_scene(win: 'MainWindow', file_path: str) -> None:
     if cur in win.scene_model.keyframes:
         try:
             win.object_manager.snapshot_current_frame()
-        except Exception as e:
+        except RuntimeError as e:
             logging.debug("Snapshot on export failed: %s", e)
 
     puppets_data: Dict[str, Dict[str, Any]] = {}
@@ -95,19 +95,19 @@ def import_scene(win: MainWindow, file_path: str):
                     rot = float(p_data.get("rotation", 0.0))
                     if abs(rot) > 1e-9:
                         win.scene_controller.set_puppet_rotation(name, rot)
-                except Exception:
-                    pass
+                except (TypeError, ValueError):
+                    logging.exception("Invalid rotation value in puppets_data")
                 try:
                     zoff = int(p_data.get("z_offset", 0))
                     if zoff:
                         win.scene_controller.set_puppet_z_offset(name, zoff)
-                except Exception:
-                    pass
+                except (TypeError, ValueError):
+                    logging.exception("Invalid z_offset value in puppets_data")
 
         for obj in win.scene_model.objects.values():
             try:
                 win.scene_controller._add_object_graphics(obj)
-            except Exception as e:
+            except RuntimeError as e:
                 logging.error("Failed to create graphics for '%s': %s", getattr(obj, 'name', '?'), e)
 
         win.timeline_widget.clear_keyframes()
@@ -118,7 +118,8 @@ def import_scene(win: MainWindow, file_path: str):
         win.scene.setSceneRect(0, 0, win.scene_model.scene_width, win.scene_model.scene_height)
         try:
             win.scene_controller.update_background()
-        except Exception:
+        except RuntimeError:
+            logging.exception("Scene controller background update failed, using fallback")
             win._update_background()
         win.timeline_widget.set_current_frame(win.scene_model.start_frame)
         win.inspector_widget.refresh()
@@ -130,7 +131,7 @@ def import_scene(win: MainWindow, file_path: str):
     except (OSError, json.JSONDecodeError) as e:
         logging.error("Failed to load scene '%s': %s", file_path, e)
         create_blank_scene(win, add_default_puppet=False)
-    except Exception:
+    except (RuntimeError, AttributeError, ValueError):
         # Log full traceback for unexpected errors
         logging.exception("Unexpected error while loading scene '%s'", file_path)
         create_blank_scene(win, add_default_puppet=False)
