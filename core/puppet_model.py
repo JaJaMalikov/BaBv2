@@ -6,6 +6,9 @@ the puppet hierarchy from an SVG file (groups and pivots).
 
 from typing import Dict, List, Optional, Tuple
 from core.svg_loader import SvgLoader
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 PARENT_MAP: Dict[str, Optional[str]] = {
@@ -184,7 +187,7 @@ class Puppet:
             for root in self.get_root_members():
                 self.print_hierarchy(root, indent)
         else:
-            print(f"{indent}- {member.name} (pivot={member.pivot} z={member.z_order})")
+            logger.info(f"{indent}- {member.name} (pivot={member.pivot} z={member.z_order})")
             for child in member.children:
                 self.print_hierarchy(child, indent + "  ")
 
@@ -199,18 +202,18 @@ def validate_svg_structure(svg_loader: 'SvgLoader', parent_map: Dict[str, Option
     extra_in_svg: set[str] = groups_in_svg - groups_in_map
     pivots_missing: set[str] = pivots_in_map - groups_in_svg
 
-    print("\n--- Audit Structure SVG ---")
+    logger.info("\n--- Audit Structure SVG ---")
     if missing_in_svg:
-        print("❌ Groupes définis dans parent_map absents du SVG :", missing_in_svg)
+        logger.warning("❌ Groupes définis dans parent_map absents du SVG : %s", missing_in_svg)
     else:
-        print("✅ Tous les groupes du parent_map existent dans le SVG.")
+        logger.info("✅ Tous les groupes du parent_map existent dans le SVG.")
     if extra_in_svg:
-        print("⚠️ Groupes présents dans le SVG mais non utilisés dans parent_map :", extra_in_svg)
+        logger.warning("⚠️ Groupes présents dans le SVG mais non utilisés dans parent_map : %s", extra_in_svg)
     if pivots_missing:
-        print("❌ Pivots définis dans pivot_map absents du SVG :", pivots_missing)
+        logger.warning("❌ Pivots définis dans pivot_map absents du SVG : %s", pivots_missing)
     else:
-        print("✅ Tous les pivots du pivot_map existent dans le SVG.")
-    print("-----------------------------\n")
+        logger.info("✅ Tous les pivots du pivot_map existent dans le SVG.")
+    logger.info("-----------------------------\n")
 
 
 def main() -> None:
@@ -220,7 +223,7 @@ def main() -> None:
     validate_svg_structure(loader, PARENT_MAP, PIVOT_MAP)
     puppet: Puppet = Puppet()
     puppet.build_from_svg(loader, PARENT_MAP, PIVOT_MAP, Z_ORDER)
-    print("Hiérarchie des membres (z-order inclus) :")
+    logger.info("Hiérarchie des membres (z-order inclus) :")
     puppet.print_hierarchy()
 
 
