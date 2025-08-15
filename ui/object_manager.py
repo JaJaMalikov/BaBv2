@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Dict, Optional, Any
 
 from PySide6.QtWidgets import QGraphicsItem, QGraphicsScene # Added QGraphicsScene
 
-from core.scene_model import Keyframe, SceneModel
+from core.scene_model import SceneModel
 from core.puppet_piece import PuppetPiece
 
 if TYPE_CHECKING:
@@ -78,19 +78,18 @@ class ObjectManager:
                 states[name] = data
         return states
 
+    def capture_scene_state(self) -> Dict[str, Dict[str, Any]]:
+        """Capture both puppet and visible object states."""
+        return {
+            "puppets": self.capture_puppet_states(),
+            "objects": self.capture_visible_object_states(),
+        }
+
     def snapshot_current_frame(self) -> None:
         """Snapshots the current frame."""
         cur: int = self.scene_model.current_frame
-        puppet_states = self.capture_puppet_states()
-        obj_states = self.capture_visible_object_states()
-        kf: Optional[Keyframe] = self.scene_model.keyframes.get(cur)
-        if kf is None:
-            kf = Keyframe(cur)
-        kf.puppets = puppet_states
-        kf.objects = obj_states
-        self.scene_model.keyframes[cur] = kf
-        # Keep keyframes sorted
-        self.scene_model.keyframes = dict(sorted(self.scene_model.keyframes.items()))
+        state = self.capture_scene_state()
+        self.scene_model.add_keyframe(cur, state)
         # Ensure marker exists
         try:
             self.win.timeline_widget.add_keyframe_marker(cur)

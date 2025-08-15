@@ -130,6 +130,8 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
 - Centralisation des poignées de rotation: `SceneController.set_rotation_handles_visible` gère désormais l'affichage des poignées de rotation au lieu de `MainWindow`. Un test unitaire couvre également `SceneController.set_scene_size`.
 - **Centralisation de la logique de scène** : Les méthodes de manipulation de la scène (ajout/suppression/duplication d'objets et de marionnettes) ont été déplacées de `ObjectManager` vers `SceneController` pour une meilleure séparation des responsabilités. `ObjectManager` se concentre désormais sur la gestion des données des objets et des marionnettes, tandis que `SceneController` gère leur représentation et leur manipulation dans la scène.
 
+- Capture de scène unifiée : `ObjectManager` expose désormais `capture_scene_state`, permettant à `SceneModel.add_keyframe` de recevoir directement les états des objets et marionnettes sans dupliquer la logique de sérialisation.
+
 - Refactor `SceneObject` et `Keyframe` : conversion en `dataclasses` afin de simplifier l'initialisation et la sérialisation.
 
 ## État actuel et prochaines étapes possibles
