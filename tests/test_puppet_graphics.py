@@ -46,6 +46,8 @@ def test_hierarchy_and_pivot(app):
     forearm_pos_after = forearm.mapToScene(forearm.transformOriginPoint())
     assert elbow_pos_after.x() == pytest.approx(forearm_pos_after.x())
     assert elbow_pos_after.y() == pytest.approx(forearm_pos_after.y())
+    assert elbow.rotation() == pytest.approx(45)
+    assert forearm.rotation() == pytest.approx(45)
 
     # L'ordre d'affichage reste celui défini manuellement
     assert upper.zValue() == Z_ORDER.get("haut_bras_droite", -1)

@@ -137,6 +137,7 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
 
 - Renforcement du traitement d'erreurs : remplacement des `except Exception` génériques par des exceptions ciblées ou des journaux détaillés.
 - Typage renforcé : introduction de `MainWindowProtocol` pour documenter les attributs attendus par `SceneController` et éliminer l'usage de `Any`.
+- Calcul des transformations des membres : remplacement des trigonométries manuelles par `QTransform` pour composer rotation et translation des pantins.
 
 ## État actuel et prochaines étapes possibles
 
