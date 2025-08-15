@@ -7,6 +7,8 @@ are stored externally in ``puppet_config.json`` and loaded at runtime.
 
 from typing import Dict, List, Optional, Tuple
 from pathlib import Path
+from dataclasses import dataclass, field
+from collections import defaultdict
 import json
 import logging
 
@@ -15,12 +17,12 @@ from core.svg_loader import SvgLoader
 logger = logging.getLogger(__name__)
 
 
-def compute_child_map(parent_map: Dict[str, Optional[str]]) -> Dict[str, List[str]]:
+def compute_child_map(parent_map: Dict[str, Optional[str]]) -> defaultdict[str, List[str]]:
     """Compute reverse mapping: parent -> list of children."""
-    child_map: Dict[str, List[str]] = {}
+    child_map: defaultdict[str, List[str]] = defaultdict(list)
     for child, parent in parent_map.items():
         if parent:
-            child_map.setdefault(parent, []).append(child)
+            child_map[parent].append(child)
     return child_map
 
 # Mapping d'exception possible pour certains segments (ex : "torse" → "cou")
@@ -30,26 +32,17 @@ HANDLE_EXCEPTION = {
 }
 
 
+@dataclass
 class PuppetMember:
     """Node in the puppet hierarchy with pivot, bbox and z-order metadata."""
 
-    # pylint: disable=R0913, R0917
-    def __init__(
-        self,
-        name: str,
-        parent: Optional['PuppetMember'] = None,
-        pivot: Tuple[float, float] = (0.0, 0.0),
-        bbox: Tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0),
-        z_order: int = 0,
-    ) -> None:
-        """Initialize hierarchy node with pivot, bounding box and z-order."""
-        self.name: str = name
-        self.parent: Optional['PuppetMember'] = parent
-        self.children: List['PuppetMember'] = []
-        self.pivot: Tuple[float, float] = pivot
-        self.bbox: Tuple[float, float, float, float] = bbox
-        self.z_order: int = z_order
-        self.rel_pos: Tuple[float, float] = (0.0, 0.0)
+    name: str
+    parent: Optional['PuppetMember'] = None
+    pivot: Tuple[float, float] = (0.0, 0.0)
+    bbox: Tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0)
+    z_order: int = 0
+    rel_pos: Tuple[float, float] = (0.0, 0.0)
+    children: List['PuppetMember'] = field(default_factory=list)
 
     def add_child(self, child: 'PuppetMember') -> None:
         """Attach child and compute its relative offset from this node's pivot."""
@@ -90,7 +83,7 @@ class Puppet:
         self.parent_map = data.get("parent", {})
         self.pivot_map = data.get("pivot", {})
         self.z_order_map = data.get("z_order", {})
-        self.child_map = compute_child_map(self.parent_map)
+        self.child_map = dict(compute_child_map(self.parent_map))
 
     def build_from_svg(self, svg_loader: 'SvgLoader') -> None:
         """Populate members from an SVG using the loaded configuration."""
