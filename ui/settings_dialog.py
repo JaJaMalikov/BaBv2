@@ -3,31 +3,68 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional, Any
+from typing import Any, Optional
 
-from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QFormLayout, QDialogButtonBox, QSpinBox, QDoubleSpinBox, QHBoxLayout,
-    QLineEdit, QPushButton, QFileDialog, QGroupBox, QCheckBox, QTabWidget,
-    QListWidget, QListWidgetItem, QAbstractItemView, QScrollArea, QWidget,
-    QComboBox, QListView, QLabel, QSplitter, QToolButton, QColorDialog, QKeySequenceEdit
+from PySide6.QtCore import QRectF, QSettings, QSize, Qt
+from PySide6.QtGui import (
+    QAction,
+    QColor,
+    QIcon,
+    QKeySequence,
+    QPainter,
+    QPainterPath,
+    QPixmap,
 )
-from PySide6.QtCore import Qt, QSize, QRectF, QSettings
-from PySide6.QtGui import QIcon, QColor, QPainter, QPixmap, QPainterPath, QAction, QKeySequence
+from PySide6.QtWidgets import (
+    QAbstractItemView,
+    QCheckBox,
+    QColorDialog,
+    QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QDoubleSpinBox,
+    QFileDialog,
+    QFormLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QKeySequenceEdit,
+    QLabel,
+    QLineEdit,
+    QListView,
+    QListWidget,
+    QListWidgetItem,
+    QPushButton,
+    QScrollArea,
+    QSpinBox,
+    QSplitter,
+    QTabWidget,
+    QToolButton,
+    QVBoxLayout,
+    QWidget,
+)
 
-from ui.draggable_widget import PanelOverlay, DraggableHeader
+from ui.draggable_widget import DraggableHeader, PanelOverlay
 from ui.styles import build_stylesheet
 
-class IconStrip(QListWidget):
-    """Icon list that arranges items in 1 or 2 rows, with labels under icons.
 
-    rows: 0 -> auto (wrap by width), 1 -> single row, 2 -> exactly two rows.
-    """
+class IconStrip(QListWidget):
+    """Icon list that arranges items in 1 or 2 rows, with labels under icons."""
+
     def __init__(self, parent: Optional[QWidget] = None, rows: int = 0) -> None:  # type: ignore[name-defined]
+        """
+        Initializes the IconStrip widget.
+
+        Args:
+            parent: The parent widget.
+            rows: The number of fixed rows (0 for auto, 1 for single, 2 for double).
+        """
         super().__init__(parent)
         self._fixed_rows: int = max(0, min(2, rows))
         self.setViewMode(QListView.IconMode)
         # For fixed two rows, build columns vertically to guarantee 2 rows regardless of width.
-        self.setFlow(QListView.LeftToRight if self._fixed_rows == 1 else QListView.TopToBottom)
+        self.setFlow(
+            QListView.LeftToRight if self._fixed_rows == 1 else QListView.TopToBottom
+        )
         self.setWrapping(False)
         self.setMovement(QListView.Snap)
         self.setDragDropMode(QAbstractItemView.InternalMove)
@@ -37,20 +74,35 @@ class IconStrip(QListWidget):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setFrameShape(QListWidget.NoFrame)
         self.setSelectionMode(QAbstractItemView.NoSelection)
-        self.setStyleSheet("QListWidget{background:transparent;} QListWidget::item{margin:2px;}")
+        self.setStyleSheet(
+            "QListWidget{background:transparent;} QListWidget::item{margin:2px;}"
+        )
         # Initialize grid size for accurate layout
         self.setGridSize(self._cell_size())
 
     def resizeEvent(self, event):  # type: ignore[override]
+        """
+        Handles the resize event to adjust the height of the widget.
+
+        Args:
+            event: The resize event.
+        """
         super().resizeEvent(event)
         self._adjust_height()
 
     def setIconSize(self, size: QSize) -> None:  # type: ignore[override]
+        """
+        Sets the icon size and adjusts the grid size and height accordingly.
+
+        Args:
+            size: The new icon size.
+        """
         super().setIconSize(size)
         self.setGridSize(self._cell_size())
         self._adjust_height()
 
     def _cell_size(self) -> QSize:
+        """Calculates the size of a cell in the list view."""
         icon = self.iconSize()
         fm = self.fontMetrics()
         # Add generous padding so the label is never clipped
@@ -59,6 +111,7 @@ class IconStrip(QListWidget):
         return QSize(max(24, w), max(24, h))
 
     def _adjust_height(self) -> None:
+        """Adjusts the height of the widget based on the number of rows."""
         cell = self._cell_size()
         if self._fixed_rows == 1:
             rows = 1
@@ -66,7 +119,9 @@ class IconStrip(QListWidget):
             rows = 2
         else:
             viewport_w = max(1, self.viewport().width())
-            per_row = max(1, (viewport_w + self.spacing()) // (cell.width() + self.spacing()))
+            per_row = max(
+                1, (viewport_w + self.spacing()) // (cell.width() + self.spacing())
+            )
             count = max(1, self.count())
             rows = (count + per_row - 1) // per_row
         total_h = rows * cell.height() + max(0, rows - 1) * self.spacing() + 8
@@ -74,9 +129,15 @@ class IconStrip(QListWidget):
 
 
 class SettingsDialog(QDialog):
-    """Lightweight settings dialog to tweak common app parameters."""
+    """A dialog for managing application settings."""
 
     def __init__(self, parent: Optional[Any] = None) -> None:
+        """
+        Initializes the SettingsDialog.
+
+        Args:
+            parent: The parent widget.
+        """
         super().__init__(parent)
         self.setWindowTitle("Paramètres")
         self.setModal(True)
@@ -127,7 +188,9 @@ class SettingsDialog(QDialog):
         self.cust_y = QSpinBox()
         self.cust_w = QSpinBox()
         self.cust_h = QSpinBox()
-        for sp in (self.lib_x, self.lib_y, self.insp_x, self.insp_y, self.cust_x, self.cust_y):
+        for sp in (
+            self.lib_x, self.lib_y, self.insp_x, self.insp_y, self.cust_x, self.cust_y
+        ):
             sp.setRange(0, 10000)
         for sp in (self.cust_w, self.cust_h):
             sp.setRange(100, 2000)
@@ -278,6 +341,7 @@ class SettingsDialog(QDialog):
         controls_layout.addRow("Preset:", self.preset_combo)
         # Color pickers (edit + button)
         self._swatches = {}
+
         def mk_color_row(title: str):
             le = QLineEdit()
             btn = QPushButton("…")
@@ -285,7 +349,9 @@ class SettingsDialog(QDialog):
             # Swatch showing current color
             sw = QLabel()
             sw.setFixedSize(24, 16)
-            sw.setStyleSheet("QLabel{border:1px solid #A0AEC0; border-radius:3px; background:#FFFFFF;}")
+            sw.setStyleSheet(
+                "QLabel{border:1px solid #A0AEC0; border-radius:3px; background:#FFFFFF;}"
+            )
             row = QHBoxLayout()
             row.setSpacing(6)
             row.addWidget(sw)
@@ -299,6 +365,7 @@ class SettingsDialog(QDialog):
             # Live update swatch on text change
             le.textChanged.connect(lambda _=None, e=le: self._update_swatch(e))
             return le, btn
+
         self.bg_edit, self.bg_btn = mk_color_row("Fond appli:")
         self.text_edit, self.text_btn = mk_color_row("Texte:")
         self.accent_edit, self.accent_btn = mk_color_row("Accent:")
@@ -426,9 +493,13 @@ class SettingsDialog(QDialog):
         self.icon_dir_browse.clicked.connect(self._on_browse_icons)
         # Color pickers
         color_rows = [
-            (self.bg_edit, self.bg_btn), (self.text_edit, self.text_btn), (self.accent_edit, self.accent_btn),
-            (self.hover_edit, self.hover_btn), (self.panel_edit, self.panel_btn), (self.border_edit, self.border_btn),
-            (self.group_edit, self.group_btn)
+            (self.bg_edit, self.bg_btn),
+            (self.text_edit, self.text_btn),
+            (self.accent_edit, self.accent_btn),
+            (self.hover_edit, self.hover_btn),
+            (self.panel_edit, self.panel_btn),
+            (self.border_edit, self.border_btn),
+            (self.group_edit, self.group_btn),
         ]
         for le, btn in color_rows:
             btn.clicked.connect(lambda _, e=le: self._pick_color_into(e))
@@ -461,85 +532,114 @@ class SettingsDialog(QDialog):
         self.btn_reset_all.clicked.connect(self._reset_all_icons)
 
     def set_shortcut_actions(self, actions: dict[str, QAction]) -> None:
-        """Populate the shortcuts tab with editors for each action."""
+        """
+        Populate the shortcuts tab with editors for each action.
+
+        Args:
+            actions: A dictionary of action names to QAction objects.
+        """
         # Clear previous rows
         while self._key_form.rowCount():
             self._key_form.removeRow(0)
         self._shortcut_edits.clear()
         for key, action in actions.items():
             edit = QKeySequenceEdit(action.shortcut())
-            label = action.text().split(' (')[0]
+            label = action.text().split(" (")[0]
             self._key_form.addRow(f"{label}:", edit)
             self._shortcut_edits[key] = edit
 
     def get_shortcuts(self) -> dict[str, str]:
-        """Return the edited shortcuts as a mapping."""
+        """
+        Return the edited shortcuts as a mapping.
+
+        Returns:
+            A dictionary of action names to shortcut strings.
+        """
         result: dict[str, str] = {}
         for key, edit in self._shortcut_edits.items():
             result[key] = edit.keySequence().toString(QKeySequence.NativeText)
         return result
 
     def showEvent(self, event) -> None:  # type: ignore[override]
+        """
+        Handles the show event of the dialog.
+
+        Args:
+            event: The show event.
+        """
         super().showEvent(event)
         # No special handling needed
 
     def _on_browse_icons(self) -> None:
+        """Opens a dialog to browse for an icon directory."""
         path = QFileDialog.getExistingDirectory(self, "Choisir un dossier d'icônes")
         if path:
             self.icon_dir_edit.setText(path)
 
-    # --- Styles helpers (simple) ---
     def _pick_color_into(self, edit: QLineEdit) -> None:
+        """
+        Opens a color dialog and sets the selected color to the given line edit.
+
+        Args:
+            edit: The line edit to set the color to.
+        """
         col = QColorDialog.getColor()
         if col.isValid():
             edit.setText(col.name())
             self._update_swatch(edit)
 
     def _params_from_ui(self) -> dict:
+        """Returns a dictionary of style parameters from the UI controls."""
         return {
-            'bg_color': self.bg_edit.text() or '#E2E8F0',
-            'text_color': self.text_edit.text() or '#1A202C',
-            'accent_color': self.accent_edit.text() or '#E53E3E',
-            'hover_color': self.hover_edit.text() or '#E3E6FD',
-            'panel_bg': self.panel_edit.text() or '#F7F8FC',
-            'panel_opacity': (self.opacity_spin.value() / 100.0),
-            'panel_border': self.border_edit.text() or '#D0D5DD',
-            'group_title_color': self.group_edit.text() or '#2D3748',
-            'radius': self.radius_spin.value(),
-            'font_size': self.font_spin.value(),
+            "bg_color": self.bg_edit.text() or "#E2E8F0",
+            "text_color": self.text_edit.text() or "#1A202C",
+            "accent_color": self.accent_edit.text() or "#E53E3E",
+            "hover_color": self.hover_edit.text() or "#E3E6FD",
+            "panel_bg": self.panel_edit.text() or "#F7F8FC",
+            "panel_opacity": (self.opacity_spin.value() / 100.0),
+            "panel_border": self.border_edit.text() or "#D0D5DD",
+            "group_title_color": self.group_edit.text() or "#2D3748",
+            "radius": self.radius_spin.value(),
+            "font_size": self.font_spin.value(),
         }
 
     def _load_preset_values(self, name: str) -> None:
-        if name.lower() == 'light':
-            self.bg_edit.setText('#E2E8F0')
-            self.text_edit.setText('#1A202C')
-            self.accent_edit.setText('#E53E3E')
-            self.hover_edit.setText('#E3E6FD')
-            self.panel_edit.setText('#F7F8FC')
-            self.border_edit.setText('#D0D5DD')
-            self.group_edit.setText('#2D3748')
+        """
+        Loads the style parameters for the given preset name.
+
+        Args:
+            name: The name of the preset to load.
+        """
+        if name.lower() == "light":
+            self.bg_edit.setText("#E2E8F0")
+            self.text_edit.setText("#1A202C")
+            self.accent_edit.setText("#E53E3E")
+            self.hover_edit.setText("#E3E6FD")
+            self.panel_edit.setText("#F7F8FC")
+            self.border_edit.setText("#D0D5DD")
+            self.group_edit.setText("#2D3748")
             self.opacity_spin.setValue(90)
             self.radius_spin.setValue(12)
             self.font_spin.setValue(10)
-        elif name.lower() == 'dark':
-            self.bg_edit.setText('#1F2937')
-            self.text_edit.setText('#E2E8F0')
-            self.accent_edit.setText('#EF4444')
-            self.hover_edit.setText('#374151')
-            self.panel_edit.setText('#1F2937')
-            self.border_edit.setText('#374151')
-            self.group_edit.setText('#E5E7EB')
+        elif name.lower() == "dark":
+            self.bg_edit.setText("#1F2937")
+            self.text_edit.setText("#E2E8F0")
+            self.accent_edit.setText("#EF4444")
+            self.hover_edit.setText("#374151")
+            self.panel_edit.setText("#1F2937")
+            self.border_edit.setText("#374151")
+            self.group_edit.setText("#E5E7EB")
             self.opacity_spin.setValue(92)
             self.radius_spin.setValue(12)
             self.font_spin.setValue(10)
-        elif name.lower() == 'high contrast':
-            self.bg_edit.setText('#000000')
-            self.text_edit.setText('#FFFFFF')
-            self.accent_edit.setText('#FFD600')
-            self.hover_edit.setText('#333333')
-            self.panel_edit.setText('#000000')
-            self.border_edit.setText('#FFFFFF')
-            self.group_edit.setText('#FFFFFF')
+        elif name.lower() == "high contrast":
+            self.bg_edit.setText("#000000")
+            self.text_edit.setText("#FFFFFF")
+            self.accent_edit.setText("#FFD600")
+            self.hover_edit.setText("#333333")
+            self.panel_edit.setText("#000000")
+            self.border_edit.setText("#FFFFFF")
+            self.group_edit.setText("#FFFFFF")
             self.opacity_spin.setValue(100)
             self.radius_spin.setValue(0)
             self.font_spin.setValue(11)
@@ -549,6 +649,7 @@ class SettingsDialog(QDialog):
         # Custom keeps current entries
 
     def _preview_theme(self) -> None:
+        """Applies the current style parameters to the preview widget."""
         css = build_stylesheet(self._params_from_ui())
         # Apply to dedicated preview container so we don't affect the whole dialog
         try:
@@ -559,13 +660,19 @@ class SettingsDialog(QDialog):
             logging.exception("Theme preview failed")
 
     def _save_params_as_custom(self) -> None:
+        """Saves the current style parameters as a custom theme."""
         css = build_stylesheet(self._params_from_ui())
         s = QSettings("JaJa", "Macronotron")
-        s.setValue('ui/custom_stylesheet', css)
-        s.setValue('ui/theme', 'custom')
+        s.setValue("ui/custom_stylesheet", css)
+        s.setValue("ui/theme", "custom")
 
-    # --- Swatch helpers ---
     def _update_swatch(self, edit: QLineEdit) -> None:
+        """
+        Updates the color swatch for the given line edit.
+
+        Args:
+            edit: The line edit to update the swatch for.
+        """
         sw = self._swatches.get(edit)
         if not sw:
             return
@@ -582,51 +689,66 @@ class SettingsDialog(QDialog):
                 p.setClipPath(path)
                 # Checkerboard background
                 s = 4
-                c1 = QColor('#FFFFFF')
-                c2 = QColor('#C7CBD1')
+                c1 = QColor("#FFFFFF")
+                c2 = QColor("#C7CBD1")
                 for y in range(0, h, s):
                     for x in range(0, w, s):
-                        p.fillRect(x, y, s, s, c1 if ((x // s + y // s) % 2 == 0) else c2)
+                        p.fillRect(
+                            x, y, s, s, c1 if ((x // s + y // s) % 2 == 0) else c2
+                        )
                 # Overlay panel color with opacity from spin
-                color = QColor(edit.text().strip() or '#FFFFFF')
+                color = QColor(edit.text().strip() or "#FFFFFF")
                 if not color.isValid():
-                    color = QColor('#FFFFFF')
+                    color = QColor("#FFFFFF")
                 alpha = max(0.0, min(1.0, self.opacity_spin.value() / 100.0))
                 color.setAlphaF(alpha)
                 p.fillRect(QRectF(0, 0, w, h), color)
                 p.end()
                 # Keep border via stylesheet; set pixmap for fill
-                sw.setStyleSheet("QLabel{border:1px solid #A0AEC0; border-radius:3px; background:transparent;}")
+                sw.setStyleSheet(
+                    "QLabel{border:1px solid #A0AEC0; border-radius:3px; background:transparent;}"
+                )
                 sw.setPixmap(pix)
             except (ValueError, TypeError, RuntimeError):
                 logging.exception("Panel swatch render failed")
                 # Fallback to flat color
-                col = edit.text().strip() or '#FFFFFF'
-                if not col.startswith('#') and not col.startswith('rgb'):
-                    col = '#FFFFFF'
-                sw.setStyleSheet(f"QLabel{{border:1px solid #A0AEC0; border-radius:3px; background:{col};}}")
+                col = edit.text().strip() or "#FFFFFF"
+                if not col.startswith("#") and not col.startswith("rgb"):
+                    col = "#FFFFFF"
+                sw.setStyleSheet(
+                    f"QLabel{{border:1px solid #A0AEC0; border-radius:3px; background:{col};}}"
+                )
         else:
-            col = edit.text().strip() or '#FFFFFF'
+            col = edit.text().strip() or "#FFFFFF"
             # Basic validation: ensure it looks like a color string
-            if not col.startswith('#') and not col.startswith('rgb'):
-                col = '#FFFFFF'
+            if not col.startswith("#") and not col.startswith("rgb"):
+                col = "#FFFFFF"
             sw.setPixmap(QPixmap())
-            sw.setStyleSheet(f"QLabel{{border:1px solid #A0AEC0; border-radius:3px; background:{col};}}")
+            sw.setStyleSheet(
+                f"QLabel{{border:1px solid #A0AEC0; border-radius:3px; background:{col};}}"
+            )
 
     def _update_all_swatches(self) -> None:
+        """Updates all color swatches."""
         for le in self._swatches.keys():
             self._update_swatch(le)
 
         # Re-render panel swatch when opacity changes
         try:
-            self.opacity_spin.valueChanged.connect(lambda _=None: self._update_swatch(self.panel_edit))
+            self.opacity_spin.valueChanged.connect(
+                lambda _=None: self._update_swatch(self.panel_edit)
+            )
         except (RuntimeError, AttributeError):
             logging.exception("Failed to connect opacity spin change")
 
-    # --- Icon lists (builder) ---
     def _apply_list_icon_size(self) -> None:
+        """Applies the icon size to the icon lists."""
         size = self.icon_size_spin.value()
-        for lw in (self.list_main_order, self.list_quick_order, self.list_custom_order):
+        for lw in (
+            self.list_main_order,
+            self.list_quick_order,
+            self.list_custom_order,
+        ):
             lw.setIconSize(QSize(size, size))
             try:
                 lw.viewport().update()
@@ -634,12 +756,31 @@ class SettingsDialog(QDialog):
                 logging.exception("Viewport update failed for icon list")
 
     def _init_icon_lists(self) -> None:
+        """Initializes the icon lists for the overlay builder."""
         from ui.icons import (
-            icon_save, icon_open, icon_scene_size, icon_background, icon_reset_scene, icon_reset_ui,
-            icon_library, icon_inspector, icon_timeline, get_icon, icon_plus, icon_minus, icon_fit, icon_rotate, icon_onion
+            get_icon,
+            icon_background,
+            icon_fit,
+            icon_inspector,
+            icon_library,
+            icon_minus,
+            icon_onion,
+            icon_open,
+            icon_plus,
+            icon_reset_scene,
+            icon_reset_ui,
+            icon_rotate,
+            icon_save,
+            icon_scene_size,
+            icon_timeline,
         )
+
         # Configure lists to show icons horizontally with wrapping
-        for lw in (self.list_main_order, self.list_quick_order, self.list_custom_order):
+        for lw in (
+            self.list_main_order,
+            self.list_quick_order,
+            self.list_custom_order,
+        ):
             lw.setViewMode(QListView.IconMode)
             lw.setFlow(QListView.LeftToRight)
             lw.setWrapping(True)
@@ -654,13 +795,13 @@ class SettingsDialog(QDialog):
             ("load", "Charger", icon_open()),
             ("scene_size", "Scène", icon_scene_size()),
             ("background", "Fond", icon_background()),
-            ("settings", "Paramètres", get_icon('layers')),
+            ("settings", "Paramètres", get_icon("layers")),
             ("reset_scene", "Reset scène", icon_reset_scene()),
             ("reset_ui", "Reset UI", icon_reset_ui()),
             ("toggle_library", "Lib", icon_library()),
             ("toggle_inspector", "Insp", icon_inspector()),
             ("toggle_timeline", "Time", icon_timeline()),
-            ("toggle_custom", "Custom", get_icon('layers')),
+            ("toggle_custom", "Custom", get_icon("layers")),
         ]
         self._quick_specs = [
             ("zoom_out", "-", icon_minus()),
@@ -672,9 +813,27 @@ class SettingsDialog(QDialog):
         # Custom can use both
         self._custom_specs = self._main_specs + self._quick_specs
 
-    def populate_icon_list(self, lw: QListWidget, order_keys: list[str], visibility_map: dict[str, bool], specs: list[tuple[str, str, QIcon]]) -> None:
+    def populate_icon_list(
+        self,
+        lw: QListWidget,
+        order_keys: list[str],
+        visibility_map: dict[str, bool],
+        specs: list[tuple[str, str, QIcon]],
+    ) -> None:
+        """
+        Populates an icon list with items.
+
+        Args:
+            lw: The list widget to populate.
+            order_keys: The order of the icons.
+            visibility_map: A map of icon visibility.
+            specs: The specifications for the icons.
+        """
         lw.clear()
-        spec_map = {k: (label, icon) for (k, label, icon) in [(k, lbl, ic) for (k, lbl, ic) in specs]}
+        spec_map = {
+            k: (label, icon)
+            for (k, label, icon) in [(k, lbl, ic) for (k, lbl, ic) in specs]
+        }
         for key in order_keys:
             if key not in spec_map:
                 continue
@@ -682,40 +841,81 @@ class SettingsDialog(QDialog):
             # Icon with label under it
             item = QListWidgetItem(icon, label)
             item.setData(Qt.UserRole, key)
-            item.setFlags(item.flags() | Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsDragEnabled | Qt.ItemIsSelectable)
+            item.setFlags(
+                item.flags()
+                | Qt.ItemIsUserCheckable
+                | Qt.ItemIsEnabled
+                | Qt.ItemIsDragEnabled
+                | Qt.ItemIsSelectable
+            )
             item.setCheckState(Qt.Checked if visibility_map.get(key, True) else Qt.Unchecked)
             lw.addItem(item)
         # No special height handling
 
     def extract_icon_list(self, lw: QListWidget) -> tuple[list[str], dict[str, bool]]:
+        """
+        Extracts the order and visibility of icons from a list widget.
+
+        Args:
+            lw: The list widget to extract from.
+
+        Returns:
+            A tuple containing the order of the icons and a map of their visibility.
+        """
         order: list[str] = []
         vis: dict[str, bool] = {}
         for i in range(lw.count()):
             it = lw.item(i)
             key = it.data(Qt.UserRole)
             order.append(key)
-            vis[key] = (it.checkState() == Qt.Checked)
+            vis[key] = it.checkState() == Qt.Checked
         return order, vis
 
-    # (no IconStrip helpers)
-
-    # --- Icons tab helpers ---
     def _init_icons_tab(self) -> None:
+        """Initializes the icons tab."""
         # Canonical keys we expose to customize
         self._icon_keys = [
-            'save','open','scene_size','background','settings','reset_scene','reset_ui',
-            'library','inspector','timeline','layers',
-            'zoom_out','zoom_in','fit','handles','onion',
-            'delete','duplicate','link','link_off','close',
-            'objets','puppet','open_menu','close_menu','close_menu_inv','new_file',
-            'chevron_left','chevron_right','plus','minus','rotate'
+            "save",
+            "open",
+            "scene_size",
+            "background",
+            "settings",
+            "reset_scene",
+            "reset_ui",
+            "library",
+            "inspector",
+            "timeline",
+            "layers",
+            "zoom_out",
+            "zoom_in",
+            "fit",
+            "handles",
+            "onion",
+            "delete",
+            "duplicate",
+            "link",
+            "link_off",
+            "close",
+            "objets",
+            "puppet",
+            "open_menu",
+            "close_menu",
+            "close_menu_inv",
+            "new_file",
+            "chevron_left",
+            "chevron_right",
+            "plus",
+            "minus",
+            "rotate",
         ]
         self._populate_icons_list()
         if self.list_icons.count():
             self.list_icons.setCurrentRow(0)
 
     def _populate_icons_list(self) -> None:
+        """Populates the list of customizable icons."""
         from ui.icons import get_icon
+
         self.list_icons.clear()
         s = QSettings("JaJa", "Macronotron")
         for key in self._icon_keys:
@@ -729,7 +929,16 @@ class SettingsDialog(QDialog):
                 it.setToolTip(str(path))
             self.list_icons.addItem(it)
 
-    def _on_icon_item_changed(self, current: Optional[QListWidgetItem], previous: Optional[QListWidgetItem]) -> None:
+    def _on_icon_item_changed(
+        self, current: Optional[QListWidgetItem], previous: Optional[QListWidgetItem]
+    ) -> None:
+        """
+        Handles the current item changed signal of the icons list.
+
+        Args:
+            current: The current item.
+            previous: The previous item.
+        """
         if not current:
             self.lbl_key.setText("—")
             self.lbl_path.setText("")
@@ -740,12 +949,16 @@ class SettingsDialog(QDialog):
         self.lbl_path.setText(str(s.value(f"ui/icon_override/{key}") or ""))
 
     def _choose_icon_file(self) -> None:
+        """Opens a file dialog to choose an icon file."""
         from PySide6.QtWidgets import QFileDialog
+
         item = self.list_icons.currentItem()
         if not item:
             return
         key = item.data(Qt.UserRole)
-        path, _ = QFileDialog.getOpenFileName(self, "Choisir une icône", "", "Images (*.svg *.png *.jpg *.bmp *.ico)")
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Choisir une icône", "", "Images (*.svg *.png *.jpg *.bmp *.ico)"
+        )
         if not path:
             return
         s = QSettings("JaJa", "Macronotron")
@@ -755,6 +968,7 @@ class SettingsDialog(QDialog):
         self._populate_icons_list()
 
     def _reset_icon_file(self) -> None:
+        """Resets the icon file for the currently selected icon."""
         item = self.list_icons.currentItem()
         if not item:
             return
@@ -766,6 +980,7 @@ class SettingsDialog(QDialog):
         self._populate_icons_list()
 
     def _reset_all_icons(self) -> None:
+        """Resets all custom icon files."""
         s = QSettings("JaJa", "Macronotron")
         s.beginGroup("ui/icon_override")
         s.remove("")
@@ -774,36 +989,46 @@ class SettingsDialog(QDialog):
         self._populate_icons_list()
 
     def _refresh_icons_runtime(self) -> None:
+        """Refreshes the icons in the main window at runtime."""
         # Clear cache and refresh action/overlay icons on the main window
         try:
             import ui.icons as app_icons
+
             app_icons.clear_cache()
             from ui.icons import (
-                icon_scene_size, icon_background, icon_library, icon_inspector, icon_timeline,
-                icon_save, icon_open, icon_reset_ui, icon_reset_scene
+                icon_background,
+                icon_inspector,
+                icon_library,
+                icon_open,
+                icon_reset_scene,
+                icon_reset_ui,
+                icon_save,
+                icon_scene_size,
+                icon_timeline,
             )
+
             mw = self.parent()
             # Actions
-            if hasattr(mw, 'save_action'):
+            if hasattr(mw, "save_action"):
                 mw.save_action.setIcon(icon_save())
-            if hasattr(mw, 'load_action'):
+            if hasattr(mw, "load_action"):
                 mw.load_action.setIcon(icon_open())
-            if hasattr(mw, 'scene_size_action'):
+            if hasattr(mw, "scene_size_action"):
                 mw.scene_size_action.setIcon(icon_scene_size())
-            if hasattr(mw, 'background_action'):
+            if hasattr(mw, "background_action"):
                 mw.background_action.setIcon(icon_background())
-            if hasattr(mw, 'reset_scene_action'):
+            if hasattr(mw, "reset_scene_action"):
                 mw.reset_scene_action.setIcon(icon_reset_scene())
-            if hasattr(mw, 'reset_ui_action'):
+            if hasattr(mw, "reset_ui_action"):
                 mw.reset_ui_action.setIcon(icon_reset_ui())
-            if hasattr(mw, 'toggle_library_action'):
+            if hasattr(mw, "toggle_library_action"):
                 mw.toggle_library_action.setIcon(icon_library())
-            if hasattr(mw, 'toggle_inspector_action'):
+            if hasattr(mw, "toggle_inspector_action"):
                 mw.toggle_inspector_action.setIcon(icon_inspector())
-            if hasattr(mw, 'timeline_dock'):
+            if hasattr(mw, "timeline_dock"):
                 mw.timeline_dock.toggleViewAction().setIcon(icon_timeline())
             # Overlay buttons
-            if hasattr(mw, 'view'):
+            if hasattr(mw, "view"):
                 mw.view.refresh_overlay_icons(mw)
                 mw.view.apply_menu_settings_main()
                 mw.view.apply_menu_settings_quick()

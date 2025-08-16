@@ -1,3 +1,7 @@
+"""
+This module provides operations related to scene objects, such as creating, deleting, duplicating,
+attaching, and detaching objects from the scene and puppet members.
+"""
 from __future__ import annotations
 
 import logging
@@ -8,27 +12,49 @@ from PySide6.QtCore import QPointF
 from PySide6.QtWidgets import QGraphicsItem
 
 from core.scene_model import Keyframe, SceneObject
-from ..object_item import ObjectPixmapItem, ObjectSvgItem
 from core.puppet_piece import PuppetPiece
+from ..object_item import ObjectPixmapItem, ObjectSvgItem
 
 if TYPE_CHECKING:
     from .scene_controller import MainWindowProtocol
 
 
 class ObjectOps:
-    """Operations related to generic scene objects."""
+    """
+    A class to handle operations related to generic scene objects.
+
+    Args:
+        win: The main window instance.
+    """
 
     def __init__(self, win: MainWindowProtocol) -> None:
+        """
+        Initializes the ObjectOps class.
+
+        Args:
+            win: The main window instance.
+        """
         self.win = win
 
     def delete_object(self, name: str) -> None:
-        """Deletes an object from the scene."""
+        """
+        Deletes an object from the scene by removing its graphical representation and
+        its data from the scene model.
+
+        Args:
+            name: The name of the object to delete.
+        """
         if (item := self.win.object_manager.graphics_items.pop(name, None)):
             self.win.scene.removeItem(item)
         self.win.scene_model.remove_object(name)
 
     def duplicate_object(self, name: str) -> None:
-        """Duplicates an object."""
+        """
+        Duplicates an object, giving it a unique name and adding it to the scene.
+
+        Args:
+            name: The name of the object to duplicate.
+        """
         obj: Optional[SceneObject] = self.win.scene_model.objects.get(name)
         if not obj:
             return
@@ -52,7 +78,12 @@ class ObjectOps:
         self._add_object_graphics(new_obj)
 
     def _add_object_graphics(self, obj: SceneObject) -> None:
-        """Adds the graphical representation of an object to the scene."""
+        """
+        Adds the graphical representation of a scene object to the scene.
+
+        Args:
+            obj: The scene object to add.
+        """
         item: QGraphicsItem
         if obj.obj_type == "image":
             item = ObjectPixmapItem(obj.file_path)
@@ -84,7 +115,14 @@ class ObjectOps:
     def attach_object_to_member(
         self, obj_name: str, puppet_name: str, member_name: str
     ) -> None:
-        """Attaches an object to a puppet member."""
+        """
+        Attaches a scene object to a puppet member, making it a child of the member.
+
+        Args:
+            obj_name: The name of the object to attach.
+            puppet_name: The name of the puppet.
+            member_name: The name of the puppet member to attach to.
+        """
         obj: Optional[SceneObject] = self.win.scene_model.objects.get(obj_name)
         item: Optional[QGraphicsItem] = self.win.object_manager.graphics_items.get(obj_name)
         parent_piece: Optional[PuppetPiece] = self.win.object_manager.graphics_items.get(
@@ -149,7 +187,12 @@ class ObjectOps:
             kf.objects[obj_name] = obj.to_dict()
 
     def detach_object(self, obj_name: str) -> None:
-        """Detaches an object from its parent."""
+        """
+        Detaches an object from its parent, making it a top-level item in the scene.
+
+        Args:
+            obj_name: The name of the object to detach.
+        """
         obj: Optional[SceneObject] = self.win.scene_model.objects.get(obj_name)
         item: Optional[QGraphicsItem] = self.win.object_manager.graphics_items.get(obj_name)
         if not obj or not item:
@@ -230,7 +273,15 @@ class ObjectOps:
             kf.objects[obj_name] = obj.to_dict()
 
     def unique_object_name(self, base: str) -> str:
-        """Generates a unique name for an object."""
+        """
+        Generates a unique name for an object by appending a number if the base name is taken.
+
+        Args:
+            base: The base name for the object.
+
+        Returns:
+            A unique name for the object.
+        """
         name: str = base
         i: int = 1
         while name in self.win.scene_model.objects:
@@ -241,7 +292,16 @@ class ObjectOps:
     def create_object_from_file(
         self, file_path: str, scene_pos: Optional[QPointF] = None
     ) -> Optional[str]:
-        """Creates an object from a file and adds it to the scene."""
+        """
+        Creates a scene object from a file and adds it to the scene.
+
+        Args:
+            file_path: The path to the file to create the object from.
+            scene_pos: The position in the scene to create the object at.
+
+        Returns:
+            The name of the created object, or None if the file type is not supported.
+        """
         ext: str = Path(file_path).suffix.lower()
         if ext in (".png", ".jpg", ".jpeg"):
             obj_type = "image"
@@ -296,7 +356,12 @@ class ObjectOps:
         return name
 
     def delete_object_from_current_frame(self, name: str) -> None:
-        """Deletes an object from the current frame onwards."""
+        """
+        Deletes an object from the current frame onwards by removing its state from keyframes.
+
+        Args:
+            name: The name of the object to delete.
+        """
         cur: int = self.win.scene_model.current_frame
         if cur not in self.win.scene_model.keyframes:
             self.win.add_keyframe(cur)

@@ -50,6 +50,12 @@ class TimelineWidget(QWidget):
     rangeChanged = Signal(int, int)
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
+        """
+        Initializes the TimelineWidget.
+
+        Args:
+            parent: The parent widget.
+        """
         super().__init__(parent)
 
         self._kfs: Set[int] = set()
@@ -133,27 +139,36 @@ class TimelineWidget(QWidget):
         self.end_spin.setRange(0, 999999)
         for w in [self.time_label, self.frame_spin, self.fps_label, self.fps_spin, self.in_label, self.start_spin, self.out_label, self.end_spin]:
             bar.addWidget(w)
-
         self.slider: QSlider = QSlider(Qt.Horizontal)
         self.slider.setVisible(False)
         self.fps_spinbox: QSpinBox = self.fps_spin
         self.start_frame_spinbox: QSpinBox = self.start_spin
         self.end_frame_spinbox: QSpinBox = self.end_spin
         self.frame_spinbox: QSpinBox = self.frame_spin
-        
         self.start_spin.valueChanged.connect(self._on_range_spin)
         self.end_spin.valueChanged.connect(self._on_range_spin)
         self.slider.valueChanged.connect(self.set_current_frame)
-
         self.setFixedHeight(RULER_H + TRACK_H + TOOLBAR_H)
         self.setFocusPolicy(Qt.StrongFocus)
         self.setMouseTracking(True)
 
     def resizeEvent(self, e: QEvent) -> None:
+        """
+        Handles the resize event of the widget.
+
+        Args:
+            e: The resize event.
+        """
         super().resizeEvent(e)
         self.toolbar.setGeometry(0, self.height() - TOOLBAR_H, self.width(), TOOLBAR_H)
 
     def set_current_frame(self, frame_index: int) -> None:
+        """
+        Sets the current frame of the timeline.
+
+        Args:
+            frame_index: The index of the frame to set.
+        """
         frame_index = max(self._start, min(self._end, int(frame_index)))
         if self._current == frame_index:
             self._sync_frame_widgets()
@@ -164,21 +179,35 @@ class TimelineWidget(QWidget):
         self.update()
 
     def add_keyframe_marker(self, frame_index: int) -> None:
+        """
+        Adds a keyframe marker at the given frame index.
+
+        Args:
+            frame_index: The index of the frame to add the marker at.
+        """
         self._kfs.add(int(frame_index))
         self._update_delete_button()
         self.update()
 
     def remove_keyframe_marker(self, frame_index: int) -> None:
+        """
+        Removes a keyframe marker from the given frame index.
+
+        Args:
+            frame_index: The index of the frame to remove the marker from.
+        """
         self._kfs.discard(int(frame_index))
         self._update_delete_button()
         self.update()
 
     def clear_keyframes(self) -> None:
+        """Removes all keyframe markers."""
         self._kfs.clear()
         self._update_delete_button()
         self.update()
 
     def _sync_frame_widgets(self) -> None:
+        """Synchronizes the frame widgets with the current frame."""
         if self.frame_spin.value() != self._current:
             self.frame_spin.blockSignals(True)
             self.frame_spin.setValue(self._current)
@@ -191,9 +220,11 @@ class TimelineWidget(QWidget):
         self._update_time_label()
 
     def _update_delete_button(self) -> None:
+        """Enables or disables the delete keyframe button based on whether the current frame has a keyframe."""
         self.del_kf_btn.setEnabled(self._current in self._kfs)
 
     def _on_range_spin(self) -> None:
+        """Handles the value changed signal of the range spin boxes."""
         s: int = max(0, min(self.start_spin.value(), self.end_spin.value()))
         e: int = max(s, max(self.start_spin.value(), self.end_spin.value()))
         if (s, e) != (self._start, self._end):
@@ -205,6 +236,12 @@ class TimelineWidget(QWidget):
             self.update()
 
     def _on_play_clicked(self, checked: bool) -> None:
+        """
+        Handles the clicked signal of the play button.
+
+        Args:
+            checked: Whether the button is checked.
+        """
         if checked:
             self.play_btn.setText("⏸")
             self.playClicked.emit()
@@ -213,11 +250,13 @@ class TimelineWidget(QWidget):
             self.pauseClicked.emit()
 
     def _on_stop_clicked(self) -> None:
+        """Handles the clicked signal of the stop button."""
         if self.play_btn.isChecked():
             self.play_btn.setChecked(False)
         self.stopClicked.emit()
 
     def _jump_prev_kf(self) -> None:
+        """Jumps to the previous keyframe."""
         if not self._kfs:
             return
         sorted_kfs: List[int] = sorted(list(self._kfs), reverse=True)
@@ -228,6 +267,7 @@ class TimelineWidget(QWidget):
             self.set_current_frame(sorted_kfs[0])
 
     def _jump_next_kf(self) -> None:
+        """Jumps to the next keyframe."""
         if not self._kfs:
             return
         sorted_kfs: List[int] = sorted(list(self._kfs))
@@ -237,14 +277,30 @@ class TimelineWidget(QWidget):
         else: # wrap around
             self.set_current_frame(sorted_kfs[0])
 
-    def _timeline_rect(self) -> QRect: return QRect(0, RULER_H, self.width(), TRACK_H)
-    def _ruler_rect(self) -> QRect: return QRect(0, 0, self.width(), RULER_H)
-    def _frame_to_x(self, frame: float) -> float: return (frame - self._start - self._scroll_frames) * self._px_per_frame
+    def _timeline_rect(self) -> QRect: 
+        """Returns the rectangle of the timeline area."""
+        return QRect(0, RULER_H, self.width(), TRACK_H)
+    
+    def _ruler_rect(self) -> QRect: 
+        """Returns the rectangle of the ruler area."""
+        return QRect(0, 0, self.width(), RULER_H)
+    
+    def _frame_to_x(self, frame: float) -> float: 
+        """Converts a frame number to a horizontal position."""
+        return (frame - self._start - self._scroll_frames) * self._px_per_frame
+    
     def _x_to_frame(self, x: float) -> int:
+        """Converts a horizontal position to a frame number."""
         f = x / max(1e-6, self._px_per_frame) + self._start + self._scroll_frames
         return max(0, int(round(f)))
 
     def paintEvent(self, _: QEvent) -> None:
+        """
+        Handles the paint event of the widget.
+
+        Args:
+            _: The paint event.
+        """
         p: QPainter = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
         p.fillRect(self.rect(), BG)
@@ -285,6 +341,13 @@ class TimelineWidget(QWidget):
         p.end()
 
     def _draw_ticks(self, p: QPainter, rr: QRect) -> None:
+        """
+        Draws the ticks on the ruler.
+
+        Args:
+            p: The painter to use.
+            rr: The rectangle of the ruler.
+        """
         p.setPen(TICK)
         target: int = 80
         step_frames: int = max(1, int(round(target / max(1.0, self._px_per_frame))))
@@ -308,12 +371,26 @@ class TimelineWidget(QWidget):
                 p.drawText(int(x) + 4, rr.top() + rr.height() - 6, f"{f}")
 
     def _draw_kf(self, p: QPainter, pos: QPointF, is_hovered: bool) -> None:
+        """
+        Draws a keyframe marker.
+
+        Args:
+            p: The painter to use.
+            pos: The position to draw the marker at.
+            is_hovered: Whether the marker is hovered.
+        """
         color: QColor = KF_HOVER if is_hovered else KF_NORMAL
         p.setPen(QPen(color.darker(150), 1))
         p.setBrush(QBrush(color))
         p.drawPolygon(QPolygonF([QPointF(pos.x(), pos.y() - DIAMOND_H / 2), QPointF(pos.x() + DIAMOND_W / 2, pos.y()), QPointF(pos.x(), pos.y() + DIAMOND_H / 2), QPointF(pos.x() - DIAMOND_W / 2, pos.y())]))
 
     def mousePressEvent(self, e: QMouseEvent) -> None:
+        """
+        Handles the mouse press event.
+
+        Args:
+            e: The mouse event.
+        """
         pos: QPointF = e.position()
         if e.button() == Qt.LeftButton and (self._ruler_rect().contains(pos.toPoint()) or self._timeline_rect().contains(pos.toPoint())):
             self._dragging_playhead = True
@@ -323,6 +400,12 @@ class TimelineWidget(QWidget):
         super().mousePressEvent(e)
 
     def mouseMoveEvent(self, e: QMouseEvent) -> None:
+        """
+        Handles the mouse move event.
+
+        Args:
+            e: The mouse event.
+        """
         if self._dragging_playhead:
             self.set_current_frame(self._x_to_frame(e.position().x()))
         else:
@@ -330,11 +413,23 @@ class TimelineWidget(QWidget):
         self.update()
 
     def mouseReleaseEvent(self, e: QMouseEvent) -> None:
+        """
+        Handles the mouse release event.
+
+        Args:
+            e: The mouse event.
+        """
         if e.button() == Qt.LeftButton:
             self._dragging_playhead = False
         super().mouseReleaseEvent(e)
 
     def wheelEvent(self, e: QWheelEvent) -> None:
+        """
+        Handles the wheel event for zooming and scrolling.
+
+        Args:
+            e: The wheel event.
+        """
         pos: QPointF = e.position()
         steps: float = e.angleDelta().y() / 120.0
         if e.modifiers() & Qt.ControlModifier:
@@ -348,6 +443,12 @@ class TimelineWidget(QWidget):
         self.update()
 
     def keyPressEvent(self, e: QKeyEvent) -> None:
+        """
+        Handles key press events for shortcuts.
+
+        Args:
+            e: The key event.
+        """
         if e.key() == Qt.Key_Space:
             self.play_btn.click()
         elif e.key() == Qt.Key_A:
@@ -366,11 +467,26 @@ class TimelineWidget(QWidget):
             super().keyPressEvent(e)
 
     def mouseDoubleClickEvent(self, e: QMouseEvent) -> None:
+        """
+        Handles mouse double click events for adding keyframes.
+
+        Args:
+            e: The mouse event.
+        """
         if e.button() == Qt.LeftButton and self._timeline_rect().contains(e.position().toPoint()):
             self.addKeyframeClicked.emit(self._x_to_frame(e.position().x()))
         super().mouseDoubleClickEvent(e)
 
     def _kf_at_pos(self, pos: QPointF) -> Optional[int]:
+        """
+        Returns the keyframe at the given position, if any.
+
+        Args:
+            pos: The position to check.
+
+        Returns:
+            The keyframe at the given position, or None.
+        """
         if not self._timeline_rect().contains(pos.toPoint()):
             return None
         f: int = self._x_to_frame(pos.x())
@@ -378,6 +494,12 @@ class TimelineWidget(QWidget):
         return next((fr for fr in self._kfs if abs(fr - f) <= tol_frames), None)
 
     def _show_context_menu(self, e: QMouseEvent) -> None:
+        """
+        Shows the context menu for the timeline.
+
+        Args:
+            e: The mouse event.
+        """
         menu: QMenu = QMenu(self)
         f: int = self._x_to_frame(e.position().x())
         add_action: QAction = QAction(f"Add keyframe @ {f}", self)
@@ -391,10 +513,20 @@ class TimelineWidget(QWidget):
         menu.exec(e.globalPosition().toPoint())
 
     def _format_time(self, frame: int) -> str:
+        """
+        Formats the given frame number as a time string (mm:ss).
+
+        Args:
+            frame: The frame number to format.
+
+        Returns:
+            The formatted time string.
+        """
         if self._fps <= 0:
             return "00:00"
         secs: float = frame / float(self._fps)
         return f"{int(secs // 60):02d}:{int(secs % 60):02d}"
 
     def _update_time_label(self) -> None:
+        """Updates the time label with the current time."""
         self.time_label.setText(self._format_time(self._current))
