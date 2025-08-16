@@ -63,6 +63,19 @@ class SettingsManager:
         if hasattr(self.win.view, '_main_tools_overlay') and self.win.view._main_tools_overlay:
             self.win.view._main_tools_overlay.raise_()
 
+        self._load_shortcuts()
+
+    def _load_shortcuts(self) -> None:
+        if not hasattr(self.win, 'shortcuts'):
+            return
+        s = QSettings(self.org, self.app)
+        s.beginGroup("shortcuts")
+        for key, action in self.win.shortcuts.items():
+            seq = s.value(key)
+            if seq:
+                action.setShortcut(seq)
+        s.endGroup()
+
     def clear(self) -> None:
         s = QSettings(self.org, self.app)
         s.clear()
@@ -71,6 +84,8 @@ class SettingsManager:
     def open_dialog(self) -> None:
         win = self.win
         dlg = SettingsDialog(win)
+        if hasattr(win, 'shortcuts'):
+            dlg.set_shortcut_actions(win.shortcuts)
 
         s = QSettings(self.org, self.app)
         icon_dir = s.value("ui/icon_dir")
@@ -146,6 +161,13 @@ class SettingsManager:
             logging.exception("Failed to load onion settings")
 
         if dlg.exec() == SettingsDialog.Accepted:
+            if hasattr(win, 'shortcuts'):
+                s.beginGroup("shortcuts")
+                for key, seq in dlg.get_shortcuts().items():
+                    s.setValue(key, seq)
+                    win.shortcuts[key].setShortcut(seq)
+                s.endGroup()
+
             # UI: icon directory and default overlay sizes
             icon_dir = dlg.icon_dir_edit.text().strip()
             s.setValue("ui/icon_dir", icon_dir if icon_dir else "")

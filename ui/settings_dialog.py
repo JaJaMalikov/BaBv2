@@ -9,10 +9,10 @@ from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QFormLayout, QDialogButtonBox, QSpinBox, QDoubleSpinBox, QHBoxLayout,
     QLineEdit, QPushButton, QFileDialog, QGroupBox, QCheckBox, QTabWidget,
     QListWidget, QListWidgetItem, QAbstractItemView, QScrollArea, QWidget,
-    QComboBox, QListView, QLabel, QSplitter, QToolButton, QColorDialog
+    QComboBox, QListView, QLabel, QSplitter, QToolButton, QColorDialog, QKeySequenceEdit
 )
 from PySide6.QtCore import Qt, QSize, QRectF, QSettings
-from PySide6.QtGui import QIcon, QColor, QPainter, QPixmap, QPainterPath
+from PySide6.QtGui import QIcon, QColor, QPainter, QPixmap, QPainterPath, QAction, QKeySequence
 
 from ui.draggable_widget import PanelOverlay, DraggableHeader
 from ui.styles import build_stylesheet
@@ -159,6 +159,14 @@ class SettingsDialog(QDialog):
         form.addRow("Taille icône overlays:", self.icon_size_spin)
 
         tabs.addTab(tab_app, "Apparence")
+
+        # --- Tab: Raccourcis ---
+        tab_keys = QWidget()
+        keys_form = QFormLayout(tab_keys)
+        keys_form.setLabelAlignment(Qt.AlignRight)
+        self._key_form = keys_form
+        self._shortcut_edits: dict[str, QKeySequenceEdit] = {}
+        tabs.addTab(tab_keys, "Raccourcis")
 
         # --- Tab: Overlays / Builder ---
         tab_over_inner = QWidget()
@@ -451,6 +459,25 @@ class SettingsDialog(QDialog):
         self.btn_pick_icon.clicked.connect(self._choose_icon_file)
         self.btn_reset_icon.clicked.connect(self._reset_icon_file)
         self.btn_reset_all.clicked.connect(self._reset_all_icons)
+
+    def set_shortcut_actions(self, actions: dict[str, QAction]) -> None:
+        """Populate the shortcuts tab with editors for each action."""
+        # Clear previous rows
+        while self._key_form.rowCount():
+            self._key_form.removeRow(0)
+        self._shortcut_edits.clear()
+        for key, action in actions.items():
+            edit = QKeySequenceEdit(action.shortcut())
+            label = action.text().split(' (')[0]
+            self._key_form.addRow(f"{label}:", edit)
+            self._shortcut_edits[key] = edit
+
+    def get_shortcuts(self) -> dict[str, str]:
+        """Return the edited shortcuts as a mapping."""
+        result: dict[str, str] = {}
+        for key, edit in self._shortcut_edits.items():
+            result[key] = edit.keySequence().toString(QKeySequence.NativeText)
+        return result
 
     def showEvent(self, event) -> None:  # type: ignore[override]
         super().showEvent(event)
