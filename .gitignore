@@ -5,3 +5,5 @@ pysidedploy.spec
 .pytest_cache/
 feature_du_futur/
 .idea/
+.ruff_cache/
+VISION.MD
