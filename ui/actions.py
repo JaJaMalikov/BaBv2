@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from PySide6.QtGui import QAction
+from PySide6.QtCore import QSettings
 
 from ui.scene import scene_io
 from ui.scene import actions as scene_actions
@@ -23,9 +24,9 @@ def build_actions(win: Any) -> None:
     reset_scene_action, reset_ui_action, toggle_library_action, toggle_inspector_action.
     Also decorates the timeline dock toggle action with an icon.
     """
-    win.save_action = QAction(icon_save(), "Sauvegarder (Ctrl+S)", win)
+    win.save_action = QAction(icon_save(), "Sauvegarder", win)
     win.save_action.setShortcut("Ctrl+S")
-    win.load_action = QAction(icon_open(), "Charger (Ctrl+O)", win)
+    win.load_action = QAction(icon_open(), "Charger", win)
     win.load_action.setShortcut("Ctrl+O")
     win.scene_size_action = QAction(icon_scene_size(), "Taille Scène", win)
     win.background_action = QAction(icon_background(), "Image de fond", win)
@@ -52,6 +53,29 @@ def build_actions(win: Any) -> None:
     # Custom overlay toggle
     win.toggle_custom_action = QAction(get_icon('layers'), "Custom", win)
     win.toggle_custom_action.setCheckable(True)
+
+    # Map action keys for shortcut management
+    win.shortcuts = {
+        "save": win.save_action,
+        "load": win.load_action,
+        "scene_size": win.scene_size_action,
+        "background": win.background_action,
+        "settings": win.settings_action,
+        "reset_scene": win.reset_scene_action,
+        "reset_ui": win.reset_ui_action,
+        "toggle_library": win.toggle_library_action,
+        "toggle_inspector": win.toggle_inspector_action,
+        "toggle_custom": win.toggle_custom_action,
+    }
+
+    # Load persisted shortcuts
+    s = QSettings("JaJa", "Macronotron")
+    s.beginGroup("shortcuts")
+    for key, action in win.shortcuts.items():
+        seq = s.value(key)
+        if seq:
+            action.setShortcut(seq)
+    s.endGroup()
 
 
 def connect_signals(win: Any) -> None:

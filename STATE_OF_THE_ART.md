@@ -157,6 +157,10 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
   vers `core/scene_validation.py` avec des fonctions dédiées
   (`validate_settings`, `validate_objects`, `validate_keyframes`) et tests unitaires.
 
+- Raccourcis clavier personnalisables : un nouvel onglet des paramètres permet
+  de modifier les `QKeySequence` des actions principales. Les choix sont
+  enregistrés via `QSettings` et rechargés automatiquement au démarrage.
+
 ## État actuel et prochaines étapes possibles
 
 L'application a évolué d'un simple outil d'animation de marionnette à un **logiciel de composition de scène 2D fonctionnel et robuste**. L'interface a été professionnalisée et la gestion de plusieurs objets est désormais possible.
