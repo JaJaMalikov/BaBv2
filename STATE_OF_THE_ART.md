@@ -132,6 +132,7 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
 - Centralisation des poignées de rotation: `SceneController.set_rotation_handles_visible` gère désormais l'affichage des poignées de rotation au lieu de `MainWindow`. Un test unitaire couvre également `SceneController.set_scene_size`.
 - **Centralisation de la logique de scène** : Les méthodes de manipulation de la scène (ajout/suppression/duplication d'objets et de marionnettes) ont été déplacées de `ObjectManager` vers `SceneController` pour une meilleure séparation des responsabilités. `ObjectManager` se concentre désormais sur la gestion des données des objets et des marionnettes, tandis que `SceneController` gère leur représentation et leur manipulation dans la scène.
 
+- Refactor de SceneController en sous-contrôleurs `PuppetOps`, `ObjectOps` et `LibraryOps` pour une façade plus légère.
 - Capture de scène unifiée : `ObjectManager` expose désormais `capture_scene_state`, permettant à `SceneModel.add_keyframe` de recevoir directement les états des objets et marionnettes sans dupliquer la logique de sérialisation.
 
 - Refactor `SceneObject` et `Keyframe` : conversion en `dataclasses` afin de simplifier l'initialisation et la sérialisation.
@@ -148,6 +149,13 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
   pour créer modèle, scène et `ObjectManager` avant tout autre élément.
   L'ordre d'appel des méthodes `_setup_*` est documenté et exécuté via une
   liste de hooks pour clarifier le démarrage.
+- Refactor Overlays : extraction de la logique de repli dans `_set_overlay_collapsed`,
+  assurant l'échange d'icône, la visibilité des boutons et la conservation de la
+  position latérale des panneaux.
+
+- Validation JSON centralisée : extraction des règles de `_validate_data`
+  vers `core/scene_validation.py` avec des fonctions dédiées
+  (`validate_settings`, `validate_objects`, `validate_keyframes`) et tests unitaires.
 
 ## État actuel et prochaines étapes possibles
 

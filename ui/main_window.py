@@ -1,7 +1,7 @@
 """Main window of the application, orchestrating UI components and scene management."""
 
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, cast
 
 from PySide6.QtCore import Qt, QTimer, QEvent, QSettings
 from PySide6.QtGui import QPainter
@@ -22,7 +22,7 @@ from ui.object_manager import ObjectManager
 from ui.onion_skin import OnionSkinManager
 from ui.overlay_manager import OverlayManager
 from ui.playback_controller import PlaybackController
-from ui.scene.scene_controller import SceneController
+from ui.scene import SceneController
 from ui.scene.scene_visuals import SceneVisuals
 from ui.settings_manager import SettingsManager
 from ui.docks import setup_timeline_dock
@@ -40,7 +40,7 @@ class MainWindow(QMainWindow):
     """
 
     def __init__(self) -> None:
-        """Initializes the main window, scene, and all UI components."""
+        """Initialize the main window, scene, and all UI components."""
         super().__init__()
         self.setWindowTitle("Borne and the Bayrou - Disco MIX")
 
@@ -85,11 +85,11 @@ class MainWindow(QMainWindow):
         self._settings_loaded: bool = False
 
         self.view: ZoomableView = ZoomableView(self.scene, self)
-        self.view.setRenderHint(QPainter.Antialiasing)
-        self.view.setRenderHint(QPainter.SmoothPixmapTransform)
-        self.view.setFrameShape(QFrame.NoFrame)
-        self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.view.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.view.setRenderHint(cast(Any, QPainter).Antialiasing)
+        self.view.setRenderHint(cast(Any, QPainter).SmoothPixmapTransform)
+        self.view.setFrameShape(cast(Any, QFrame).NoFrame)
+        self.view.setHorizontalScrollBarPolicy(cast(Any, Qt).ScrollBarAsNeeded)
+        self.view.setVerticalScrollBarPolicy(cast(Any, Qt).ScrollBarAsNeeded)
 
         main_widget: QWidget = QWidget()
         layout: QVBoxLayout = QVBoxLayout(main_widget)
@@ -152,20 +152,20 @@ class MainWindow(QMainWindow):
         """Applies stored startup preferences."""
         try:
             s = QSettings("JaJa", "Macronotron")
-            self.onion.prev_count = int(s.value("onion/prev_count", self.onion.prev_count))
-            self.onion.next_count = int(s.value("onion/next_count", self.onion.next_count))
-            self.onion.opacity_prev = float(s.value("onion/opacity_prev", self.onion.opacity_prev))
-            self.onion.opacity_next = float(s.value("onion/opacity_next", self.onion.opacity_next))
+            self.onion.prev_count = int(cast(int, s.value("onion/prev_count", self.onion.prev_count)))
+            self.onion.next_count = int(cast(int, s.value("onion/next_count", self.onion.next_count)))
+            self.onion.opacity_prev = float(cast(float, s.value("onion/opacity_prev", self.onion.opacity_prev)))
+            self.onion.opacity_next = float(cast(float, s.value("onion/opacity_next", self.onion.opacity_next)))
             self.overlays.apply_menu_settings()
         except (RuntimeError, ValueError, ImportError):
             logging.exception("Failed to apply startup preferences")
 
     def showEvent(self, event: QEvent) -> None:
-        """Ensures the view is fitted and overlays are positioned on show."""
+        """Ensure the view is fitted and overlays are positioned on show."""
         super().showEvent(event)
-        def _layout_then_fit():
+        def _layout_then_fit() -> None:
             try:
-                self.resizeDocks([self.timeline_dock], [int(max(140, self.height()*0.22))], Qt.Vertical)
+                self.resizeDocks([self.timeline_dock], [int(max(140, self.height()*0.22))], cast(Any, Qt).Vertical)
             except RuntimeError as e:
                 logging.debug("Failed to resize docks: %s", e)
             self.fit_to_view()
@@ -178,7 +178,7 @@ class MainWindow(QMainWindow):
         self.overlays.position_overlays()
 
     def reset_ui(self) -> None:
-        """Clears saved UI settings and resets the UI to its default state immediately."""
+        """Clear saved UI settings and reset the UI to its default state immediately."""
         self.settings.clear()
 
         self.showMaximized()
@@ -188,7 +188,7 @@ class MainWindow(QMainWindow):
         QMessageBox.information(self, "Interface réinitialisée", "La disposition de l'interface a été réinitialisée.")
 
     def reset_scene(self) -> None:
-        """Resets the scene to a blank state."""
+        """Reset the scene to a blank state."""
         scene_actions.reset_scene(self)
 
     def _build_side_overlays(self) -> None:
@@ -197,15 +197,15 @@ class MainWindow(QMainWindow):
         self.overlays.build_overlays()
 
     def set_library_overlay_visible(self, visible: bool) -> None:
-        """Sets the visibility of the library overlay."""
+        """Set the visibility of the library overlay."""
         library_actions.set_library_overlay_visible(self, visible)
 
     def set_inspector_overlay_visible(self, visible: bool) -> None:
-        """Sets the visibility of the inspector overlay."""
+        """Set the visibility of the inspector overlay."""
         inspector_actions.set_inspector_overlay_visible(self, visible)
 
     def set_custom_overlay_visible(self, visible: bool) -> None:
-        """Sets the visibility of the custom overlay."""
+        """Set the visibility of the custom overlay."""
         self.overlays.set_custom_visible(visible)
 
     def _setup_scene_visuals(self) -> None:
@@ -223,35 +223,35 @@ class MainWindow(QMainWindow):
         pass
 
     def fit_to_view(self) -> None:
-        """Fits the scene to the view."""
+        """Fit the scene to the view."""
         self.view.resetTransform()
-        self.view.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
+        self.view.fitInView(self.scene.sceneRect(), cast(Any, Qt).KeepAspectRatio)
         self.zoom_factor = self.view.transform().m11()
         self._update_zoom_status()
 
     def ensure_fit(self) -> None:
-        """Ensures the scene is fitted to the view."""
+        """Ensure the scene is fitted to the view."""
         QTimer.singleShot(0, self.fit_to_view)
 
     def set_scene_size(self) -> None:
-        """Sets the scene size."""
+        """Set the scene size."""
         scene_actions.set_scene_size(self)
 
     def set_background(self) -> None:
-        """Sets the background of the scene."""
+        """Set the background of the scene."""
         scene_actions.set_background(self)
 
-    def _update_background(self):
-        """Updates the background of the scene."""
+    def _update_background(self) -> None:
+        """Update the background of the scene."""
         # Délégation via SceneController (comportement inchangé)
         self.scene_controller.update_background()
 
     def toggle_rotation_handles(self, visible: bool) -> None:
-        """Toggles the visibility of the rotation handles."""
+        """Toggle the visibility of the rotation handles."""
         self.scene_controller.set_rotation_handles_visible(visible)
 
     def update_scene_from_model(self) -> None:
-        """Updates the scene from the model."""
+        """Update the scene from the model."""
         index: int = self.scene_model.current_frame
         keyframes: Dict[int, Keyframe] = self.scene_model.keyframes
         if not keyframes:
@@ -272,20 +272,20 @@ class MainWindow(QMainWindow):
         self.scene_controller.apply_object_states(graphics_items, keyframes, index)
 
     def add_keyframe(self, frame_index: int) -> None:
-        """Adds a keyframe to the scene."""
+        """Add a keyframe to the scene."""
         state = self.object_manager.capture_scene_state()
         self.scene_model.add_keyframe(frame_index, state)
         self.timeline_widget.add_keyframe_marker(frame_index)
 
     def select_object_in_inspector(self, name: str) -> None:
-        """Selects an object in the inspector."""
+        """Select an object in the inspector."""
         selection_sync.select_object_in_inspector(self, name)
 
     def _on_scene_selection_changed(self) -> None:
-        """Handles the scene selection changed event."""
+        """Handle the scene selection changed event."""
         selection_sync.scene_selection_changed(self)
     def _on_frame_update(self) -> None:
-        """Handles the frame update event."""
+        """Handle the frame update event."""
         self.update_scene_from_model()
         self.update_onion_skins()
 
@@ -303,20 +303,20 @@ class MainWindow(QMainWindow):
         self.settings.load()
 
     def set_onion_enabled(self, enabled: bool) -> None:
-        """Enables or disables onion skinning."""
+        """Enable or disable onion skinning."""
         # Délégation via SceneController
         self.scene_controller.set_onion_enabled(enabled)
 
     def clear_onion_skins(self) -> None:
-        """Clears the onion skins."""
+        """Clear the onion skins."""
         self.scene_controller.clear_onion_skins()
 
     def update_onion_skins(self) -> None:
-        """Updates the onion skins."""
+        """Update the onion skins."""
         self.scene_controller.update_onion_skins()
 
     # --- Settings Dialog ---
     def open_settings_dialog(self) -> None:
-        """Opens the settings dialog."""
+        """Open the settings dialog."""
         # Délègue entièrement au SettingsManager
         self.settings.open_dialog()

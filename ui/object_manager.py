@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 class ObjectManager:
     """Manages puppets and objects (creation, deletion, manipulation) in the scene."""
     def __init__(self, win: MainWindow) -> None:
-        """Initializes the object manager.
+        """Initialize the object manager.
 
         Args:
             win: The main window of the application.
@@ -32,7 +32,7 @@ class ObjectManager:
         self.puppet_z_offsets: Dict[str, int] = {}
 
     def capture_puppet_states(self) -> Dict[str, Dict[str, Dict[str, Any]]]:
-        """Captures the states of all puppets in the scene."""
+        """Capture the states of all puppets in the scene."""
         states: Dict[str, Dict[str, Dict[str, Any]]] = {}
         for name, puppet in self.scene_model.puppets.items():
             puppet_state: Dict[str, Dict[str, Any]] = {}
@@ -48,11 +48,7 @@ class ObjectManager:
 
     # --- Snapshot helpers ---
     def capture_visible_object_states(self) -> Dict[str, Dict[str, Any]]:
-        """Capture the on-screen state for visible objects.
-
-        This includes attachment derived from parentItem.
-        Uses local coords when attached and scene coords when free.
-        """
+        """Capture on-screen state for visible objects."""
         states: Dict[str, Dict[str, Any]] = {}
         # Build a reverse map from PuppetPiece to (puppet, member)
         piece_owner: Dict[QGraphicsItem, tuple[str, str]] = {}
@@ -82,14 +78,14 @@ class ObjectManager:
         return states
 
     def capture_scene_state(self) -> Dict[str, Dict[str, Any]]:
-        """Capture both puppet and visible object states."""
+        """Capture puppet and visible object states."""
         return {
             "puppets": self.capture_puppet_states(),
             "objects": self.capture_visible_object_states(),
         }
 
     def snapshot_current_frame(self) -> None:
-        """Snapshots the current frame."""
+        """Snapshot the current frame."""
         cur: int = self.scene_model.current_frame
         state = self.capture_scene_state()
         self.scene_model.add_keyframe(cur, state)

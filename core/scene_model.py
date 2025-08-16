@@ -8,6 +8,11 @@ import logging
 import json
 from dataclasses import dataclass, field, asdict
 from core.puppet_model import Puppet
+from core.scene_validation import (
+    validate_settings,
+    validate_objects,
+    validate_keyframes,
+)
 
 
 @dataclass
@@ -182,31 +187,14 @@ class SceneModel:
         - keyframes (if present) must be a list of dict with an integer 'index'
         """
         if not isinstance(data, dict):
+            logging.error("root: expected dict, got %s", type(data).__name__)
             return False
-        settings = data.get("settings", {})
-        if settings is not None and not isinstance(settings, dict):
+        if not validate_settings(data.get("settings")):
             return False
-        if isinstance(settings, dict):
-            for k in ("start_frame", "end_frame", "fps", "scene_width", "scene_height"):
-                if k in settings and not isinstance(settings[k], int):
-                    return False
-        objects = data.get("objects", {})
-        if objects is not None and not isinstance(objects, dict):
+        if not validate_objects(data.get("objects")):
             return False
-        if isinstance(objects, dict):
-            for k, v in objects.items():
-                if not isinstance(k, str) or not isinstance(v, dict):
-                    return False
-        keyframes = data.get("keyframes", [])
-        if keyframes is not None and not isinstance(keyframes, list):
+        if not validate_keyframes(data.get("keyframes")):
             return False
-        if isinstance(keyframes, list):
-            for kf in keyframes:
-                if not isinstance(kf, dict):
-                    return False
-                idx = kf.get("index")
-                if idx is not None and not isinstance(idx, int):
-                    return False
         return True
     def to_dict(self) -> Dict[str, Any]:
         """Serialize the whole scene into a JSON-friendly dictionary."""
