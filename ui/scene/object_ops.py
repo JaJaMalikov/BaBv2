@@ -1,6 +1,7 @@
-"""
-This module provides operations related to scene objects, such as creating, deleting, duplicating,
-attaching, and detaching objects from the scene and puppet members.
+"""Operations for creating, deleting, and managing scene objects.
+
+This module provides utilities for creating, duplicating, attaching and
+detaching objects within the scene and from puppet members.
 """
 from __future__ import annotations
 

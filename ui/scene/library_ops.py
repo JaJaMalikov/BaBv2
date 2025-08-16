@@ -1,5 +1,6 @@
-from __future__ import annotations
+"""Helpers for loading assets from the library into the scene."""
 
+from __future__ import annotations
 
 import logging
 from pathlib import Path
@@ -15,6 +16,8 @@ if TYPE_CHECKING:
 
 
 class LibraryPayload(TypedDict, total=False):
+    """Data describing an asset selected from the library."""
+
     kind: str
     path: str
 
@@ -29,6 +32,7 @@ class LibraryOps:
         object_ops: ObjectOps,
         set_background_path: "Callable[[Optional[str]], None]",
     ) -> None:
+        """Initialize helpers to route library items into the scene."""
         self.win = win
         self.puppets = puppet_ops
         self.objects = object_ops

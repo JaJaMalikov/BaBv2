@@ -15,6 +15,7 @@ class StateApplier:
     """Apply model keyframe states to the current graphics items (puppets and objects)."""
 
     def __init__(self, win: 'Any') -> None:
+        """Store reference to main window-like object for scene access."""
         self.win = win
 
     def _lerp_angle(self, a: float, b: float, t: float) -> float:
@@ -92,7 +93,13 @@ class StateApplier:
         gi.setScale(float(prev_st.get("scale", gi.scale())))
         gi.setZValue(int(prev_st.get("z", int(gi.zValue()))))
 
-    def apply_puppet_states(self, graphics_items: Dict[str, Any], keyframes: Dict[int, Keyframe], index: int) -> None:
+    def apply_puppet_states(
+        self,
+        graphics_items: Dict[str, Any],
+        keyframes: Dict[int, Keyframe],
+        index: int,
+    ) -> None:
+        """Apply interpolated puppet transformations for the given frame index."""
         sorted_indices: List[int] = sorted(keyframes.keys())
         prev_kf_index: int = next((i for i in reversed(sorted_indices) if i <= index), -1)
         next_kf_index: int = next((i for i in sorted(sorted_indices) if i > index), -1)
@@ -138,8 +145,17 @@ class StateApplier:
                 for child in root_piece.children:
                     child.update_transform_from_parent()
 
-    def apply_object_states(self, graphics_items: Dict[str, Any], keyframes: Dict[int, Keyframe], index: int) -> None:
-        def prev_and_next_state(obj_name: str) -> Tuple[Optional[int], Optional[Dict[str, Any]], Optional[int], Optional[Dict[str, Any]], bool]:
+    def apply_object_states(
+        self,
+        graphics_items: Dict[str, Any],
+        keyframes: Dict[int, Keyframe],
+        index: int,
+    ) -> None:
+        """Apply object transformations and visibility for the given frame index."""
+
+        def prev_and_next_state(
+            obj_name: str,
+        ) -> Tuple[Optional[int], Optional[Dict[str, Any]], Optional[int], Optional[Dict[str, Any]], bool]:
             """Return (prev_idx, prev_state, next_idx, next_state, visible) for an object.
 
             visible is False when the last keyframe at or before index omits the object

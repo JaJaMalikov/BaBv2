@@ -22,10 +22,15 @@ if TYPE_CHECKING:
 
 
 class InspectorWidgetProtocol(Protocol):
-    def refresh(self) -> None: ...
+    """Protocol describing the interface expected from the inspector widget."""
+
+    def refresh(self) -> None:
+        """Refresh the inspector's displayed information."""
 
 
 class MainWindowProtocol(Protocol):
+    """Minimal protocol for the main window used by scene operations."""
+
     scene: QGraphicsScene
     scene_model: SceneModel
     object_manager: ObjectManager
@@ -34,7 +39,8 @@ class MainWindowProtocol(Protocol):
     _suspend_item_updates: bool
     inspector_widget: InspectorWidgetProtocol
 
-    def add_keyframe(self, index: int) -> None: ...
+    def add_keyframe(self, index: int) -> None:
+        """Insert a keyframe at the given timeline index."""
 
     def _update_background(self) -> None: ...
 

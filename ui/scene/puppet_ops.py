@@ -1,3 +1,5 @@
+"""Utilities for manipulating puppets within the scene view."""
+
 from __future__ import annotations
 
 import logging
@@ -19,6 +21,7 @@ class PuppetOps:
     """Operations related to puppet manipulation in the scene."""
 
     def __init__(self, win: MainWindowProtocol) -> None:
+        """Initialize helper with a reference to the main window."""
         self.win = win
 
     def add_puppet(self, file_path: str, puppet_name: str) -> None:
