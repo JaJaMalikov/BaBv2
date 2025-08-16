@@ -1,4 +1,11 @@
-"""Validation helpers for scene import/export structures."""
+"""Validation helpers for scene JSON data.
+
+This module provides light-weight checks used when importing a scene from
+JSON. Each function validates part of the structure (global settings,
+objects map or keyframes list) and logs descriptive errors when values do not
+match the expected types.
+"""
+
 from __future__ import annotations
 
 import logging

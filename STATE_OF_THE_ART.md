@@ -114,6 +114,8 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
   - `ui/inspector_widget.py`: docstrings classe/méthodes et types pour callbacks.
   - `ui/library_widget.py`: docstring de module/classe et annotation `reload()`.
   - `ui/timeline_widget.py`: docstring de classe pour préciser le rôle et les signaux exposés.
+  - `core/scene_validation.py`: docstring de module décrivant les vérifications JSON.
+  - `ui/draggable_widget.py`: docstrings pour les widgets d'overlays et leurs méthodes.
 - Suppression temporelle des objets: la logique d'affichage considère désormais le dernier keyframe ≤ frame courante comme point de vérité. Si ce keyframe ne référence pas un objet, celui-ci est masqué à partir de cette frame (et jusqu'à ce qu'un nouveau keyframe le réintroduise). L’inspecteur se synchronise sur cette règle.
 - Nettoyage historique: retrait des vestiges `grid` / `snap_to_grid` dans `PuppetPiece` (non utilisés), sans impact sur le comportement actuel.
 - (Revert) Affichage unifié des membres retiré: l'approche basée sur `shape()` des SVG produit des bboxes rectangulaires non conformes. À revisiter ultérieurement avec une extraction de silhouette par rendu offscreen si nécessaire.
