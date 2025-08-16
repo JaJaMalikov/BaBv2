@@ -9,7 +9,10 @@ from PySide6.QtWidgets import QGraphicsDropShadowEffect
 from PySide6.QtGui import QColor
 
 class DraggableOverlay(QWidget):
-    def __init__(self, parent=None):
+    """Base overlay that can be moved with the right mouse button."""
+
+    def __init__(self, parent=None) -> None:
+        """Initialise the overlay and install a drop shadow effect."""
         super().__init__(parent)
         self.setAttribute(Qt.WA_StyledBackground, True)
         try:
@@ -22,22 +25,24 @@ class DraggableOverlay(QWidget):
             logging.debug("Shadow effect unavailable: %s", e)
         self._drag_start_position = None
 
-    def mousePressEvent(self, event):
-        # Allow dragging with right-click from anywhere
+    def mousePressEvent(self, event) -> None:  # type: ignore[override]
+        """Begin dragging on right-click or delegate to parent."""
         if event.button() == Qt.RightButton:
             self._drag_start_position = event.globalPosition().toPoint() - self.pos()
             event.accept()
         else:
             super().mousePressEvent(event)
 
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(self, event) -> None:  # type: ignore[override]
+        """Move the overlay while the right button is held."""
         if event.buttons() & Qt.RightButton and self._drag_start_position:
             self.move(event.globalPosition().toPoint() - self._drag_start_position)
             event.accept()
         else:
             super().mouseMoveEvent(event)
 
-    def mouseReleaseEvent(self, event):
+    def mouseReleaseEvent(self, event) -> None:  # type: ignore[override]
+        """End the drag operation on right button release."""
         if event.button() == Qt.RightButton:
             self._drag_start_position = None
             event.accept()
@@ -46,8 +51,10 @@ class DraggableOverlay(QWidget):
 
 
 class PanelOverlay(DraggableOverlay):
-    """Draggable (via right-click) and resizable panel overlay."""
-    def __init__(self, parent=None, border_width: int = 8):
+    """Draggable (right-click) panel that can also be resized."""
+
+    def __init__(self, parent=None, border_width: int = 8) -> None:
+        """Create a panel overlay with an optional resize border."""
         super().__init__(parent)
         self._border_width = border_width
         self.setMouseTracking(True)
@@ -58,9 +65,10 @@ class PanelOverlay(DraggableOverlay):
         self._resize_start_geom = None
 
     def _hit_test_corner(self, pos: QPoint) -> Optional[Qt.Corner]:
-        """
-        Retourne le coin de redimensionnement (Qt.Corner) si le pointeur
-        se trouve dans la bordure (épaisseur self._border_width), sinon None.
+        """Return resize corner if ``pos`` lies within the border.
+
+        The border thickness is ``self._border_width``; returns ``None`` when the
+        cursor is outside this region.
         """
         x, y = pos.x(), pos.y()
         w, h = self.width(), self.height()
@@ -84,16 +92,17 @@ class PanelOverlay(DraggableOverlay):
 
         return None
 
-    # Compatibilité rétroactive: conserver l’ancienne API.
     def _get_edge(self, pos: QPoint) -> Optional[Qt.Corner]:
+        """Backward-compatible wrapper around :meth:`_hit_test_corner`."""
         return self._hit_test_corner(pos)
 
-
-    def leaveEvent(self, event):
-        self.unsetCursor() # Fix for sticky cursor
+    def leaveEvent(self, event) -> None:  # type: ignore[override]
+        """Reset the cursor when it leaves the overlay."""
+        self.unsetCursor()  # Fix for sticky cursor
         super().leaveEvent(event)
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event) -> None:  # type: ignore[override]
+        """Start resizing on left click or pass to parent."""
         if event.button() == Qt.LeftButton:
             edge = self._get_edge(event.position().toPoint())
             if edge:
@@ -105,7 +114,8 @@ class PanelOverlay(DraggableOverlay):
                 return
         super().mousePressEvent(event)
 
-    def mouseReleaseEvent(self, event):
+    def mouseReleaseEvent(self, event) -> None:  # type: ignore[override]
+        """Stop resizing when the left button is released."""
         if event.button() == Qt.LeftButton and self._is_resizing:
             self._is_resizing = False
             self._resize_edge = None
@@ -115,7 +125,8 @@ class PanelOverlay(DraggableOverlay):
             return
         super().mouseReleaseEvent(event)
 
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(self, event) -> None:  # type: ignore[override]
+        """Resize or update the cursor while the mouse moves."""
         if self._is_resizing and (event.buttons() & Qt.LeftButton):
             delta = event.globalPosition().toPoint() - self._resize_start_pos
             new_geom = QRect(self._resize_start_geom)
@@ -160,29 +171,38 @@ class PanelOverlay(DraggableOverlay):
 
 
 class DraggableHeader(QWidget):
-    """Header bar that drags a target overlay with left mouse button."""
-    def __init__(self, target, parent=None):
+    """Header bar that drags a target overlay with the left button."""
+
+    def __init__(self, target, parent=None) -> None:
+        """Store the target overlay and style the header widget."""
         super().__init__(parent)
         self._target = target
         self._drag_start = None
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.setProperty("role", "overlay-header")
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event) -> None:  # type: ignore[override]
+        """Begin dragging the target overlay on left press."""
         if event.button() == Qt.LeftButton and self._target is not None:
             self._drag_start = event.globalPosition().toPoint() - self._target.pos()
             event.accept()
             return
         super().mousePressEvent(event)
 
-    def mouseMoveEvent(self, event):
-        if (event.buttons() & Qt.LeftButton) and self._drag_start is not None and self._target is not None:
+    def mouseMoveEvent(self, event) -> None:  # type: ignore[override]
+        """Move the target overlay while the left button is held."""
+        if (
+            event.buttons() & Qt.LeftButton
+            and self._drag_start is not None
+            and self._target is not None
+        ):
             self._target.move(event.globalPosition().toPoint() - self._drag_start)
             event.accept()
             return
         super().mouseMoveEvent(event)
 
-    def mouseReleaseEvent(self, event):
+    def mouseReleaseEvent(self, event) -> None:  # type: ignore[override]
+        """End the drag operation when the left button is released."""
         if event.button() == Qt.LeftButton and self._drag_start is not None:
             self._drag_start = None
             event.accept()
