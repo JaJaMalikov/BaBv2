@@ -1,4 +1,9 @@
 **/__pycache__
 pyproject.toml
 pyproject.toml.user
-
+pysidedploy.spec
+.pytest_cache/
+feature_du_futur/
+.idea/
+.ruff_cache/
+VISION.MD

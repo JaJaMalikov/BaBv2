@@ -1,0 +1,5 @@
+[MASTER]
+
+init-hook='import sys; sys.path.append("/home/jaja/.pyenv/versions/pyside6/lib/python3.13/site-packages")'
+suggestion-mode=yes
+ignored-modules=PySide6

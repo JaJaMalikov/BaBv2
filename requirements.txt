@@ -1,3 +1,3 @@
 PySide6
-qt-material
 pytest
+pylint
