@@ -2,7 +2,7 @@
 
 import logging
 import json
-from typing import Optional, Any, Callable, Dict, List
+from typing import Optional, Any, Dict, List
 
 from PySide6.QtWidgets import (
     QGraphicsView,

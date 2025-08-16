@@ -25,7 +25,6 @@ from ui.playback_controller import PlaybackController
 from ui.scene.scene_controller import SceneController
 from ui.scene.scene_visuals import SceneVisuals
 from ui.settings_manager import SettingsManager
-from ui.timeline_widget import TimelineWidget
 from ui.docks import setup_timeline_dock
 from ui.zoomable_view import ZoomableView
 from ui.library import actions as library_actions
