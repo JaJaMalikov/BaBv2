@@ -8,7 +8,7 @@ import logging
 
 from PySide6.QtWidgets import (
     QWidget, QListWidget, QListWidgetItem, QVBoxLayout, QHBoxLayout,
-    QDoubleSpinBox, QComboBox, QToolButton, QFormLayout, QFrame
+    QDoubleSpinBox, QComboBox, QToolButton, QFormLayout, QFrame, QLabel
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
@@ -92,6 +92,14 @@ class InspectorWidget(QWidget):
         attach_actions_layout.addWidget(self.detach_btn)
         form_layout.addRow("", attach_actions_layout)
 
+        # Variants section (only visible for puppets with defined slots)
+        self.variants_panel = QWidget()
+        self.variants_layout = QFormLayout(self.variants_panel)
+        self.variants_layout.setSpacing(6)
+        self.variants_layout.setLabelAlignment(Qt.AlignRight)
+        self.variant_combos: dict[str, QComboBox] = {}
+        form_layout.addRow(QLabel("Variants:"), self.variants_panel)
+
         # Separator
         line2 = QFrame()
         line2.setFrameShape(QFrame.HLine)
@@ -119,6 +127,63 @@ class InspectorWidget(QWidget):
         self.detach_btn.clicked.connect(self._on_detach_clicked)
 
         self.refresh()
+
+    # --- Variants helpers ---
+    def _current_variant_for_slot(self, puppet_name: str, slot: str) -> str | None:
+        """Return the active variant for a slot at the current frame (or default)."""
+        mw = self.main_window
+        puppet = mw.scene_model.puppets.get(puppet_name)
+        if not puppet:
+            return None
+        candidates = getattr(puppet, 'variants', {}).get(slot, [])
+        # Resolve from keyframes
+        idx = mw.scene_model.current_frame
+        si = sorted(mw.scene_model.keyframes.keys())
+        last_kf = next((i for i in reversed(si) if i <= idx), None)
+        if last_kf is not None:
+            vmap = mw.scene_model.keyframes[last_kf].puppets.get(puppet_name, {}).get('_variants', {})
+            if isinstance(vmap, dict):
+                val = vmap.get(slot)
+                if isinstance(val, str) and val in candidates:
+                    return val
+        # Fallback to currently visible piece in scene
+        for cand in candidates:
+            gi = mw.object_manager.graphics_items.get(f"{puppet_name}:{cand}")
+            try:
+                if gi and gi.isVisible():
+                    return cand
+            except RuntimeError:
+                continue
+        return candidates[0] if candidates else None
+
+    def _rebuild_variant_rows(self, puppet_name: str) -> None:
+        """Build or refresh variant selection rows for the selected puppet."""
+        puppet = self.main_window.scene_model.puppets.get(puppet_name)
+        # Clear existing rows
+        for i in reversed(range(self.variants_layout.count())):
+            item = self.variants_layout.itemAt(i)
+            w = item.widget()
+            if w:
+                w.deleteLater()
+        self.variant_combos.clear()
+        slots = list(getattr(puppet, 'variants', {}).keys()) if puppet else []
+        self.variants_panel.setVisible(bool(slots))
+        for slot in sorted(slots):
+            combo = QComboBox()
+            options = getattr(puppet, 'variants', {}).get(slot, [])
+            combo.addItems(options)
+            current = self._current_variant_for_slot(puppet_name, slot)
+            if current:
+                idx = combo.findText(current)
+                if idx >= 0:
+                    combo.setCurrentIndex(idx)
+            # Connect change
+            # Lier le nom du slot et du pantin dans la closure (évite la capture tardive)
+            combo.currentTextChanged.connect(
+                lambda s, slot_name=slot, puppet=puppet_name: self.main_window.scene_controller.set_member_variant(puppet, slot_name, s)
+            )
+            self.variant_combos[slot] = combo
+            self.variants_layout.addRow(f"{slot}:", combo)
 
     def refresh(self) -> None:
         """Refresh the list from the scene model."""
@@ -188,6 +253,8 @@ class InspectorWidget(QWidget):
             rot = self.main_window.scene_controller.get_puppet_rotation(name)
             z = self.main_window.object_manager.puppet_z_offsets.get(name, 0)
             # Pas de combos d'attache pour les pantins
+            # Build/refresh variant rows for this puppet
+            self._rebuild_variant_rows(name)
         self.scale_spin.blockSignals(True)
         self.scale_spin.setValue(scale)
         self.scale_spin.blockSignals(False)
@@ -371,6 +438,20 @@ class InspectorWidget(QWidget):
             else:
                 self.attach_puppet_combo.setCurrentIndex(0)
                 self._refresh_attach_member_combo()
+        # Sync variant combos when puppet is selected
+        if typ == "puppet" and name and self.variants_panel.isVisible():
+            puppet = self.main_window.scene_model.puppets.get(name)
+            for slot, combo in list(self.variant_combos.items()):
+                if slot not in getattr(puppet, 'variants', {}):
+                    continue
+                cur = self._current_variant_for_slot(name, slot)
+                if cur is None:
+                    continue
+                idx = combo.findText(cur)
+                if idx >= 0 and combo.currentIndex() != idx:
+                    combo.blockSignals(True)
+                    combo.setCurrentIndex(idx)
+                    combo.blockSignals(False)
         # Update icons for all objects to reflect current frame
         self._update_list_attachment_icons()
 

@@ -37,6 +37,8 @@ class PlaybackHandler(QObject):
         self.set_fps(self.scene_model.fps)
 
         self._connect_signals()
+        # Simple clipboard for keyframe copy/paste
+        self._kf_clipboard: Optional[dict] = None
 
     def _connect_signals(self) -> None:
         """Connects signals from the timeline widget to the handler's slots."""
@@ -50,6 +52,9 @@ class PlaybackHandler(QObject):
         self.timeline_widget.frameChanged.connect(self.go_to_frame)
         self.timeline_widget.addKeyframeClicked.connect(self.keyframe_add_requested)
         self.timeline_widget.deleteKeyframeClicked.connect(self.delete_keyframe)
+        # Copy/paste keyframes
+        self.timeline_widget.copyKeyframeClicked.connect(self.copy_keyframe)
+        self.timeline_widget.pasteKeyframeClicked.connect(self.paste_keyframe)
 
         # Sync inspector
         self.timeline_widget.frameChanged.connect(self.inspector_widget.sync_with_frame)
@@ -109,6 +114,31 @@ class PlaybackHandler(QObject):
         """Deletes a keyframe from the timeline."""
         self.scene_model.remove_keyframe(frame_index)
         self.timeline_widget.remove_keyframe_marker(frame_index)
+
+    # --- Copy/Paste -------------------------------------------------------
+    def copy_keyframe(self, frame_index: int) -> None:
+        """Copy the exact state of a keyframe into a simple clipboard."""
+        kf = self.scene_model.keyframes.get(frame_index)
+        if not kf:
+            return
+        # Shallow copy is fine (values are primitives/lists/dicts of primitives)
+        self._kf_clipboard = {
+            "objects": dict(kf.objects),
+            "puppets": dict(kf.puppets),
+        }
+
+    def paste_keyframe(self, frame_index: int) -> None:
+        """Paste the clipboard state at the target frame (overwrite or create)."""
+        if not self._kf_clipboard:
+            return
+        state = {
+            "objects": self._kf_clipboard.get("objects", {}),
+            "puppets": self._kf_clipboard.get("puppets", {}),
+        }
+        self.scene_model.add_keyframe(frame_index, state)
+        self.timeline_widget.add_keyframe_marker(frame_index)
+        # Refresh scene to reflect pasted state
+        self.go_to_frame(frame_index)
 
     def update_timeline_ui_from_model(self) -> None:
         """Updates the timeline widget with the current scene model values."""

@@ -102,6 +102,44 @@ class SceneController:
         """Toggle visibility of rotation handles."""
         self.puppet_ops.set_rotation_handles_visible(visible)
 
+    # --- Variants ---------------------------------------------------------
+    def set_member_variant(self, puppet_name: str, slot: str, variant_name: str) -> None:
+        """Choose a variant for a puppet slot at the current frame.
+
+        - Immediately updates scene visibility
+        - Ensures a keyframe exists and records the choice under puppets[puppet]["_variants"].
+        """
+        # Update visuals immediately
+        self.puppet_ops.set_member_variant(puppet_name, slot, variant_name)
+        # Ensure there's a keyframe to store this change
+        cur = int(self.win.scene_model.current_frame)
+        try:
+            # Snapshot current state if the frame has no keyframe yet
+            if cur not in self.win.scene_model.keyframes:
+                self.win.add_keyframe(cur)
+        except Exception:  # pylint: disable=broad-except
+            # Fallback: attempt to create an empty keyframe if UI path fails
+            self.win.scene_model.add_keyframe(cur, self.win.object_manager.capture_scene_state())
+
+        kf = self.win.scene_model.keyframes.get(cur)
+        if not kf:
+            return
+        pup_map = kf.puppets.get(puppet_name)
+        if pup_map is None:
+            pup_map = {}
+            kf.puppets[puppet_name] = pup_map
+        vmap = pup_map.get("_variants")
+        if not isinstance(vmap, dict):
+            vmap = {}
+            pup_map["_variants"] = vmap
+        vmap[str(slot)] = str(variant_name)
+        # Re-apply scene from model to keep everything in sync (onion, etc.)
+        try:
+            self.win.update_scene_from_model()
+            self.win.update_onion_skins()
+        except (RuntimeError, AttributeError):
+            logging.exception("Failed to refresh scene after variant change")
+
     # --- Object operations -------------------------------------------------
     def delete_object(self, name: str) -> None:
         """Delete an object."""

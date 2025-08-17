@@ -377,20 +377,23 @@ class ZoomableView(QGraphicsView):
         else:
             collapse_btn.setIcon(icon_close_menu() if checked else icon_open_menu())
 
-        # Store the position of the right edge before resizing
-        old_right_x = overlay.geometry().right()
-
-        # Hide/show the tool buttons
-        for w in buttons:
-            w.setVisible(checked)
-
-        # Adjust the overlay's size to fit the new content
+        # Hide/show the tool buttons. When expanding, respect configured visibility/order.
+        if checked:
+            try:
+                if overlay is getattr(self, "_main_tools_overlay", None):
+                    # Re-apply mapping visibility and order
+                    self.apply_menu_settings_main()
+                elif overlay is getattr(self, "_overlay", None):
+                    self.apply_menu_settings_quick()
+            except Exception:
+                logging.exception("Failed to reapply menu settings on expand")
+        else:
+            for w in buttons:
+                w.setVisible(False)
+        # Adjust the overlay's size to fit the new content; keep left edge stationary
+        left_x = overlay.geometry().left()
         overlay.adjustSize()
-
-        # Keep the right edge stationary for the main tools overlay
-        if overlay is getattr(self, "_main_tools_overlay", None):
-            new_x = old_right_x - overlay.width()
-            overlay.move(new_x, overlay.y())
+        overlay.move(left_x, overlay.y())
 
     def toggle_overlay_collapse(self, checked: bool) -> None:
         """
@@ -524,6 +527,9 @@ class ZoomableView(QGraphicsView):
                 self.main_tools_layout.addWidget(btn)
                 self.main_tool_buttons.append(btn)
             self.main_tools_layout.addWidget(self.main_collapse_btn)
+            # Adjust overlay size after relayout
+            if hasattr(self, "_main_tools_overlay") and self._main_tools_overlay is not None:
+                self._main_tools_overlay.adjustSize()
         except (RuntimeError, AttributeError):
             logging.exception("Failed to apply main menu settings")
 
@@ -568,6 +574,9 @@ class ZoomableView(QGraphicsView):
                 btn = self.quick_buttons_map.get(key)
                 if btn:
                     self.layout.addWidget(btn)
+            # Adjust overlay size to content
+            if hasattr(self, "_overlay") and self._overlay is not None:
+                self._overlay.adjustSize()
         except (RuntimeError, AttributeError):
             logging.exception("Failed to apply quick menu settings")
 

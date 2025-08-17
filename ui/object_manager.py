@@ -43,6 +43,25 @@ class ObjectManager:
                         'rotation': piece.local_rotation,
                         'pos': (piece.x(), piece.y()),
                     }
+            # If the puppet defines variant slots, snapshot which variant is visible
+            if getattr(puppet, "variants", None):
+                variants_state: Dict[str, Any] = {}
+                for slot, candidates in puppet.variants.items():
+                    active = None
+                    for cand in candidates:
+                        gi = self.graphics_items.get(f"{name}:{cand}")
+                        try:
+                            if gi and gi.isVisible():
+                                active = cand
+                                break
+                        except RuntimeError:
+                            continue
+                    if active is None and candidates:
+                        active = candidates[0]
+                    if active is not None:
+                        variants_state[slot] = active
+                if variants_state:
+                    puppet_state["_variants"] = variants_state
             states[name] = puppet_state
         return states
 

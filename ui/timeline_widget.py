@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import math
-from typing import Optional, Set, Any, List
+from typing import Optional, Set, List
 
 from PySide6.QtCore import Qt, Signal, QRectF, QPointF, QRect, QEvent
 from PySide6.QtGui import (
     QPainter, QColor, QPen, QBrush, QMouseEvent, QWheelEvent, QKeyEvent, QAction, QPolygonF
 )
+from PySide6.QtCore import QSettings
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QSlider, QSpinBox, QLabel, QMenu, QToolButton, QSpacerItem, QSizePolicy
 )
@@ -19,15 +20,21 @@ TRACK_H: int = 28
 PLAYHEAD_W: int = 2
 TOOLBAR_H: int = 30
 
-BG: QColor = QColor("#1E1E1E")
-RULER_BG: QColor = QColor("#2C2C2C")
-TRACK_BG: QColor = QColor("#242424")
-TICK: QColor = QColor("#8A8A8A")
-TICK_MAJOR: QColor = QColor("#E0E0E0")
-PLAYHEAD: QColor = QColor("#65B0FF")
-KF_NORMAL: QColor = QColor("#FFC107")
-KF_HOVER: QColor = QColor("#FFE082")
-INOUT_SHADE: QColor = QColor(0,0,0,30)
+def _c(val: str, default: str) -> QColor:
+    try:
+        s = QSettings("JaJa", "Macronotron")
+        v = s.value(f"timeline/{val}")
+        return QColor(str(v)) if v else QColor(default)
+    except Exception:
+        return QColor(default)
+
+def _alpha(default: int) -> int:
+    try:
+        s = QSettings("JaJa", "Macronotron")
+        v = s.value("timeline/inout_alpha")
+        return int(v) if v is not None else default
+    except Exception:
+        return default
 
 DIAMOND_W: int = 10
 DIAMOND_H: int = 10
@@ -42,6 +49,8 @@ class TimelineWidget(QWidget):
     frameChanged = Signal(int)
     addKeyframeClicked = Signal(int)
     deleteKeyframeClicked = Signal(int)
+    copyKeyframeClicked = Signal(int)
+    pasteKeyframeClicked = Signal(int)
     playClicked = Signal()
     pauseClicked = Signal()
     stopClicked = Signal()
@@ -295,52 +304,66 @@ class TimelineWidget(QWidget):
         return max(0, int(round(f)))
 
     def paintEvent(self, _: QEvent) -> None:
-        """
-        Handles the paint event of the widget.
+        """Handles the paint event of the widget."""
+        p = QPainter(self)
+        try:
+            p.setRenderHint(QPainter.Antialiasing)
+            # Colors from settings or defaults
+            BG = _c("bg", "#1E1E1E")
+            RULER_BG = _c("ruler_bg", "#2C2C2C")
+            TRACK_BG = _c("track_bg", "#242424")
+            TICK = _c("tick", "#8A8A8A")
+            TICK_MAJOR = _c("tick_major", "#E0E0E0")
+            PLAYHEAD = _c("playhead", "#65B0FF")
+            KF_NORMAL = _c("kf", "#FFC107")
+            KF_HOVER = _c("kf_hover", "#FFE082")
+            INOUT_ALPHA = _alpha(30)
 
-        Args:
-            _: The paint event.
-        """
-        p: QPainter = QPainter(self)
-        p.setRenderHint(QPainter.Antialiasing)
-        p.fillRect(self.rect(), BG)
-        ruler_rect: QRect
-        timeline_rect: QRect
-        ruler_rect, timeline_rect = self._ruler_rect(), self._timeline_rect()
-        p.fillRect(ruler_rect, RULER_BG)
-        p.fillRect(timeline_rect, TRACK_BG)
-        in_x: float
-        out_x: float
-        in_x, out_x = self._frame_to_x(self._start), self._frame_to_x(self._end)
-        p.fillRect(QRectF(timeline_rect.left(), timeline_rect.top(), in_x - timeline_rect.left(), timeline_rect.height()), INOUT_SHADE)
-        p.fillRect(QRectF(out_x, timeline_rect.top(), timeline_rect.right() - out_x, timeline_rect.height()), INOUT_SHADE)
-        self._draw_ticks(p, ruler_rect)
-        for fr in self._kfs:
-            x: float = self._frame_to_x(fr)
-            if x < 0 or x > self.width():
-                continue
-            self._draw_kf(p, QPointF(x, timeline_rect.center().y()), fr == self._hover_kf)
-        px: float = self._frame_to_x(self._current)
-        p.setPen(QPen(PLAYHEAD, PLAYHEAD_W))
-        p.drawLine(int(px), 0, int(px), self.height() - TOOLBAR_H)
-        if self.underMouse():
-            pos: QPointF = self.mapFromGlobal(self.cursor().pos())
-            if self._ruler_rect().contains(pos) or self._timeline_rect().contains(pos):
-                fx: int = self._x_to_frame(pos.x())
-                hud: str = f"{fx} | {self._format_time(fx)}"
-                metrics: Any = p.fontMetrics()
-                w: int = metrics.horizontalAdvance(hud) + 10
-                h: int = metrics.height() + 6
-                x: int = int(min(max(6, pos.x() - w//2), self.width() - w - 6))
-                y: int = 6
-                p.setPen(Qt.NoPen)
-                p.setBrush(QColor(0, 0, 0, 160))
-                p.drawRoundedRect(QRectF(x, y, w, h), 6, 6)
-                p.setPen(QColor('#D0D0D0'))
-                p.drawText(x + 5, y + h - 5, hud)
-        p.end()
+            p.fillRect(self.rect(), BG)
+            ruler_rect = self._ruler_rect()
+            timeline_rect = self._timeline_rect()
+            p.fillRect(ruler_rect, RULER_BG)
+            p.fillRect(timeline_rect, TRACK_BG)
 
-    def _draw_ticks(self, p: QPainter, rr: QRect) -> None:
+            in_x, out_x = self._frame_to_x(self._start), self._frame_to_x(self._end)
+            inout = QColor(0, 0, 0, INOUT_ALPHA)
+            p.fillRect(QRectF(timeline_rect.left(), timeline_rect.top(), in_x - timeline_rect.left(), timeline_rect.height()), inout)
+            p.fillRect(QRectF(out_x, timeline_rect.top(), timeline_rect.right() - out_x, timeline_rect.height()), inout)
+
+            self._draw_ticks(p, ruler_rect, TICK, TICK_MAJOR)
+
+            for fr in self._kfs:
+                x = self._frame_to_x(fr)
+                if x < 0 or x > self.width():
+                    continue
+                self._draw_kf(p, QPointF(x, timeline_rect.center().y()), fr == self._hover_kf, KF_NORMAL, KF_HOVER)
+
+            px = self._frame_to_x(self._current)
+            p.setPen(QPen(PLAYHEAD, PLAYHEAD_W))
+            p.drawLine(int(px), 0, int(px), self.height() - TOOLBAR_H)
+
+            if self.underMouse():
+                pos = self.mapFromGlobal(self.cursor().pos())
+                if self._ruler_rect().contains(pos) or self._timeline_rect().contains(pos):
+                    fx = self._x_to_frame(pos.x())
+                    hud = f"{fx} | {self._format_time(fx)}"
+                    metrics = p.fontMetrics()
+                    w = metrics.horizontalAdvance(hud) + 10
+                    h = metrics.height() + 6
+                    x = int(min(max(6, pos.x() - w//2), self.width() - w - 6))
+                    y = 6
+                    p.setPen(Qt.NoPen)
+                    p.setBrush(QColor(0, 0, 0, 160))
+                    p.drawRoundedRect(QRectF(x, y, w, h), 6, 6)
+                    p.setPen(QColor('#D0D0D0'))
+                    p.drawText(x + 5, y + h - 5, hud)
+        finally:
+            try:
+                p.end()
+            except Exception:
+                pass
+
+    def _draw_ticks(self, p: QPainter, rr: QRect, tick: QColor, tick_major: QColor) -> None:
         """
         Draws the ticks on the ruler.
 
@@ -348,7 +371,7 @@ class TimelineWidget(QWidget):
             p: The painter to use.
             rr: The rectangle of the ruler.
         """
-        p.setPen(TICK)
+        p.setPen(tick)
         target: int = 80
         step_frames: int = max(1, int(round(target / max(1.0, self._px_per_frame))))
         base: int = 1
@@ -364,13 +387,13 @@ class TimelineWidget(QWidget):
             if x < rr.left() - 20 or x > rr.right() + 20:
                 continue
             is_major: bool = (f % (step_frames * 5) == 0)
-            p.setPen(TICK_MAJOR if is_major else TICK)
+            p.setPen(tick_major if is_major else tick)
             h: float = rr.height() - 2 if is_major else rr.height() / 2
             p.drawLine(int(x), rr.bottom() - int(h), int(x), rr.bottom())
             if is_major:
                 p.drawText(int(x) + 4, rr.top() + rr.height() - 6, f"{f}")
 
-    def _draw_kf(self, p: QPainter, pos: QPointF, is_hovered: bool) -> None:
+    def _draw_kf(self, p: QPainter, pos: QPointF, is_hovered: bool, kf_normal: QColor, kf_hover: QColor) -> None:
         """
         Draws a keyframe marker.
 
@@ -379,7 +402,7 @@ class TimelineWidget(QWidget):
             pos: The position to draw the marker at.
             is_hovered: Whether the marker is hovered.
         """
-        color: QColor = KF_HOVER if is_hovered else KF_NORMAL
+        color: QColor = kf_hover if is_hovered else kf_normal
         p.setPen(QPen(color.darker(150), 1))
         p.setBrush(QBrush(color))
         p.drawPolygon(QPolygonF([QPointF(pos.x(), pos.y() - DIAMOND_H / 2), QPointF(pos.x() + DIAMOND_W / 2, pos.y()), QPointF(pos.x(), pos.y() + DIAMOND_H / 2), QPointF(pos.x() - DIAMOND_W / 2, pos.y())]))
@@ -463,6 +486,11 @@ class TimelineWidget(QWidget):
             self._jump_prev_kf()
         elif e.key() == Qt.Key_Right:
             self._jump_next_kf()
+        elif e.key() == Qt.Key_C and (e.modifiers() & Qt.ControlModifier):
+            if self._current in self._kfs:
+                self.copyKeyframeClicked.emit(self._current)
+        elif e.key() == Qt.Key_V and (e.modifiers() & Qt.ControlModifier):
+            self.pasteKeyframeClicked.emit(self._current)
         else:
             super().keyPressEvent(e)
 
@@ -510,6 +538,12 @@ class TimelineWidget(QWidget):
             rem_action: QAction = QAction(f"Delete keyframe @ {kf_at_cursor}", self)
             rem_action.triggered.connect(lambda: self.deleteKeyframeClicked.emit(kf_at_cursor))
             menu.addAction(rem_action)
+            copy_action: QAction = QAction(f"Copy keyframe @ {kf_at_cursor}", self)
+            copy_action.triggered.connect(lambda: self.copyKeyframeClicked.emit(kf_at_cursor))
+            menu.addAction(copy_action)
+        paste_action: QAction = QAction(f"Paste @ {f}", self)
+        paste_action.triggered.connect(lambda: self.pasteKeyframeClicked.emit(f))
+        menu.addAction(paste_action)
         menu.exec(e.globalPosition().toPoint())
 
     def _format_time(self, frame: int) -> str:

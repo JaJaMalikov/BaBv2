@@ -1,0 +1,6 @@
+{
+  "variants": {
+    "main_gauche": ["main_gauche", "main_gauche_rev", ["main_gauche_f", 3]],
+    "main_droite": ["main_droite", "main_droite_rev", ["main_droite_f", 3]]
+  }
+}

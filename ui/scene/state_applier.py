@@ -99,7 +99,56 @@ class StateApplier:
         keyframes: Dict[int, Keyframe],
         index: int,
     ) -> None:
-        """Apply interpolated puppet transformations for the given frame index."""
+        """Apply interpolated puppet transformations for the given frame index.
+
+        Also applies per-slot variant visibility using the last known selection
+        at or before the target frame (no interpolation between variants).
+        """
+        # Apply per-slot variant visibility first
+        def _active_variants_for_puppet(puppet_name: str) -> Dict[str, str]:
+            sel: Dict[str, str] = {}
+            si: List[int] = sorted(keyframes.keys())
+            last_kf_any: Optional[int] = next((i for i in reversed(si) if i <= index), None)
+            if last_kf_any is not None:
+                kf = keyframes[last_kf_any]
+                data = kf.puppets.get(puppet_name, {})
+                vmap = data.get("_variants") if isinstance(data, dict) else None
+                if isinstance(vmap, dict):
+                    for k, v in vmap.items():
+                        try:
+                            sel[str(k)] = str(v)
+                        except Exception:  # pylint: disable=broad-except
+                            continue
+            return sel
+
+        for pname, puppet in self.win.scene_model.puppets.items():
+            vconf = getattr(puppet, "variants", {})
+            if not vconf:
+                continue
+            chosen = _active_variants_for_puppet(pname)
+            for slot, candidates in vconf.items():
+                target = chosen.get(slot, candidates[0] if candidates else None)
+                for cand in candidates:
+                    gi_key = f"{pname}:{cand}"
+                    piece: Optional[PuppetPiece] = graphics_items.get(gi_key)  # type: ignore
+                    if not piece:
+                        continue
+                    is_on = (cand == target)
+                    try:
+                        piece.setVisible(is_on)
+                        piece.pivot_handle.setVisible(is_on)
+                        if piece.rotation_handle:
+                            piece.rotation_handle.setVisible(is_on)
+                        if is_on:
+                            try:
+                                handles_on = bool(getattr(self.win.view, "handles_btn").isChecked())
+                                piece.set_handle_visibility(handles_on)
+                            except Exception:  # pylint: disable=broad-except
+                                pass
+                            piece.update_handle_positions()
+                    except (RuntimeError, AttributeError):
+                        logging.debug("Variant visibility apply failed for %s", gi_key)
+
         sorted_indices: List[int] = sorted(keyframes.keys())
         prev_kf_index: int = next((i for i in reversed(sorted_indices) if i <= index), -1)
         next_kf_index: int = next((i for i in sorted(sorted_indices) if i > index), -1)
@@ -130,12 +179,21 @@ class StateApplier:
             if target_kf_index == -1:
                 return
             kf: Keyframe = keyframes[target_kf_index]
-            for name, state in kf.puppets.items():
-                for member, member_state in state.items():
-                    piece: PuppetPiece = graphics_items[f"{name}:{member}"]
-                    piece.local_rotation = member_state['rotation']
+            # Only apply known puppet members; ignore meta-keys like '_variants'
+            for name, puppet in self.win.scene_model.puppets.items():
+                state = kf.puppets.get(name, {})
+                for member_name in puppet.members:
+                    member_state = state.get(member_name)
+                    if not member_state:
+                        continue
+                    piece = graphics_items.get(f"{name}:{member_name}")
+                    if not isinstance(piece, PuppetPiece):
+                        continue
+                    piece.local_rotation = float(member_state.get('rotation', piece.local_rotation))
                     if not piece.parent_piece:
-                        piece.setPos(*member_state['pos'])
+                        pos = member_state.get('pos')
+                        if isinstance(pos, (list, tuple)) and len(pos) == 2:
+                            piece.setPos(float(pos[0]), float(pos[1]))
 
         # Propagate transforms to children
         for name, puppet in self.win.scene_model.puppets.items():

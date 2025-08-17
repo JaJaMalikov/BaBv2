@@ -65,6 +65,11 @@ class Puppet:
         self.pivot_map: Dict[str, str] = {}
         self.z_order_map: Dict[str, int] = {}
         self.child_map: Dict[str, List[str]] = {}
+        # Optional mapping of logical slots to variant member names
+        # Example: {"main_gauche": ["main_gauche", "main_gauche_rev"]}
+        self.variants: Dict[str, List[str]] = {}
+        # Optional absolute z-order override per variant name
+        self.variant_z: Dict[str, int] = {}
 
         if config_path:
             cfg_path = Path(config_path)
@@ -83,6 +88,43 @@ class Puppet:
         self.parent_map = data.get("parent", {})
         self.pivot_map = data.get("pivot", {})
         self.z_order_map = data.get("z_order", {})
+        raw_variants = data.get("variants", {})
+        # Normalize variants: support entries as strings or {"name": str, "z": int}
+        if isinstance(raw_variants, dict):
+            vmap: Dict[str, List[str]] = {}
+            vz: Dict[str, int] = {}
+            for slot, items in raw_variants.items():
+                names: List[str] = []
+                if isinstance(items, list):
+                    for it in items:
+                        if isinstance(it, dict):
+                            nm = it.get("name")
+                            if isinstance(nm, str):
+                                names.append(nm)
+                                zval = it.get("z")
+                                if isinstance(zval, int):
+                                    vz[nm] = zval
+                                else:
+                                    zval2 = it.get("z_order")
+                                    if isinstance(zval2, int):
+                                        vz[nm] = zval2
+                        elif isinstance(it, (list, tuple)) and len(it) == 2:
+                            nm, zval = it[0], it[1]
+                            if isinstance(nm, str):
+                                names.append(nm)
+                                if isinstance(zval, int):
+                                    vz[nm] = zval
+                        elif isinstance(it, str):
+                            names.append(it)
+                vmap[str(slot)] = names
+            self.variants = vmap
+            self.variant_z = vz
+        else:
+            # Fallback (legacy): expect dict[str, list[str]]
+            try:
+                self.variants = dict(raw_variants)  # type: ignore[arg-type]
+            except Exception:  # pylint: disable=broad-except
+                self.variants = {}
         self.child_map = dict(compute_child_map(self.parent_map))
 
     def build_from_svg(self, svg_loader: 'SvgLoader') -> None:
@@ -102,6 +144,30 @@ class Puppet:
             parent_member = self.members.get(parent) if parent else None
             if child_member and parent_member:
                 parent_member.add_child(child_member)
+
+        # Intégrer les variantes éventuelles: créer des membres pour chaque
+        # variante absente des maps, en héritant du parent/pivot/z du slot de base.
+        if self.variants:
+            for slot, cand_list in self.variants.items():
+                if not isinstance(cand_list, list) or not cand_list:
+                    continue
+                base = slot
+                base_parent_name = self.parent_map.get(base)
+                base_pivot_group = self.pivot_map.get(base, base)
+                base_z = self.z_order_map.get(base, 0)
+                for cand in cand_list:
+                    if cand in self.members:
+                        continue
+                    if cand not in groups:
+                        continue
+                    bbox = svg_loader.get_group_bounding_box(cand) or (0.0, 0.0, 0.0, 0.0)
+                    pivot = svg_loader.get_pivot(base_pivot_group)
+                    self.members[cand] = PuppetMember(cand, None, pivot, bbox, int(base_z))
+                    # Lier au même parent que la base si possible
+                    if base_parent_name:
+                        parent_member = self.members.get(base_parent_name)
+                        if parent_member:
+                            parent_member.add_child(self.members[cand])
 
     def get_root_members(self) -> List[PuppetMember]:
         """Return members with no parent (roots)."""

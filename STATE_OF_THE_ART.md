@@ -194,3 +194,24 @@ Prochaines étapes :
 - Aperçu de style enrichi et en direct: l’onglet Styles inclut un panneau d’aperçu (PanelOverlay + en‑tête) avec boutons, champs, checkbox et liste. Toute modification de paramètres (couleurs, preset, opacité, rayon, police) met à jour immédiatement l’aperçu sans cliquer sur « Prévisualiser ».
 - Pastilles de couleur: affichage de la couleur actuelle à côté de chaque champ; pour « Fond panneaux », la pastille est rendue sur damier avec l’opacité choisie.
 - Onglet Icônes: personnalisation par‑icône via sélection d’un fichier (SVG recommandé; PNG/JPG/ICO supportés). Les overrides sont persistés (`ui/icon_override/<clé>`), un reset par icône ou global est proposé, et l’interface (actions + overlays) se rafraîchit immédiatement. Le dossier global `ui/icon_dir` reste supporté pour les noms standards.
+\n## Variants de marionnettes (nouveau)
+\n+- Déclarez des slots de variantes dans `core/puppet_config.json` sous la clé optionnelle `variants`.
+  Exemple: `{ "main_gauche": ["main_gauche", "main_gauche_rev"], "main_droite": ["main_droite", "main_droite_rev"] }`.
+- À l’ajout d’un pantin, toutes les variantes sont chargées mais une seule par slot est visible (la première par défaut).
+- Le choix de variante est éditable depuis l’Inspecteur (section « Variants ») pour la marionnette sélectionnée et est enregistré par frame dans les keyframes (`_variants`).
+- À la lecture/changement de frame, la visibilité des variantes est appliquée avant les transformations (pas d’interpolation entre variantes).
+
+## Thème personnalisable (étendu)
+
+- Paramètres exposés dans le panneau Paramètres > Styles:
+  - Couleurs: fond appli, texte, accent, survol, fond panneaux, bordure panneaux, titre de groupe.
+  - Tooltips: fond et texte personnalisables (+ bordure via la couleur de bordure panneaux).
+  - Géométrie: opacité des panneaux, rayon des coins, taille de police, famille de police.
+  - Icônes: taille et dossier d’icônes, overrides fichier par fichier; couleurs des icônes (normal/hover/actif) via QSettings.
+- Thèmes: Light, Dark, High Contrast, ou Custom (généré dynamiquement). Le thème choisi est appliqué au lancement.
+
+## Timeline: Copier/Coller de keyframe (basique)
+
+- Clic droit: “Copy keyframe @ f” et “Paste @ f”.
+- Raccourcis: Ctrl+C copie la keyframe courante (si présente), Ctrl+V colle sur la frame courante.
+- Implémentation non destructive: crée/écrase la keyframe cible et rafraîchit l’affichage.

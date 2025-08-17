@@ -1,4 +1,4 @@
-"""Module for creating and connecting QActions in the main window."""
+'''Module for creating and connecting QActions in the main window.'''
 
 from __future__ import annotations
 
@@ -42,8 +42,8 @@ def build_actions(win: Any) -> None:
     win.load_action.setShortcut("Ctrl+O")
     win.scene_size_action = QAction(icon_scene_size(), "Taille Scène", win)
     win.background_action = QAction(icon_background(), "Image de fond", win)
-    # Use 'layers' icon as settings indicator
-    win.settings_action = QAction(get_icon("layers"), "Paramètres", win)
+    # Settings icon: configurable via key 'settings'
+    win.settings_action = QAction(get_icon("settings"), "Paramètres", win)
 
     win.reset_scene_action = QAction(icon_reset_scene(), "Réinitialiser la scène", win)
     win.reset_ui_action = QAction(icon_reset_ui(), "Réinitialiser l'interface", win)
@@ -66,8 +66,8 @@ def build_actions(win: Any) -> None:
     # Timeline toggle (dock)
     win.timeline_dock.toggleViewAction().setIcon(icon_timeline())
 
-    # Custom overlay toggle
-    win.toggle_custom_action = QAction(get_icon("layers"), "Custom", win)
+    # Custom overlay toggle: configurable via key 'custom' (falls back to 'layers' if missing)
+    win.toggle_custom_action = QAction(get_icon("custom"), "Custom", win)
     win.toggle_custom_action.setCheckable(True)
 
     # Map action keys for shortcut management

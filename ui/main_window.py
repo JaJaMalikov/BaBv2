@@ -1,4 +1,4 @@
-"""Main window of the application, orchestrating UI components and scene management."""
+'''Main window of the application, orchestrating UI components and scene management.'''
 
 import logging
 from typing import Any, Dict, cast

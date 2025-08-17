@@ -213,8 +213,6 @@ class SettingsDialog(QDialog):
 
         # form is attached to tab_app via its parent; do not add to main layout to avoid double-parent warning
 
-        # (Removed legacy checkbox builder: visibility is controlled directly in icon lists)
-
         # Icon size
         self.icon_size_spin = QSpinBox()
         self.icon_size_spin.setRange(16, 128)
@@ -275,7 +273,8 @@ class SettingsDialog(QDialog):
         self.list_icons.setSpacing(8)
         self.list_icons.setIconSize(QSize(32, 32))
         self.list_icons.setSelectionMode(QAbstractItemView.SingleSelection)
-
+        self.list_icons.setDragDropMode(QAbstractItemView.NoDragDrop)
+        self.list_icons.setMovement(QListView.Static)
         # Right side controls
         icons_controls = QWidget()
         icons_form = QFormLayout(icons_controls)
@@ -364,15 +363,46 @@ class SettingsDialog(QDialog):
             self._swatches[le] = sw
             # Live update swatch on text change
             le.textChanged.connect(lambda _=None, e=le: self._update_swatch(e))
-            return le, btn
+            return le, btn, wrap
+        # Variant: add a color row into a specific form layout (for Timeline tab)
+        def mk_color_row_into(form_layout: QFormLayout, title: str):
+            le = QLineEdit()
+            btn = QPushButton("…")
+            btn.setFixedWidth(28)
+            sw = QLabel()
+            sw.setFixedSize(24, 16)
+            sw.setStyleSheet("QLabel{border:1px solid #A0AEC0; border-radius:3px; background:#FFFFFF;}")
+            row = QHBoxLayout()
+            row.setSpacing(6)
+            row.addWidget(sw)
+            row.addWidget(le)
+            row.addWidget(btn)
+            row.addStretch(1)
+            wrap = QWidget()
+            wrap.setLayout(row)
+            form_layout.addRow(title, wrap)
+            self._swatches[le] = sw
+            # Only swatch update here (no live app preview for timeline)
+            le.textChanged.connect(lambda _=None, e=le: self._update_swatch(e))
+            btn.clicked.connect(lambda _, e=le: self._pick_color_into(e))
+            return le, btn, wrap
 
-        self.bg_edit, self.bg_btn = mk_color_row("Fond appli:")
-        self.text_edit, self.text_btn = mk_color_row("Texte:")
-        self.accent_edit, self.accent_btn = mk_color_row("Accent:")
-        self.hover_edit, self.hover_btn = mk_color_row("Survol:")
-        self.panel_edit, self.panel_btn = mk_color_row("Fond panneaux:")
-        self.border_edit, self.border_btn = mk_color_row("Bordure panneaux:")
-        self.group_edit, self.group_btn = mk_color_row("Titre de groupe:")
+        self.bg_edit, self.bg_btn, wrap_bg = mk_color_row("Fond application:")
+        self.text_edit, self.text_btn, wrap_text = mk_color_row("Texte (global):")
+        self.accent_edit, self.accent_btn, wrap_accent = mk_color_row("Couleur d'accent:")
+        self.hover_edit, self.hover_btn, wrap_hover = mk_color_row("Couleur de survol:")
+        self.panel_edit, self.panel_btn, wrap_panel = mk_color_row("Fond des panneaux:")
+        self.border_edit, self.border_btn, wrap_border = mk_color_row("Bordure des panneaux:")
+        # Header (overlays) colors
+        self.header_bg_edit, self.header_bg_btn, wrap_hbg = mk_color_row("Fond des en-têtes:")
+        self.header_text_edit, self.header_text_btn, wrap_htxt = mk_color_row("Texte des en-têtes:")
+        self.header_border_edit, self.header_border_btn, wrap_hb = mk_color_row("Bordure des en-têtes:")
+        # Scene background color (no image)
+        self.scene_bg_edit, self.scene_bg_btn, wrap_scene = mk_color_row("Fond de la scène:")
+        # Tooltips colors
+        self.tooltip_bg_edit, self.tooltip_bg_btn, wrap_tipbg = mk_color_row("Fond des info‑bulles:")
+        self.tooltip_text_edit, self.tooltip_text_btn, wrap_tiptext = mk_color_row("Texte des info‑bulles:")
+        self.group_edit, self.group_btn, wrap_group = mk_color_row("Titres de groupe:")
         # Numeric controls
         self.opacity_spin = QSpinBox()
         self.opacity_spin.setRange(0, 100)
@@ -383,9 +413,12 @@ class SettingsDialog(QDialog):
         self.font_spin = QSpinBox()
         self.font_spin.setRange(8, 18)
         self.font_spin.setSuffix(" pt")
+        # Font family
+        self.font_family_edit = QLineEdit()
         controls_layout.addRow("Opacité panneau:", self.opacity_spin)
         controls_layout.addRow("Coins arrondis:", self.radius_spin)
         controls_layout.addRow("Taille police:", self.font_spin)
+        controls_layout.addRow("Police (famille):", self.font_family_edit)
         # Action buttons
         actions = QHBoxLayout()
         self.btn_preview = QPushButton("Prévisualiser")
@@ -484,9 +517,31 @@ class SettingsDialog(QDialog):
         style_scroll.setWidgetResizable(True)
         style_scroll.setWidget(tab_style_inner)
         tabs.addTab(style_scroll, "Styles")
+        
+        # --- Tab: Timeline ---
+        tab_tl = QWidget()
+        tl_form = QFormLayout(tab_tl)
+        tl_form.setLabelAlignment(Qt.AlignRight)
+        self.tl_bg, _, tl_bg_wrap = mk_color_row_into(tl_form, "Fond timeline:")
+        self.tl_ruler_bg, _, _ = mk_color_row_into(tl_form, "Fond règle:")
+        self.tl_track_bg, _, _ = mk_color_row_into(tl_form, "Fond piste:")
+        self.tl_tick, _, _ = mk_color_row_into(tl_form, "Graduations:")
+        self.tl_tick_major, _, _ = mk_color_row_into(tl_form, "Graduations (majeures):")
+        self.tl_playhead, _, _ = mk_color_row_into(tl_form, "Playhead:")
+        self.tl_kf, _, _ = mk_color_row_into(tl_form, "Keyframe:")
+        self.tl_kf_hover, _, _ = mk_color_row_into(tl_form, "Keyframe (hover):")
+        self.tl_inout_alpha = QSpinBox()
+        self.tl_inout_alpha.setRange(0, 255)
+        self.tl_inout_alpha.setValue(30)
+        # Rows already added via mk_color_row_into
+        tl_form.addRow("Opacité In/Out (0-255):", self.tl_inout_alpha)
+        tabs.addTab(tab_tl, "Timeline")
 
         btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         main_layout.addWidget(btns)
+        # Add Apply button
+        self.btn_apply = QPushButton("Appliquer")
+        main_layout.addWidget(self.btn_apply)
 
         btns.accepted.connect(self.accept)
         btns.rejected.connect(self.reject)
@@ -499,14 +554,36 @@ class SettingsDialog(QDialog):
             (self.hover_edit, self.hover_btn),
             (self.panel_edit, self.panel_btn),
             (self.border_edit, self.border_btn),
+            (self.header_bg_edit, self.header_bg_btn),
+            (self.header_text_edit, self.header_text_btn),
+            (self.header_border_edit, self.header_border_btn),
             (self.group_edit, self.group_btn),
+            (self.tooltip_bg_edit, self.tooltip_bg_btn),
+            (self.tooltip_text_edit, self.tooltip_text_btn),
         ]
         for le, btn in color_rows:
             btn.clicked.connect(lambda _, e=le: self._pick_color_into(e))
             # Live preview on color text change
             le.textChanged.connect(lambda _=None: self._preview_theme())
         # Presets & actions
-        self.preset_combo.currentTextChanged.connect(self._load_preset_values)
+        # Track style controls to toggle visibility (keep preset combo visible)
+        self._style_wraps = [
+            wrap_bg, wrap_text, wrap_accent, wrap_hover, wrap_panel, wrap_border,
+            wrap_hbg, wrap_htxt, wrap_hb, wrap_scene, wrap_tipbg, wrap_tiptext, wrap_group,
+        ]
+        self._style_fields = [self.opacity_spin, self.radius_spin, self.font_spin, self.font_family_edit]
+
+        def _on_preset_changed(name: str) -> None:
+            self._load_preset_values(name)
+            is_custom = name.strip().lower() == "custom"
+            # Toggle style selectors only
+            for w in self._style_wraps:
+                w.setVisible(is_custom)
+            for w in self._style_fields:
+                w.setVisible(is_custom)
+            self.preview_root.setVisible(is_custom)
+
+        self.preset_combo.currentTextChanged.connect(_on_preset_changed)
         self.btn_preview.clicked.connect(self._preview_theme)
         self.btn_save_custom.clicked.connect(self._save_params_as_custom)
         # Live preview on numeric changes
@@ -598,9 +675,15 @@ class SettingsDialog(QDialog):
             "panel_bg": self.panel_edit.text() or "#F7F8FC",
             "panel_opacity": (self.opacity_spin.value() / 100.0),
             "panel_border": self.border_edit.text() or "#D0D5DD",
+            "header_bg": self.header_bg_edit.text() or "",
+            "header_text": self.header_text_edit.text() or self.text_edit.text() or "#1A202C",
+            "header_border": self.header_border_edit.text() or self.border_edit.text() or "#D0D5DD",
             "group_title_color": self.group_edit.text() or "#2D3748",
+            "tooltip_bg": self.tooltip_bg_edit.text() or self.panel_edit.text() or "#F7F8FC",
+            "tooltip_text": self.tooltip_text_edit.text() or self.text_edit.text() or "#1A202C",
             "radius": self.radius_spin.value(),
             "font_size": self.font_spin.value(),
+            "font_family": self.font_family_edit.text() or "Poppins",
         }
 
     def _load_preset_values(self, name: str) -> None:
@@ -873,41 +956,45 @@ class SettingsDialog(QDialog):
 
     def _init_icons_tab(self) -> None:
         """Initializes the icons tab."""
-        # Canonical keys we expose to customize
-        self._icon_keys = [
-            "save",
-            "open",
-            "scene_size",
-            "background",
-            "settings",
-            "reset_scene",
-            "reset_ui",
-            "library",
-            "inspector",
-            "timeline",
-            "layers",
-            "zoom_out",
-            "zoom_in",
-            "fit",
-            "handles",
-            "onion",
-            "delete",
-            "duplicate",
-            "link",
-            "link_off",
-            "close",
-            "objets",
-            "puppet",
-            "open_menu",
-            "close_menu",
-            "close_menu_inv",
-            "new_file",
-            "chevron_left",
-            "chevron_right",
-            "plus",
-            "minus",
-            "rotate",
-        ]
+        # Expose ALL available icon keys from assets and override directory,
+        # plus those referenced by overlays/specs to ensure complete coverage.
+        from pathlib import Path
+        s = QSettings("JaJa", "Macronotron")
+        icon_dir_override = s.value("ui/icon_dir")
+
+        def stems_in(dirpath: str) -> set[str]:
+            keys: set[str] = set()
+            try:
+                p = Path(str(dirpath))
+                if p.exists() and p.is_dir():
+                    for fn in p.iterdir():
+                        if fn.suffix.lower() in (".svg", ".png", ".jpg", ".jpeg", ".bmp", ".ico"):
+                            keys.add(fn.stem)
+            except Exception:
+                pass
+            return keys
+
+        keys: set[str] = set()
+        # Assets bundle
+        keys |= stems_in(str(Path("assets/icons")))
+        # User override directory
+        if icon_dir_override:
+            keys |= stems_in(str(icon_dir_override))
+        # Add referenced overlay/spec keys to be safe
+        keys |= {k for (k, _label, _ic) in getattr(self, "_main_specs", [])}
+        keys |= {k for (k, _label, _ic) in getattr(self, "_quick_specs", [])}
+        # Common keys used across the app
+        keys |= {
+            "open_menu", "close_menu", "close_menu_inv",
+            "chevron_left", "chevron_right",
+            "save", "open", "scene_size", "background", "settings",
+            "reset_scene", "reset_ui", "library", "inspector", "timeline",
+            "layers", "zoom_out", "zoom_in", "fit", "handles", "onion",
+            "delete", "duplicate", "link", "link_off", "close",
+            "objets", "puppet", "new_file", "plus", "minus", "rotate",
+            "custom",
+        }
+        self._icon_keys = sorted(keys)
         self._populate_icons_list()
         if self.list_icons.count():
             self.list_icons.setCurrentRow(0)
@@ -915,8 +1002,13 @@ class SettingsDialog(QDialog):
     def _populate_icons_list(self) -> None:
         """Populates the list of customizable icons."""
         from ui.icons import get_icon
-
         self.list_icons.clear()
+        # Uniform grid for cleaner alignment
+        icon_h = max(16, int(QSettings("JaJa", "Macronotron").value("ui/icon_size", 32)))
+        cell_w = max(64, icon_h + 48)
+        cell_h = max(64, icon_h + 32)
+        self.list_icons.setIconSize(QSize(icon_h, icon_h))
+        self.list_icons.setGridSize(QSize(cell_w, cell_h))
         s = QSettings("JaJa", "Macronotron")
         for key in self._icon_keys:
             icon = get_icon(key)

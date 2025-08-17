@@ -1,4 +1,4 @@
-"""Module for managing application styles and themes."""
+'''Module for managing application styles and themes.'''
 
 import logging
 from PySide6.QtGui import QFont
@@ -6,7 +6,7 @@ from PySide6.QtGui import QFont
 # This is used for the fallback icon drawing function.
 ICON_COLOR = "#2D3748"
 
-STYLE_SHEET_LIGHT = """
+STYLE_SHEET_LIGHT = '''
 /* GLOBAL SETTINGS */
 * {
     color: #1A202C; /* Default dark text */
@@ -29,24 +29,8 @@ DraggableOverlay, PanelOverlay {
     border: 1px solid #D0D5DD;
 }
 
-DraggableHeader {
-    background-color: rgba(237, 242, 247, 0.9);
-    border-bottom: 1px solid rgba(203, 213, 224, 0.5);
-    border-top-left-radius: 12px;
-    border-top-right-radius: 12px;
-}
-
-DraggableHeader {
-    background-color: rgba(0, 0, 0, 0.05);
-    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-    border-top-left-radius: 12px;
-    border-top-right-radius: 12px;
-}
-
-DraggableHeader QLabel {
-    font-weight: bold;
-    color: #2D3748;
-}
+DraggableHeader { background-color: rgba(237, 242, 247, 0.9); border-bottom: 1px solid rgba(203, 213, 224, 0.5); border-top-left-radius: 12px; border-top-right-radius: 12px; }
+DraggableHeader QLabel { font-weight: bold; color: #2D3748; }
 
 
 /* TOOL BUTTONS & ICONS */
@@ -138,6 +122,15 @@ QGroupBox:title {
     padding: 2px 4px;
 }
 
+/* TOOLTIP */
+QToolTip {
+    background-color: #F7F8FC;
+    color: #1A202C;
+    border: 1px solid #D0D5DD;
+    border-radius: 6px;
+    padding: 4px 8px;
+}
+
 /* TIMELINE */
 TimelineWidget {
     background-color: #2D3748;
@@ -158,9 +151,9 @@ TimelineWidget QToolButton:checked {
     color: white;
 }
 
-"""
+'''
 
-STYLE_SHEET_DARK = """
+STYLE_SHEET_DARK = '''
 * { color: #E2E8F0; font-family: Poppins, sans-serif; }
 QMainWindow, QDialog { background-color: #1F2937; }
 DraggableOverlay, PanelOverlay { background-color: rgba(31,41,55,0.92); border-radius: 12px; border: 1px solid #374151; }
@@ -186,7 +179,8 @@ TimelineWidget { background-color: #111827; color: #D1D5DB; }
 TimelineWidget QToolButton { background: transparent; color: #D1D5DB; }
 TimelineWidget QToolButton:hover { background-color: #1F2937; }
 TimelineWidget QToolButton:checked { background-color: #EF4444; color: white; }
-"""
+QToolTip { background-color: #111827; color: #E5E7EB; border: 1px solid #374151; border-radius: 6px; padding: 4px 8px; }
+'''
 
 def build_stylesheet(params: dict) -> str:
     """Generate a Qt stylesheet from simple, human-friendly parameters.
@@ -197,6 +191,8 @@ def build_stylesheet(params: dict) -> str:
     - accent_color, hover_color
     - group_title_color
     - radius (int px), font_size (int pt)
+    - tooltip_bg (hex), tooltip_text (hex), tooltip_border (optional hex)
+    - font_family (string)
     """
     def rgba(hex_color: str, alpha: float) -> str:
         hex_color = hex_color.strip()
@@ -220,14 +216,25 @@ def build_stylesheet(params: dict) -> str:
     fsize = int(params.get('font_size', 10))
 
     panel_rgba = rgba(panel, panel_op)
-    header_rgba = rgba('#EDF2F7', min(1.0, panel_op + 0.05))
+    header_bg = params.get('header_bg')
+    header_text = params.get('header_text', text)
+    header_border = params.get('header_border', border)
+    if header_bg:
+        header_rgba = rgba(header_bg, 1.0)
+    else:
+        header_rgba = rgba('#EDF2F7', min(1.0, panel_op + 0.05))
     border_rgba = rgba(border, min(1.0, panel_op))
+    tip_bg = params.get('tooltip_bg', panel)
+    tip_text = params.get('tooltip_text', text)
+    tip_border = params.get('tooltip_border', border)
+    family = params.get('font_family', 'Poppins')
 
-    return f"""
-* {{ color: {text}; font-family: Poppins, sans-serif; font-size: {fsize}pt; }}
+    return f'''
+* {{ color: {text}; font-family: {family}, sans-serif; font-size: {fsize}pt; }}
 QMainWindow, QDialog {{ background-color: {bg}; }}
 DraggableOverlay, PanelOverlay {{ background-color: {panel_rgba}; border-radius: {radius}px; border: 1px solid {border_rgba}; }}
-DraggableHeader {{ background-color: {header_rgba}; border-bottom: 1px solid {rgba(border, 0.5)}; border-top-left-radius: {radius}px; border-top-right-radius: {radius}px; }}
+DraggableHeader {{ background-color: {header_rgba}; border-bottom: 1px solid {rgba(header_border, 0.5)}; border-top-left-radius: {radius}px; border-top-right-radius: {radius}px; }}
+DraggableHeader QLabel {{ color: {header_text}; font-weight: bold; }}
 QToolButton {{ background: transparent; border: none; border-radius: 6px; padding: 5px; }}
 QToolButton:hover {{ background-color: {hover}; }}
 QToolButton:checked {{ background-color: {accent}; color: white; }}
@@ -249,7 +256,8 @@ TimelineWidget {{ background-color: #2D3748; color: #E2E8F0; }}
 TimelineWidget QToolButton {{ background: transparent; color: #E2E8F0; }}
 TimelineWidget QToolButton:hover {{ background-color: #4A5568; }}
 TimelineWidget QToolButton:checked {{ background-color: {accent}; color: white; }}
-"""
+QToolTip {{ background-color: {tip_bg}; color: {tip_text}; border: 1px solid {tip_border}; border-radius: 6px; padding: 4px 8px; }}
+'''
 def apply_stylesheet(app):
     """Apply the application's stylesheet.
 
@@ -274,6 +282,28 @@ def apply_stylesheet(app):
     css = STYLE_SHEET_DARK if theme == "dark" else STYLE_SHEET_LIGHT
     app.setStyleSheet(css)
     try:
-        app.setFont(QFont("Poppins", 10))
+        s = QSettings("JaJa", "Macronotron")
+        fam = s.value("ui/font_family") or "Poppins"
+        app.setFont(QFont(str(fam), 10))
     except RuntimeError:
         logging.warning("Poppins font not found, using system default.")
+
+
+def get_theme_colors() -> dict[str, str]:
+    """Get current theme colors for non-stylesheet elements (e.g., QGraphicsScene)."""
+    from PySide6.QtCore import QSettings
+    s = QSettings("JaJa", "Macronotron")
+    theme = str(s.value("ui/theme", "light")).lower()
+    if theme == "dark":
+        return {
+            "background": "#1F2937",
+            "text": "#E2E8F0",
+            "panel": "#111827",
+            "accent": "#EF4444",
+        }
+    return {
+        "background": "#E2E8F0",
+        "text": "#1A202C",
+        "panel": "#F7F8FC",
+        "accent": "#E53E3E",
+    }

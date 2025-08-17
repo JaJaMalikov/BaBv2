@@ -5,26 +5,40 @@ import logging
 from pathlib import Path
 from typing import Dict, Optional
 
-from PySide6.QtCore import Qt, QSize, QSettings
+from PySide6.QtCore import Qt, QSize, QSettings, QByteArray
 from PySide6.QtGui import QIcon, QPixmap, QPainter
 from PySide6.QtSvg import QSvgRenderer
 
 ICONS_DIR = Path("assets/icons")
 ICON_CACHE: Dict[str, QIcon] = {}
 
-# Define colors from our theme
-COLOR_NORMAL = "#4A5568"
-COLOR_HOVER = "#E53E3E"
-COLOR_ACTIVE = "#FFFFFF"
+def _icon_colors() -> tuple[str, str, str]:
+    """Read icon colors from settings or return defaults."""
+    try:
+        s = QSettings("JaJa", "Macronotron")
+        normal = s.value("ui/icon_color_normal") or "#4A5568"
+        hover = s.value("ui/icon_color_hover") or "#E53E3E"
+        active = s.value("ui/icon_color_active") or "#FFFFFF"
+        return str(normal), str(hover), str(active)
+    except (RuntimeError, ValueError):
+        logging.exception("Failed to read icon colors from settings")
+        return "#4A5568", "#E53E3E", "#FFFFFF"
 
 def _render_svg(svg_data: str, size: QSize = QSize(32, 32)) -> QPixmap:
-    """Renders SVG data to a QPixmap of a specific size."""
-    renderer = QSvgRenderer(svg_data.encode("utf-8"))
+    """Renders SVG data to a QPixmap of a specific size. Safe against invalid SVG."""
     pixmap = QPixmap(size)
     pixmap.fill(Qt.transparent)
-    painter = QPainter(pixmap)
-    renderer.render(painter)
-    painter.end()
+    try:
+        data = QByteArray(svg_data.encode("utf-8"))
+        renderer = QSvgRenderer(data)
+        if not renderer.isValid():
+            return pixmap
+        painter = QPainter(pixmap)
+        renderer.render(painter)
+        painter.end()
+    except Exception:
+        # Return transparent pixmap on failure
+        pass
     return pixmap
 
 def _load_override_icon(name: str) -> Optional[QIcon]:
@@ -47,9 +61,10 @@ def _load_override_icon(name: str) -> Optional[QIcon]:
         if p.suffix.lower() == '.svg':
             with open(p, 'r', encoding="utf-8") as f:
                 original_svg = f.read()
-            normal_svg = re.sub(r'<path', f'<path fill="{COLOR_NORMAL}"', original_svg)
-            hover_svg = re.sub(r'<path', f'<path fill="{COLOR_HOVER}"', original_svg)
-            active_svg = re.sub(r'<path', f'<path fill="{COLOR_ACTIVE}"', original_svg)
+            c_norm, c_hover, c_active = _icon_colors()
+            normal_svg = re.sub(r'<path', f'<path fill="{c_norm}"', original_svg)
+            hover_svg = re.sub(r'<path', f'<path fill="{c_hover}"', original_svg)
+            active_svg = re.sub(r'<path', f'<path fill="{c_active}"', original_svg)
             pixmap_normal = _render_svg(normal_svg)
             pixmap_hover = _render_svg(hover_svg)
             pixmap_active = _render_svg(active_svg)
@@ -82,9 +97,15 @@ def _create_icon(name: str) -> QIcon:
     icon_dir_override = s.value("ui/icon_dir")
 
     # Otherwise, locate in override directory or default assets (SVG expected)
-    svg_path = ICONS_DIR / f"{name}.svg"
+    # Provide fallback mapping for missing keys
+    fallback_map = {
+        "custom": "layers",
+        "settings": "layers",
+    }
+    svg_key = fallback_map.get(name, name)
+    svg_path = ICONS_DIR / f"{svg_key}.svg"
     if icon_dir_override:
-        alt = Path(str(icon_dir_override)) / f"{name}.svg"
+        alt = Path(str(icon_dir_override)) / f"{svg_key}.svg"
         if alt.exists():
             svg_path = alt
     if not svg_path.exists():
@@ -96,9 +117,10 @@ def _create_icon(name: str) -> QIcon:
         original_svg = f.read()
 
     # Create different colored versions
-    normal_svg = re.sub(r'<path', f'<path fill="{COLOR_NORMAL}"', original_svg)
-    hover_svg = re.sub(r'<path', f'<path fill="{COLOR_HOVER}"', original_svg)
-    active_svg = re.sub(r'<path', f'<path fill="{COLOR_ACTIVE}"', original_svg)
+    c_norm, c_hover, c_active = _icon_colors()
+    normal_svg = re.sub(r'<path', f'<path fill="{c_norm}"', original_svg)
+    hover_svg = re.sub(r'<path', f'<path fill="{c_hover}"', original_svg)
+    active_svg = re.sub(r'<path', f'<path fill="{c_active}"', original_svg)
 
     # Render pixmaps
     pixmap_normal = _render_svg(normal_svg)
