@@ -60,6 +60,7 @@
     "load",
     "scene_size",
     "background",
+    "add_light",
     "settings",
     "reset_scene",
     "reset_ui",
@@ -73,6 +74,7 @@
     "load": true,
     "scene_size": false,
     "background": false,
+    "add_light": true,
     "settings": true,
     "reset_scene": true,
     "reset_ui": true,
@@ -119,7 +121,9 @@
     "handles": true,
     "onion": true
   },
-  "icon_overrides": {},
+  "icon_overrides": {
+    "add_light": ""
+  },
   "geom_library": null,
   "geom_inspector": null,
   "geom_view_toolbar": null,

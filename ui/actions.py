@@ -42,7 +42,7 @@ def build_actions(win: Any) -> None:
     win.load_action.setShortcut("Ctrl+O")
     win.scene_size_action = QAction(icon_scene_size(), "Taille Scène", win)
     win.background_action = QAction(icon_background(), "Image de fond", win)
-    win.add_light_action = QAction(get_icon("plus"), "Ajouter Projecteur", win)
+    win.add_light_action = QAction(get_icon("add_light"), "Ajouter Projecteur", win)
     # Settings icon: configurable via key 'settings'
     win.settings_action = QAction(get_icon("settings"), "Paramètres", win)
 

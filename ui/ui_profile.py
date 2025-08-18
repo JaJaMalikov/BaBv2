@@ -83,7 +83,9 @@ class UIProfile:
     menu_custom_vis: Dict[str, bool] = field(default_factory=dict)
 
     # Icon overrides: key -> filepath
-    icon_overrides: Dict[str, str] = field(default_factory=dict)
+    icon_overrides: Dict[str, str] = field(
+        default_factory=lambda: {"add_light": ""}
+    )
 
     # Basic overlay geometries (optional): (x,y,w,h)
     geom_library: Optional[Tuple[int, int, int, int]] = None

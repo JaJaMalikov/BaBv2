@@ -49,6 +49,7 @@ COMMON_ICON_KEYS = {
     "open",
     "scene_size",
     "background",
+    "add_light",
     "settings",
     "reset_scene",
     "reset_ui",
