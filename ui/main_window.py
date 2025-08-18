@@ -17,8 +17,7 @@ from PySide6.QtWidgets import (
 from ui.scene import actions as scene_actions
 from core.scene_model import SceneModel
 from ui import actions as app_actions
-from ui.object_view_adapter import ObjectViewAdapter
-from controllers.object_controller import ObjectController
+from ui.object_manager import ObjectManager
 from ui.onion_skin import OnionSkinManager
 from ui.overlay_manager import OverlayManager
 from ui.playback_controller import PlaybackController
@@ -78,12 +77,7 @@ class MainWindow(QMainWindow):
         self.scene.setSceneRect(
             0, 0, self.scene_model.scene_width, self.scene_model.scene_height
         )
-        self.object_view_adapter: ObjectViewAdapter = ObjectViewAdapter(self)
-        self.object_controller: ObjectController = ObjectController(
-            self.scene_model, self.object_view_adapter
-        )
-        # Compatibilité : plusieurs modules accèdent encore à ``object_manager``
-        self.object_manager = self.object_view_adapter
+        self.object_manager: ObjectManager = ObjectManager(self)
 
     def _setup_scene(self) -> None:
         """Initializes the view and related state."""

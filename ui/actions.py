@@ -117,7 +117,7 @@ def connect_signals(win: Any) -> None:
     win.scene_size_action.triggered.connect(lambda: scene_actions.set_scene_size(win))
     win.background_action.triggered.connect(lambda: scene_actions.set_background(win))
     win.add_light_action.triggered.connect(
-        lambda: win.scene_controller.create_light_object()
+        lambda: win.scene_controller.object_ops.create_light_object()
     )
 
     # ZoomableView signals
@@ -130,7 +130,7 @@ def connect_signals(win: Any) -> None:
 
     # PlaybackHandler signals
     win.playback_handler.snapshot_requested.connect(
-        win.object_controller.snapshot_current_frame
+        win.object_manager.snapshot_current_frame
     )
     win.playback_handler.frame_update_requested.connect(
         win.controller.on_frame_update
