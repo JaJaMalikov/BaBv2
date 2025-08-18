@@ -42,12 +42,12 @@ def test_object_state_is_per_keyframe(_app):
     # Move free object to a scene position and snapshot on KF 0
     item.setPos(123.0, 234.0)
     win.controller.add_keyframe(0)
-    win.object_manager.snapshot_current_frame()
+    win.object_controller.snapshot_current_frame()
 
     # Attach the object at KF 0 and set a local offset, re-snapshot
     win.scene_controller.attach_object_to_member(name, "manu", "main_droite")
     item.setPos(10.0, 20.0)  # local pos relative to the member
-    win.object_manager.snapshot_current_frame()
+    win.object_controller.snapshot_current_frame()
 
     # Jump to frame 10, detach and set a different scene position, snapshot
     win.playback_handler.go_to_frame(10)
@@ -56,7 +56,7 @@ def test_object_state_is_per_keyframe(_app):
     item = win.object_manager.graphics_items[name]
     assert item.parentItem() is None
     item.setPos(345.0, 456.0)
-    win.object_manager.snapshot_current_frame()
+    win.object_controller.snapshot_current_frame()
 
     # Validate states in keyframes
     kf0 = win.scene_model.keyframes.get(0)
