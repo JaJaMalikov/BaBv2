@@ -58,7 +58,7 @@ class AppController:
     # --- Manipulation de keyframes ------------------------------------
     def add_keyframe(self, frame_index: int) -> None:
         """Ajoute un keyframe en capturant l'état courant de la scène."""
-        state = self.win.object_controller.capture_scene_state()
+        state = self.win.object_manager.capture_scene_state()
         self.win.scene_model.add_keyframe(frame_index, state)
         self.win.timeline_widget.add_keyframe_marker(frame_index)
 
@@ -68,7 +68,7 @@ class AppController:
         keyframes: Dict[int, Keyframe] = self.win.scene_model.keyframes
         if not keyframes:
             return
-        graphics_items: Dict[str, Any] = self.win.object_view_adapter.graphics_items
+        graphics_items: Dict[str, Any] = self.win.object_manager.graphics_items
         logging.debug(
             "update_scene_from_model: frame=%s, keyframes=%s",
             index,
