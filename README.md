@@ -38,6 +38,14 @@ pip install -r requirements.txt
 python macronotron.py
 ```
 
+## 🏗️ Architecture MVC
+
+Le projet se découpe en trois blocs bien séparés :
+
+* **`core/`** – le *modèle* : toute la logique métier pure Python, sans dépendance à Qt.
+* **`controllers/`** – les *contrôleurs* : orchestrent les interactions et relient signaux de l’UI et modèle.
+* **`ui/views/`** – la *vue* : widgets et éléments graphiques PySide6 émettant des signaux.
+
 ## 📄 Licence
 
 [The Unlicense](https://unlicense.org/) — libre de droit, libre d’usage, libre de ce que tu veux.

@@ -14,11 +14,11 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
     *   `scene_model.py`: Gère l'état complet de la scène : marionnettes, objets, keyframes, et paramètres globaux.
     *   `puppet_piece.py`: Représente un membre de la marionnette dans la scène graphique.
 
+*   **`controllers/`**: Services et contrôleurs orchestrant la logique et reliant signaux et slots entre modèle et vue.
+
 *   **`ui/`**: Contient les composants de l'interface utilisateur.
+    *   `views/`: widgets Qt composant la vue (`timeline_widget.py`, `inspector_widget.py`, `library_widget.py`, ...).
     *   `main_window.py`: La fenêtre principale qui assemble tous les éléments et gère l'essentiel des interactions.
-    *   `views/timeline_widget.py`: Un widget de timeline avancé et interactif.
-    *   `views/inspector/inspector_widget.py`: Un panneau pour lister, sélectionner et manipuler les objets de la scène.
-    *   `views/library/library_widget.py`: Panneau « Bibliothèques » listant les ressources importables.
     *   `ui_menu.py`: Fichier généré définissant la structure des menus.
 
 *   **`macronotron.py`**: Point d'entrée de l'application.
