@@ -3,18 +3,36 @@
 import re
 import logging
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, TYPE_CHECKING
 
 from PySide6.QtCore import Qt, QSize, QSettings, QByteArray
 from PySide6.QtGui import QIcon, QPixmap, QPainter
 from PySide6.QtSvg import QSvgRenderer
 
+if TYPE_CHECKING:  # pragma: no cover - hints only
+    from ui.ui_profile import UIProfile
+
 ICONS_DIR = Path("assets/icons")
 ICON_CACHE: Dict[str, QIcon] = {}
 
+# Profil UI courant fourni par le SettingsManager
+PROFILE: "UIProfile | None" = None
+
+
+def set_profile(profile: "UIProfile | None") -> None:
+    """Définit le profil UI actif pour les icônes."""
+    global PROFILE
+    PROFILE = profile
+
 
 def _icon_colors() -> tuple[str, str, str]:
-    """Read icon colors from settings or return defaults."""
+    """Retourne les couleurs des icônes depuis le profil ou QSettings."""
+    if PROFILE is not None:
+        return (
+            PROFILE.icon_color_normal or "#4A5568",
+            PROFILE.icon_color_hover or "#E53E3E",
+            PROFILE.icon_color_active or "#FFFFFF",
+        )
     try:
         s = QSettings("JaJa", "Macronotron")
         normal = s.value("ui/icon_color_normal") or "#4A5568"
@@ -45,13 +63,16 @@ def _render_svg(svg_data: str, size: QSize = QSize(32, 32)) -> QPixmap:
 
 
 def _load_override_icon(name: str) -> Optional[QIcon]:
-    """Load an icon from an override path if specified in QSettings."""
-    try:
-        s = QSettings("JaJa", "Macronotron")
-        override_path = s.value(f"ui/icon_override/{name}")
-    except (RuntimeError, ValueError):
-        logging.exception("Failed to read icon overrides")
-        return None
+    """Load an icon override from the profile or QSettings."""
+    if PROFILE is not None:
+        override_path = PROFILE.icon_overrides.get(name)
+    else:
+        try:
+            s = QSettings("JaJa", "Macronotron")
+            override_path = s.value(f"ui/icon_override/{name}")
+        except (RuntimeError, ValueError):
+            logging.exception("Failed to read icon overrides")
+            return None
 
     if not override_path:
         return None
@@ -97,8 +118,11 @@ def _create_icon(name: str) -> QIcon:
         ICON_CACHE[name] = override_icon
         return override_icon
 
-    s = QSettings("JaJa", "Macronotron")
-    icon_dir_override = s.value("ui/icon_dir")
+    if PROFILE is not None:
+        icon_dir_override = PROFILE.icon_dir
+    else:
+        s = QSettings("JaJa", "Macronotron")
+        icon_dir_override = s.value("ui/icon_dir")
 
     # Otherwise, locate in override directory or default assets (SVG expected)
     # Provide fallback mapping for missing keys

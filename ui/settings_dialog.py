@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Optional
 
-from PySide6.QtCore import QRectF, QSettings, QSize, Qt
+from PySide6.QtCore import QRectF, QSize, Qt
 from PySide6.QtGui import (
     QAction,
     QColor,
@@ -45,6 +45,7 @@ from PySide6.QtWidgets import (
 
 from ui.draggable_widget import DraggableHeader, PanelOverlay
 from ui.styles import build_stylesheet
+from ui.ui_profile import UIProfile
 
 
 class IconStrip(QListWidget):
@@ -131,14 +132,19 @@ class IconStrip(QListWidget):
 class SettingsDialog(QDialog):
     """A dialog for managing application settings."""
 
-    def __init__(self, parent: Optional[Any] = None) -> None:
-        """
-        Initializes the SettingsDialog.
+    def __init__(
+        self, parent: Optional[Any] = None, profile: Optional[UIProfile] = None
+    ) -> None:
+        """Initialise la boîte de dialogue.
 
         Args:
-            parent: The parent widget.
+            parent: widget parent éventuel.
+            profile: profil UI courant (copié pour modifications locales).
         """
         super().__init__(parent)
+        self.profile: UIProfile = (
+            UIProfile.from_dict(profile.to_dict()) if profile else UIProfile.default_dark()
+        )
         self.setWindowTitle("Paramètres")
         self.setModal(True)
         self.resize(760, 560)
@@ -870,11 +876,9 @@ class SettingsDialog(QDialog):
             logging.exception("Theme preview failed")
 
     def _save_params_as_custom(self) -> None:
-        """Saves the current style parameters as a custom theme."""
-        css = build_stylesheet(self._params_from_ui())
-        s = QSettings("JaJa", "Macronotron")
-        s.setValue("ui/custom_stylesheet", css)
-        s.setValue("ui/theme", "custom")
+        """Sauvegarde les paramètres courants comme thème personnalisé."""
+        self.profile.theme.custom_params.update(self._params_from_ui())
+        self.profile.theme.preset = "custom"
 
     def _update_swatch(self, edit: QLineEdit) -> None:
         """
@@ -1091,8 +1095,7 @@ class SettingsDialog(QDialog):
         # plus those referenced by overlays/specs to ensure complete coverage.
         from pathlib import Path
 
-        s = QSettings("JaJa", "Macronotron")
-        icon_dir_override = s.value("ui/icon_dir")
+        icon_dir_override = self.profile.icon_dir
 
         def stems_in(dirpath: str) -> set[str]:
             keys: set[str] = set()
@@ -1137,20 +1140,16 @@ class SettingsDialog(QDialog):
 
         self.list_icons.clear()
         # Uniform grid for cleaner alignment
-        icon_h = max(
-            16, int(QSettings("JaJa", "Macronotron").value("ui/icon_size", 32))
-        )
+        icon_h = max(16, int(self.profile.icon_size))
         cell_w = max(64, icon_h + 48)
         cell_h = max(64, icon_h + 32)
         self.list_icons.setIconSize(QSize(icon_h, icon_h))
         self.list_icons.setGridSize(QSize(cell_w, cell_h))
-        s = QSettings("JaJa", "Macronotron")
         for key in self._icon_keys:
             icon = get_icon(key)
             it = QListWidgetItem(icon, key)
             it.setData(Qt.UserRole, key)
-            # Mark custom ones with asterisk and tooltip
-            path = s.value(f"ui/icon_override/{key}")
+            path = self.profile.icon_overrides.get(key)
             if path:
                 it.setText(f"{key} *")
                 it.setToolTip(str(path))
@@ -1172,8 +1171,7 @@ class SettingsDialog(QDialog):
             return
         key = current.data(Qt.UserRole)
         self.lbl_key.setText(str(key))
-        s = QSettings("JaJa", "Macronotron")
-        self.lbl_path.setText(str(s.value(f"ui/icon_override/{key}") or ""))
+        self.lbl_path.setText(str(self.profile.icon_overrides.get(str(key)) or ""))
 
     def _choose_icon_file(self) -> None:
         """Opens a file dialog to choose an icon file."""
@@ -1188,8 +1186,7 @@ class SettingsDialog(QDialog):
         )
         if not path:
             return
-        s = QSettings("JaJa", "Macronotron")
-        s.setValue(f"ui/icon_override/{key}", path)
+        self.profile.icon_overrides[str(key)] = path
         self.lbl_path.setText(path)
         self._refresh_icons_runtime()
         self._populate_icons_list()
@@ -1200,18 +1197,14 @@ class SettingsDialog(QDialog):
         if not item:
             return
         key = item.data(Qt.UserRole)
-        s = QSettings("JaJa", "Macronotron")
-        s.remove(f"ui/icon_override/{key}")
+        self.profile.icon_overrides.pop(str(key), None)
         self.lbl_path.setText("")
         self._refresh_icons_runtime()
         self._populate_icons_list()
 
     def _reset_all_icons(self) -> None:
         """Resets all custom icon files."""
-        s = QSettings("JaJa", "Macronotron")
-        s.beginGroup("ui/icon_override")
-        s.remove("")
-        s.endGroup()
+        self.profile.icon_overrides.clear()
         self._refresh_icons_runtime()
         self._populate_icons_list()
 
@@ -1221,6 +1214,7 @@ class SettingsDialog(QDialog):
         try:
             import ui.icons as app_icons
 
+            app_icons.set_profile(self.profile)
             app_icons.clear_cache()
             from ui.icons import (
                 icon_background,

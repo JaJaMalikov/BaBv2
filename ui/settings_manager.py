@@ -31,6 +31,7 @@ class SettingsManager:
         self.path = Path(path)
         self.org = "JaJa"
         self.app = "Macronotron"
+        app_icons.set_profile(self.profile)
 
     def save(self) -> None:
         """Persist current UI geometry/visibility into the profile."""
@@ -112,7 +113,7 @@ class SettingsManager:
         from ui.settings_dialog import SettingsDialog
 
         win = self.win
-        dlg = SettingsDialog(win)
+        dlg = SettingsDialog(win, self.profile)
         if hasattr(win, "shortcuts"):
             dlg.set_shortcut_actions(win.shortcuts)
 
@@ -810,6 +811,7 @@ class SettingsManager:
                 prof.menu_quick_order, prof.menu_quick_vis = q_order, q_vis
                 prof.menu_custom_order, prof.menu_custom_vis = c_order, c_vis
                 prof.custom_overlay_visible = dlg.cb_custom_visible.isChecked()
+                prof.icon_overrides = dict(dlg.profile.icon_overrides)
 
                 # Géométries (optionnelles)
                 prof.geom_library = (
@@ -828,6 +830,7 @@ class SettingsManager:
                 # Persistance centralisée
                 self.profile = prof
                 self.profile.export_json(str(self.path))
+                app_icons.set_profile(self.profile)
 
                 # Raccourcis
                 if hasattr(win, "shortcuts"):
