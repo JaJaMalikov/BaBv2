@@ -41,7 +41,7 @@ def test_object_state_is_per_keyframe(_app):
 
     # Move free object to a scene position and snapshot on KF 0
     item.setPos(123.0, 234.0)
-    win.add_keyframe(0)
+    win.controller.add_keyframe(0)
     win.object_manager.snapshot_current_frame()
 
     # Attach the object at KF 0 and set a local offset, re-snapshot
@@ -51,7 +51,7 @@ def test_object_state_is_per_keyframe(_app):
 
     # Jump to frame 10, detach and set a different scene position, snapshot
     win.playback_handler.go_to_frame(10)
-    win.add_keyframe(10)
+    win.controller.add_keyframe(10)
     win.scene_controller.detach_object(name)
     item = win.object_manager.graphics_items[name]
     assert item.parentItem() is None
@@ -78,7 +78,7 @@ def test_object_state_is_per_keyframe(_app):
 
     # Now, ensure that applying states restores correct parent/positions
     win.playback_handler.go_to_frame(0)
-    win.update_scene_from_model()
+    win.controller.update_scene_from_model()
     item0 = win.object_manager.graphics_items[name]
     assert isinstance(item0.parentItem(), QGraphicsItem)
     # Parent is the puppet piece for manu:main_droite
@@ -88,7 +88,7 @@ def test_object_state_is_per_keyframe(_app):
     assert item0.y() == pytest.approx(20.0)
 
     win.playback_handler.go_to_frame(10)
-    win.update_scene_from_model()
+    win.controller.update_scene_from_model()
     item10 = win.object_manager.graphics_items[name]
     assert item10.parentItem() is None
     assert item10.x() == pytest.approx(345.0)

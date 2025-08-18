@@ -62,7 +62,7 @@ class _ObjectItemMixin:
                             kf.objects[name] = obj.to_dict()
                     # Sync selection with inspector
                     if change == QGraphicsItem.ItemSelectedHasChanged and bool(value):
-                        mw.select_object_in_inspector(name)
+                        mw.controller.select_object_in_inspector(name)
             except RuntimeError as e:
                 logging.error(f"Error in itemChange for {name}: {e}")
         return super().itemChange(change, value)

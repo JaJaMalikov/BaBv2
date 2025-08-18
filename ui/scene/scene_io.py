@@ -41,7 +41,7 @@ def load_scene(win: "MainWindow") -> None:
 def export_scene(win: "MainWindow", file_path: str) -> None:
     """Exports the current scene state to a JSON file."""
     if not win.scene_model.keyframes:
-        win.add_keyframe(0)
+        win.controller.add_keyframe(0)
     # Capture latest on-screen state into the current keyframe if it exists
     cur = win.scene_model.current_frame
     if cur in win.scene_model.keyframes:
@@ -146,14 +146,14 @@ def import_scene(win: MainWindow, file_path: str) -> None:
         win.inspector_widget.refresh()
 
         # Assure une application d'état même si la frame n'a pas changé (ex: start=0, current=0)
-        win.update_scene_from_model()
+        win.controller.update_scene_from_model()
         QTimer.singleShot(
             0,
             lambda: (
                 win.timeline_widget.set_current_frame(
                     win.scene_model.current_frame or win.scene_model.start_frame
                 ),
-                win.update_scene_from_model(),
+                win.controller.update_scene_from_model(),
             ),
         )
 
