@@ -13,11 +13,10 @@ from .state_applier import StateApplier
 from .scene_visuals import SceneVisuals
 from ..onion_skin import OnionSkinManager
 from .puppet_ops import PuppetOps
-from .object_ops import ObjectOps
 from .library_ops import LibraryOps, LibraryPayload
 
 if TYPE_CHECKING:
-    from ..object_manager import ObjectManager
+    from ..object_view_adapter import ObjectViewAdapter
     from ..zoomable_view import ZoomableView
 
 
@@ -33,7 +32,7 @@ class MainWindowProtocol(Protocol):
 
     scene: QGraphicsScene
     scene_model: SceneModel
-    object_manager: ObjectManager
+    object_manager: ObjectViewAdapter
     view: ZoomableView
     zoom_factor: float
     _suspend_item_updates: bool
@@ -71,9 +70,8 @@ class SceneController:
             applier if applier is not None else StateApplier(win)
         )
         self.puppet_ops = PuppetOps(win)
-        self.object_ops = ObjectOps(win)
         self.library_ops = LibraryOps(
-            win, self.puppet_ops, self.object_ops, self.set_background_path
+            win, self.puppet_ops, win.object_controller, self.set_background_path
         )
 
     # --- Puppet operations -------------------------------------------------
@@ -129,7 +127,7 @@ class SceneController:
         except Exception:  # pylint: disable=broad-except
             # Fallback: attempt to create an empty keyframe if UI path fails
             self.win.scene_model.add_keyframe(
-                cur, self.win.object_manager.capture_scene_state()
+                cur, self.win.object_controller.capture_scene_state()
             )
 
         kf = self.win.scene_model.keyframes.get(cur)
@@ -154,44 +152,79 @@ class SceneController:
     # --- Object operations -------------------------------------------------
     def delete_object(self, name: str) -> None:
         """Delete an object."""
-        self.object_ops.delete_object(name)
+        self.win.object_controller.remove_object(name)
+        try:
+            self.win.inspector_widget.refresh()
+        except AttributeError:
+            pass
 
     def duplicate_object(self, name: str) -> None:
         """Duplicate an object."""
-        self.object_ops.duplicate_object(name)
+        self.win.object_controller.duplicate_object(name)
+        try:
+            self.win.inspector_widget.refresh()
+        except AttributeError:
+            pass
 
     def attach_object_to_member(
         self, obj_name: str, puppet_name: str, member_name: str
     ) -> None:
         """Attach an object to a puppet member."""
-        self.object_ops.attach_object_to_member(obj_name, puppet_name, member_name)
+        self.win.object_controller.attach_object_to_member(
+            obj_name, puppet_name, member_name
+        )
+        try:
+            self.win.inspector_widget.refresh()
+        except AttributeError:
+            pass
 
     def detach_object(self, obj_name: str) -> None:
         """Detach an object from any parent."""
-        self.object_ops.detach_object(obj_name)
+        self.win.object_controller.detach_object(obj_name)
+        try:
+            self.win.inspector_widget.refresh()
+        except AttributeError:
+            pass
 
     def _create_object_from_file(
         self, file_path: str, scene_pos: Optional[QPointF] = None
     ) -> Optional[str]:
         """Create an object from a file."""
-        return cast(
-            Optional[str], self.object_ops.create_object_from_file(file_path, scene_pos)
+        name = cast(
+            Optional[str],
+            self.win.object_controller.create_object_from_file(file_path, scene_pos),
         )
+        try:
+            self.win.inspector_widget.refresh()
+        except AttributeError:
+            pass
+        return name
 
     def _add_object_graphics(self, obj: SceneObject) -> None:
         """Compatibility shim used by scene import to create graphics for an object.
 
         Delegates to ObjectOps' internal method until a public API is standardized.
         """
-        # Using the internal helper keeps import logic simple; it's limited in scope.
         try:
-            self.object_ops._add_object_graphics(obj)  # type: ignore[attr-defined]
-        except AttributeError as e:
-            logging.error("ObjectOps has no _add_object_graphics: %s", e)
+            self.win.object_view_adapter.add_object_graphics(obj)
+        except Exception as e:  # pylint: disable=broad-except
+            logging.error("add_object_graphics failed: %s", e)
 
     def delete_object_from_current_frame(self, name: str) -> None:
         """Delete an object from the current frame."""
-        self.object_ops.delete_object_from_current_frame(name)
+        self.win.object_controller.delete_object_from_current_frame(name)
+        try:
+            self.win.inspector_widget.refresh()
+        except AttributeError:
+            pass
+
+    def create_light_object(self) -> None:
+        """Create a light object in the scene."""
+        self.win.object_controller.create_light_object()
+        try:
+            self.win.inspector_widget.refresh()
+        except AttributeError:
+            pass
 
     # --- Library operations -----------------------------------------------
     def _add_library_item_to_scene(self, payload: LibraryPayload) -> None:

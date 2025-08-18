@@ -72,7 +72,7 @@ def test_copy_paste_then_export_import_persists(app, tmp_path: Path):  # noqa: A
 
     # Build a source keyframe @ 5 by snapshotting visible state
     win.timeline_widget.set_current_frame(5)
-    win.object_manager.snapshot_current_frame()
+    win.object_controller.snapshot_current_frame()
     assert 5 in win.scene_model.keyframes
 
     # Copy via handler
@@ -109,7 +109,7 @@ def test_copy_paste_via_signals_matches_handler(app):  # noqa: ARG001
 
     # Seed a keyframe @ 7
     win.timeline_widget.set_current_frame(7)
-    win.object_manager.snapshot_current_frame()
+    win.object_controller.snapshot_current_frame()
     assert 7 in win.scene_model.keyframes
 
     # Copy via timeline signal
@@ -137,7 +137,7 @@ def test_paste_on_current_frame_overwrites_correctly(app):  # noqa: ARG001
     win.timeline_widget.set_current_frame(5)
     torso = win.object_manager.graphics_items["manu:torse"]
     torso.rotate_piece(30)  # A specific state for frame 5
-    win.object_manager.snapshot_current_frame()
+    win.object_controller.snapshot_current_frame()
     assert 5 in win.scene_model.keyframes
     pup5, obj5 = _state_at(win, 5)
     assert pup5["manu"]["torse"]["rotation"] == 30
@@ -145,7 +145,7 @@ def test_paste_on_current_frame_overwrites_correctly(app):  # noqa: ARG001
     # Create a different keyframe at frame 10
     win.timeline_widget.set_current_frame(10)
     torso.rotate_piece(0)  # A different state for frame 10
-    win.object_manager.snapshot_current_frame()
+    win.object_controller.snapshot_current_frame()
     assert 10 in win.scene_model.keyframes
     pup10_original, _ = _state_at(win, 10)
     assert pup10_original["manu"]["torse"]["rotation"] == 0

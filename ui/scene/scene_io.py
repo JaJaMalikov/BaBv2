@@ -46,7 +46,7 @@ def export_scene(win: "MainWindow", file_path: str) -> None:
     cur = win.scene_model.current_frame
     if cur in win.scene_model.keyframes:
         try:
-            win.object_manager.snapshot_current_frame()
+            win.object_controller.snapshot_current_frame()
         except RuntimeError as e:
             logging.debug("Snapshot on export failed: %s", e)
 
