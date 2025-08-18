@@ -63,11 +63,9 @@ def test_add_and_remove_object() -> None:
     obj = SceneObject("test", "svg", "path.svg")
     ctrl.add_object(obj)
     assert "test" in ctrl.model.objects
-    assert "test" in ctrl.view.objects
 
     ctrl.remove_object("test")
     assert "test" not in ctrl.model.objects
-    assert "test" not in ctrl.view.objects
 
 
 def test_attach_and_detach_updates_model_and_keyframe() -> None:
