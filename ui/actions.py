@@ -19,8 +19,8 @@ from ui.icons import (
     icon_scene_size,
     icon_timeline,
 )
-from ui.inspector import actions as inspector_actions
-from ui.library import actions as library_actions
+from ui.views.inspector import actions as inspector_actions
+from ui.views.library import actions as library_actions
 from ui.scene import actions as scene_actions
 from ui.scene import scene_io
 

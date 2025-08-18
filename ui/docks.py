@@ -6,7 +6,7 @@ import logging
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QDockWidget, QMainWindow, QWidget as _QW
 
-from ui.timeline_widget import TimelineWidget
+from ui.views.timeline_widget import TimelineWidget
 
 
 def setup_timeline_dock(main_window: QMainWindow) -> TimelineWidget:

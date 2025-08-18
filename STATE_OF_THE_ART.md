@@ -16,9 +16,9 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
 
 *   **`ui/`**: Contient les composants de l'interface utilisateur.
     *   `main_window.py`: La fenêtre principale qui assemble tous les éléments et gère l'essentiel des interactions.
-    *   `timeline_widget.py`: Un widget de timeline avancé et interactif.
-    *   `inspector_widget.py`: Un panneau pour lister, sélectionner et manipuler les objets de la scène.
-    *   `library_widget.py`: Panneau « Bibliothèques » listant les ressources importables.
+    *   `views/timeline_widget.py`: Un widget de timeline avancé et interactif.
+    *   `views/inspector/inspector_widget.py`: Un panneau pour lister, sélectionner et manipuler les objets de la scène.
+    *   `views/library/library_widget.py`: Panneau « Bibliothèques » listant les ressources importables.
     *   `ui_menu.py`: Fichier généré définissant la structure des menus.
 
 *   **`macronotron.py`**: Point d'entrée de l'application.
@@ -83,7 +83,7 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
 - Externalisation de la configuration des marionnettes : hiérarchie, pivots et z-order sont désormais définis dans `core/puppet_config.json` et chargés dynamiquement par `Puppet`.
 - Correction du chargement JSON: `SceneModel.import_json` peuple désormais correctement le modèle via `from_dict` et retourne un booléen de succès.
 - Nettoyage: suppression de code inatteignable dans `SceneModel.import_json` et sécurisation de `ui/object_item.py` pour éviter une référence potentiellement non définie dans les logs.
-- Logging renforcé: remplacement des `print` par `logging` dans `ui/scene_io.py` (sauvegarde/chargement) et `core/svg_loader.py` (export de groupe), avec gestion plus précise des exceptions et messages contextualisés. Ajout de logs non intrusifs (niveau debug/warning) dans `ui/main_window.py`, `ui/library_widget.py`, `ui/inspector_widget.py`, `ui/draggable_widget.py`, `ui/object_manager.py` et `ui/icons.py` pour éviter les silences en cas d'erreurs non critiques.
+- Logging renforcé: remplacement des `print` par `logging` dans `ui/scene_io.py` (sauvegarde/chargement) et `core/svg_loader.py` (export de groupe), avec gestion plus précise des exceptions et messages contextualisés. Ajout de logs non intrusifs (niveau debug/warning) dans `ui/main_window.py`, `ui/views/library/library_widget.py`, `ui/views/inspector/inspector_widget.py`, `ui/draggable_widget.py`, `ui/object_manager.py` et `ui/icons.py` pour éviter les silences en cas d'erreurs non critiques.
 - Refactor Onion Skin: extraction de toute la logique de fantômes (onion skin) dans `ui/onion_skin.py` avec une classe `OnionSkinManager`. `MainWindow` délègue désormais via de simples wrappers (`set_onion_enabled`, `update_onion_skins`, `clear_onion_skins`).
 - Refactor UI: extraction de la construction des overlays (Bibliothèque/Inspecteur) dans `ui/panels.py` et de la gestion des visuels de scène (bordure, label des dimensions, image de fond) dans `ui/scene_visuals.py` via la classe `SceneVisuals`. `MainWindow` délègue désormais ces responsabilités et expose des wrappers compatibles.
 - Refactor Actions/Signaux: création de `ui/actions.py` pour centraliser la création des `QAction` et le câblage des signaux UI. `MainWindow` utilise `app_actions.build_actions(self)` et `app_actions.connect_signals(self)` pour réduire la taille et améliorer la lisibilité.
@@ -111,9 +111,9 @@ L'application est construite en Python avec la bibliothèque d'interface graphiq
   - `core/scene_model.py`: annotations complètes pour `SceneObject`, `Keyframe`, `SceneModel` et docstrings de module/classes.
   - `core/puppet_piece.py`: docstrings de classes/méthodes (handles, PuppetPiece) et clarifications.
   - `core/puppet_model.py`: docstrings de module/classes/fonctions (Puppet, PuppetMember, `compute_child_map`).
-  - `ui/inspector_widget.py`: docstrings classe/méthodes et types pour callbacks.
-  - `ui/library_widget.py`: docstring de module/classe et annotation `reload()`.
-  - `ui/timeline_widget.py`: docstring de classe pour préciser le rôle et les signaux exposés.
+  - `ui/views/inspector/inspector_widget.py`: docstrings classe/méthodes et types pour callbacks.
+  - `ui/views/library/library_widget.py`: docstring de module/classe et annotation `reload()`.
+  - `ui/views/timeline_widget.py`: docstring de classe pour préciser le rôle et les signaux exposés.
   - `core/scene_validation.py`: docstring de module décrivant les vérifications JSON.
   - `ui/draggable_widget.py`: docstrings pour les widgets d'overlays et leurs méthodes.
 - Suppression temporelle des objets: la logique d'affichage considère désormais le dernier keyframe ≤ frame courante comme point de vérité. Si ce keyframe ne référence pas un objet, celui-ci est masqué à partir de cette frame (et jusqu'à ce qu'un nouveau keyframe le réintroduise). L’inspecteur se synchronise sur cette règle.

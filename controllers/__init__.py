@@ -1,4 +1,4 @@
-"""Controllers package."""
+"""Controllers package exposing high-level services."""
 
 from .app_controller import AppController
 from .object_controller import ObjectController
