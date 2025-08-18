@@ -163,6 +163,15 @@ class Puppet:
                 return target_member.pivot
         return (0.0, 0.0)
 
+    def get_first_child_pivot(self, name: str) -> Tuple[float, float]:
+        """Return pivot of the first child of a member, or (0,0) if none."""
+        return self._resolve_child_pivot(name)
+
+    def get_handle_target_pivot(self, name: str) -> Tuple[float, float]:
+        """Pivot used for handle placement (exceptions or first child)."""
+        override = HANDLE_EXCEPTION.get(name)
+        return self._resolve_child_pivot(name, override)
+
 
 def normalize_variants(
     raw_variants: object,
@@ -206,17 +215,9 @@ def normalize_variants(
     except Exception:  # pylint: disable=broad-except
         return {}, {}
 
-def get_first_child_pivot(self, name: str) -> Tuple[float, float]:
-    """Return pivot of the first child of a member, or (0,0) if none."""
-    return self._resolve_child_pivot(name)
-
-def get_handle_target_pivot(self, name: str) -> Tuple[float, float]:
-    """Pivot used for handle placement (exceptions or first child)."""
-    override = HANDLE_EXCEPTION.get(name)
-    return self._resolve_child_pivot(name, override)
 
 def print_hierarchy(
-        self, member: Optional[PuppetMember] = None, indent: str = ""
+    self, member: Optional[PuppetMember] = None, indent: str = ""
 ) -> None:
     """Print the puppet hierarchy starting from ``member`` (or roots)."""
     if member is None:
@@ -224,11 +225,11 @@ def print_hierarchy(
             self.print_hierarchy(root, indent)
     else:
         logger.info(
-                "%s- %s (pivot=%s z=%s)",
-                indent,
-                member.name,
-                member.pivot,
-                member.z_order,
+            "%s- %s (pivot=%s z=%s)",
+            indent,
+            member.name,
+            member.pivot,
+            member.z_order,
         )
         for child in member.children:
             self.print_hierarchy(child, indent + "  ")

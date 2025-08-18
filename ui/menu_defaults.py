@@ -8,6 +8,7 @@ MAIN_DEFAULT_ORDER = [
     "load",
     "scene_size",
     "background",
+    "add_light",
     "settings",
     "reset_scene",
     "reset_ui",

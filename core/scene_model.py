@@ -25,7 +25,7 @@ class SceneObject:
     """
 
     name: str
-    obj_type: str  # "image", "svg", "puppet"
+    obj_type: str  # "image", "svg", "puppet", "light"
     file_path: str
     x: float = 0
     y: float = 0
@@ -33,6 +33,11 @@ class SceneObject:
     scale: float = 1.0
     z: int = 0
     attached_to: Optional[tuple[str, str]] = None  # (puppet_name, member_name) ou None
+
+    # Attributs pour les lumières
+    color: Optional[str] = None  # ex: "#FFFFE0"
+    cone_angle: Optional[float] = None  # en degrés
+    cone_reach: Optional[float] = None  # en pixels
 
     def attach(self, puppet_name: str, member_name: str) -> None:
         """Attach object to a puppet member by names."""

@@ -42,6 +42,7 @@ def build_actions(win: Any) -> None:
     win.load_action.setShortcut("Ctrl+O")
     win.scene_size_action = QAction(icon_scene_size(), "Taille Scène", win)
     win.background_action = QAction(icon_background(), "Image de fond", win)
+    win.add_light_action = QAction(get_icon("plus"), "Ajouter Projecteur", win)
     # Settings icon: configurable via key 'settings'
     win.settings_action = QAction(get_icon("settings"), "Paramètres", win)
 
@@ -82,6 +83,7 @@ def build_actions(win: Any) -> None:
         "toggle_library": win.toggle_library_action,
         "toggle_inspector": win.toggle_inspector_action,
         "toggle_custom": win.toggle_custom_action,
+        "add_light": win.add_light_action,
     }
 
     # Load persisted shortcuts
@@ -114,6 +116,9 @@ def connect_signals(win: Any) -> None:
     # Scene settings
     win.scene_size_action.triggered.connect(lambda: scene_actions.set_scene_size(win))
     win.background_action.triggered.connect(lambda: scene_actions.set_background(win))
+    win.add_light_action.triggered.connect(
+        lambda: win.scene_controller.object_ops.create_light_object()
+    )
 
     # ZoomableView signals
     win.view.zoom_requested.connect(win.scene_controller.zoom)

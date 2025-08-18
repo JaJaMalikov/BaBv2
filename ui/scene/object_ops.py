@@ -15,7 +15,7 @@ from PySide6.QtWidgets import QGraphicsItem
 
 from core.scene_model import Keyframe, SceneObject
 from core.puppet_piece import PuppetPiece
-from ..object_item import ObjectPixmapItem, ObjectSvgItem
+from ..object_item import ObjectPixmapItem, ObjectSvgItem, LightItem
 
 if TYPE_CHECKING:
     from .scene_controller import MainWindowProtocol
@@ -89,6 +89,12 @@ class ObjectOps:
         item: QGraphicsItem
         if obj.obj_type == "image":
             item = ObjectPixmapItem(obj.file_path)
+        elif obj.obj_type == "light":
+            item = LightItem(
+                color_str=obj.color or "#FFFFE0",
+                angle=obj.cone_angle or 45.0,
+                reach=obj.cone_reach or 500.0,
+            )
         else:
             item = ObjectSvgItem(obj.file_path)
         item.set_context(self.win, obj.name)
@@ -364,6 +370,41 @@ class ObjectOps:
                 )
             state["attached_to"] = attached_to
             kf.objects[name] = state
+        self.win.inspector_widget.refresh()
+        return name
+
+    def create_light_object(self, scene_pos: Optional[QPointF] = None) -> Optional[str]:
+        """Creates a new light object and adds it to the scene."""
+        base = "projecteur"
+        name = self.unique_object_name(base)
+
+        if scene_pos is None:
+            c: QPointF = self.win.scene.sceneRect().center()
+            x, y = c.x(), c.y() - 200  # Start it a bit higher
+        else:
+            x, y = float(scene_pos.x()), float(scene_pos.y())
+
+        obj = SceneObject(
+            name,
+            obj_type="light",
+            file_path="",  # No file for this type
+            x=x,
+            y=y,
+            rotation=0,
+            scale=1.0,
+            z=100,  # High Z value to be on top
+            color="#FFFFE0",
+            cone_angle=45.0,
+            cone_reach=500.0,
+        )
+        self.win.scene_model.add_object(obj)
+        self._add_object_graphics(obj)
+        cur: int = self.win.scene_model.current_frame
+        if cur not in self.win.scene_model.keyframes:
+            self.win.add_keyframe(cur)
+        kf: Optional[Keyframe] = self.win.scene_model.keyframes.get(cur)
+        if kf is not None:
+            kf.objects[name] = obj.to_dict()
         self.win.inspector_widget.refresh()
         return name
 

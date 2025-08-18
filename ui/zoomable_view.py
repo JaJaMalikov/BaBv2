@@ -256,6 +256,12 @@ class ZoomableView(QGraphicsView):
             "load": load_btn,
             "scene_size": scene_size_btn,
             "background": background_btn,
+            "add_light": make_tool_button(
+                self._main_tools_overlay,
+                action=main_window.add_light_action,
+                icon_size=icon_size,
+                button_size=button_size,
+            ),
             "settings": settings_btn,
             "reset_scene": reset_scene_btn,
             "reset_ui": reset_ui_btn,

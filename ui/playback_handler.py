@@ -138,12 +138,14 @@ class PlaybackHandler(QObject):
         # Deep copy to avoid aliasing nested dicts when source keyframe changes later
         try:
             from copy import deepcopy
+
             self._kf_clipboard = {
                 "objects": deepcopy(kf.objects),
                 "puppets": deepcopy(kf.puppets),
                 "source_index": int(frame_index),
             }
             import logging as _log
+
             _log.error("Keyframe copied from %s", int(frame_index))
         except Exception:
             # Fallback to shallow copy if deepcopy fails (unlikely)
@@ -153,12 +155,14 @@ class PlaybackHandler(QObject):
                 "source_index": int(frame_index),
             }
             import logging as _log
+
             _log.error("Keyframe copied (shallow) from %s", int(frame_index))
 
     def paste_keyframe(self, frame_index: int) -> None:
         """Paste the clipboard state at the target frame (overwrite or create)."""
         if not self._kf_clipboard:
             import logging as _log
+
             _log.error("Paste requested at %s but clipboard is empty", int(frame_index))
             return
         # Ensure pasted frame is inside current timeline range (make it visible)
@@ -179,6 +183,7 @@ class PlaybackHandler(QObject):
         self.scene_model.add_keyframe(frame_index, state)
         self.timeline_widget.add_keyframe_marker(frame_index)
         import logging as _log
+
         _log.error(
             "Keyframe pasted: source=%s -> target=%s",
             self._kf_clipboard.get("source_index"),
@@ -189,6 +194,7 @@ class PlaybackHandler(QObject):
         # Immediately snapshot the on-screen state at the target to persist a complete keyframe
         try:
             import logging as _log
+
             self.snapshot_requested.emit(int(frame_index))
             _log.error("Keyframe snapshot emitted @ %s after paste", int(frame_index))
         except Exception:

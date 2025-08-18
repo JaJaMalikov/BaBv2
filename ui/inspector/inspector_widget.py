@@ -18,27 +18,22 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QFrame,
     QLabel,
+    QPushButton,
+    QColorDialog,
+    QSpinBox,
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QColor
+
 from ui.icons import icon_delete, icon_duplicate, icon_link, icon_link_off
+from ui.object_item import LightItem
 
 
 class InspectorWidget(QWidget):
-    """Inspector to manage scene objects and puppets.
-
-    - Lists puppets and objects
-    - Allows duplicate/delete for both
-    - Edits object scale/rotation/z
-    - Attaches/detaches an object to a puppet member
-    """
+    """Inspector to manage scene objects and puppets."""
 
     def __init__(self, main_window):
-        """Initializes the inspector widget.
-
-        Args:
-            main_window: The main window of the application.
-        """
+        """Initializes the inspector widget."""
         super().__init__()
         self.main_window = main_window
 
@@ -71,6 +66,21 @@ class InspectorWidget(QWidget):
         self.delete_btn.setIcon(icon_delete())
         self.delete_btn.setToolTip("Supprimer")
 
+        # Light object properties
+        self.light_props_widget = QWidget()
+        light_layout = QFormLayout(self.light_props_widget)
+        self.light_color_btn = QPushButton("Changer…")
+        self.light_angle_spin = QDoubleSpinBox()
+        self.light_angle_spin.setRange(1, 180)
+        self.light_reach_spin = QDoubleSpinBox()
+        self.light_reach_spin.setRange(1, 10000)
+        self.light_intensity_spin = QSpinBox()
+        self.light_intensity_spin.setRange(0, 255)
+        light_layout.addRow("Couleur:", self.light_color_btn)
+        light_layout.addRow("Intensité (alpha):", self.light_intensity_spin)
+        light_layout.addRow("Angle du cône:", self.light_angle_spin)
+        light_layout.addRow("Portée:", self.light_reach_spin)
+
         # --- LAYOUT ---
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(12, 12, 12, 12)
@@ -83,9 +93,17 @@ class InspectorWidget(QWidget):
         form_layout.setSpacing(8)
         form_layout.setLabelAlignment(Qt.AlignRight)
 
-        form_layout.addRow("Échelle:", self.scale_spin)
+        self.scale_row = QWidget()
+        scale_layout = QHBoxLayout(self.scale_row)
+        scale_layout.setContentsMargins(0,0,0,0)
+        scale_layout.addWidget(QLabel("Échelle:"))
+        scale_layout.addWidget(self.scale_spin)
+        form_layout.addRow(self.scale_row)
+
         form_layout.addRow("Rotation:", self.rot_spin)
         form_layout.addRow("Z-Order:", self.z_spin)
+
+        form_layout.addWidget(self.light_props_widget)
 
         # Separator
         line = QFrame()
@@ -138,7 +156,51 @@ class InspectorWidget(QWidget):
         self.attach_btn.clicked.connect(self._on_attach_clicked)
         self.detach_btn.clicked.connect(self._on_detach_clicked)
 
+        # Light property connections
+        self.light_color_btn.clicked.connect(self._on_light_color_clicked)
+        self.light_angle_spin.valueChanged.connect(self._on_light_props_changed)
+        self.light_reach_spin.valueChanged.connect(self._on_light_props_changed)
+        self.light_intensity_spin.valueChanged.connect(self._on_light_props_changed)
+
         self.refresh()
+
+    def _on_light_color_clicked(self):
+        typ, name = self._current_info()
+        if not (typ == "object" and name):
+            return
+        obj = self.main_window.scene_model.objects.get(name)
+        if not obj or obj.obj_type != "light":
+            return
+
+        initial_color = QColor(obj.color or "#FFFFE0")
+        new_color = QColorDialog.getColor(initial_color, self, "Choisir une couleur pour la lumière")
+
+        if new_color.isValid():
+            # Preserve alpha from intensity spin
+            alpha = self.light_intensity_spin.value()
+            new_color.setAlpha(alpha)
+            obj.color = new_color.name(QColor.HexArgb)
+            self._on_light_props_changed() # Trigger update
+
+    def _on_light_props_changed(self):
+        typ, name = self._current_info()
+        if not (typ == "object" and name):
+            return
+        obj = self.main_window.scene_model.objects.get(name)
+        item = self.main_window.object_manager.graphics_items.get(name)
+        if not obj or obj.obj_type != "light" or not isinstance(item, LightItem):
+            return
+
+        # Update model from UI
+        obj.cone_angle = self.light_angle_spin.value()
+        obj.cone_reach = self.light_reach_spin.value()
+        
+        new_color = QColor(obj.color or "#FFFFE0")
+        new_color.setAlpha(self.light_intensity_spin.value())
+        obj.color = new_color.name(QColor.HexArgb)
+
+        # Update graphics item
+        item.set_light_properties(new_color, obj.cone_angle, obj.cone_reach)
 
     # --- Variants helpers ---
     def _current_variant_for_slot(self, puppet_name: str, slot: str) -> str | None:
@@ -239,20 +301,34 @@ class InspectorWidget(QWidget):
         if not name:
             self.props_panel.setVisible(False)
             return
-        # Show the props panel now that we have a selection
+
         self.props_panel.setVisible(True)
+        obj = self.main_window.scene_model.objects.get(name)
+        is_light = typ == "object" and obj and obj.obj_type == "light"
+
+        self.light_props_widget.setVisible(is_light)
+        self.scale_row.setVisible(not is_light)
+        self.variants_panel.setVisible(typ == "puppet")
+        self.attach_puppet_combo.parentWidget().setVisible(typ == "object")
+
         if typ == "object":
-            obj = self.main_window.scene_model.objects.get(name)
-            scale = obj.scale if obj else 1.0
-            rot = obj.rotation if obj else 0.0
-            z = getattr(obj, "z", 0)
-            # Sélectionner l'objet dans la scène
+            if is_light:
+                self.light_angle_spin.setValue(obj.cone_angle or 45.0)
+                self.light_reach_spin.setValue(obj.cone_reach or 500.0)
+                color = QColor(obj.color or "#FFFFE0")
+                self.light_intensity_spin.setValue(color.alpha())
+            else:
+                self.scale_spin.setValue(obj.scale if obj else 1.0)
+            
+            self.rot_spin.setValue(obj.rotation if obj else 0.0)
+            self.z_spin.setValue(getattr(obj, "z", 0))
+
             for it in self.main_window.scene.selectedItems():
                 it.setSelected(False)
             gi = self.main_window.object_manager.graphics_items.get(name)
             if gi and gi.isVisible():
                 gi.setSelected(True)
-            # Pré-sélectionner les combos selon l'état à la frame courante
+
             pu, me = self._attached_state_for_frame(name)
             self._refresh_attach_puppet_combo()
             if pu:
@@ -266,22 +342,11 @@ class InspectorWidget(QWidget):
             else:
                 self.attach_puppet_combo.setCurrentIndex(0)
                 self._refresh_attach_member_combo()
-        else:
-            scale = self.main_window.object_manager.puppet_scales.get(name, 1.0)
-            rot = self.main_window.scene_controller.get_puppet_rotation(name)
-            z = self.main_window.object_manager.puppet_z_offsets.get(name, 0)
-            # Pas de combos d'attache pour les pantins
-            # Build/refresh variant rows for this puppet
+        else: # Puppet
+            self.scale_spin.setValue(self.main_window.object_manager.puppet_scales.get(name, 1.0))
+            self.rot_spin.setValue(self.main_window.scene_controller.get_puppet_rotation(name))
+            self.z_spin.setValue(self.main_window.object_manager.puppet_z_offsets.get(name, 0))
             self._rebuild_variant_rows(name)
-        self.scale_spin.blockSignals(True)
-        self.scale_spin.setValue(scale)
-        self.scale_spin.blockSignals(False)
-        self.rot_spin.blockSignals(True)
-        self.rot_spin.setValue(rot)
-        self.rot_spin.blockSignals(False)
-        self.z_spin.blockSignals(True)
-        self.z_spin.setValue(z)
-        self.z_spin.blockSignals(False)
 
     def _on_scale_changed(self, value: float) -> None:
         """Handles the scale change of the selected item."""
@@ -309,8 +374,7 @@ class InspectorWidget(QWidget):
         if not name:
             return
         if typ == "object":
-            # Suppression temporelle: à partir de la frame courante
-            self.main_window.scene_controller.delete_object_from_current_frame(name)
+            self.main_window.scene_controller.delete_object(name)
         else:
             self.main_window.scene_controller.delete_puppet(name)
         self.refresh()

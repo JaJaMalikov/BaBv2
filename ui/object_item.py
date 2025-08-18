@@ -5,9 +5,19 @@ image and SVG objects in the scene, with a mixin for common functionality.
 """
 
 import logging
-from PySide6.QtGui import QPixmap
-from PySide6.QtWidgets import QGraphicsPixmapItem, QGraphicsItem
+import math
+from typing import Optional
+
+from PySide6.QtGui import QPixmap, QPolygonF, QColor, QBrush, QPen, QPainter
+from PySide6.QtWidgets import (
+    QGraphicsPixmapItem,
+    QGraphicsItem,
+    QGraphicsPolygonItem,
+    QStyleOptionGraphicsItem,
+    QWidget,
+)
 from PySide6.QtSvgWidgets import QGraphicsSvgItem
+from PySide6.QtCore import QPointF, Qt
 
 
 class _ObjectItemMixin:
@@ -80,3 +90,53 @@ class ObjectSvgItem(_ObjectItemMixin, QGraphicsSvgItem):
             file_path: The path to the SVG file.
         """
         super().__init__(file_path)
+
+
+class LightItem(QGraphicsPolygonItem, _ObjectItemMixin):
+    """A QGraphicsPolygonItem that simulates a light source by setting the painter's composition mode."""
+
+    def __init__(self, color_str: str = "#FFFFE0", angle: float = 45.0, reach: float = 500.0):
+        QGraphicsPolygonItem.__init__(self)
+
+        self.color = QColor(color_str)
+        self.color.setAlpha(60)
+        self.angle = angle
+        self.reach = reach
+
+        self.setPen(QPen(Qt.NoPen))
+        self.setBrush(QBrush(self.color))
+
+        self._update_polygon()
+
+    def _update_polygon(self):
+        """Updates the polygon shape based on angle and reach."""
+        polygon = QPolygonF()
+        polygon.append(QPointF(0, 0))  # Apex
+
+        half_angle_rad = (self.angle / 2.0) * (math.pi / 180.0)
+
+        p_left = QPointF(-self.reach * math.tan(half_angle_rad), self.reach)
+        p_right = QPointF(self.reach * math.tan(half_angle_rad), self.reach)
+
+        polygon.append(p_left)
+        polygon.append(p_right)
+
+        self.setPolygon(polygon)
+
+    def set_light_properties(self, color: QColor, angle: float, reach: float):
+        """Update the light's visual properties."""
+        self.color = color
+        self.angle = angle
+        self.reach = reach
+        self.setBrush(QBrush(self.color))
+        self._update_polygon()
+
+    def paint(
+        self,
+        painter: QPainter,
+        option: QStyleOptionGraphicsItem,
+        widget: Optional[QWidget] = None,
+    ) -> None:
+        """Paint the item with a screen composition mode to simulate light."""
+        painter.setCompositionMode(QPainter.CompositionMode_Screen)
+        super().paint(painter, option, widget)

@@ -673,10 +673,14 @@ class TimelineWidget(QWidget):
             menu.addAction(rem_action)
             copy_action: QAction = QAction(f"Copy keyframe @ {kf_at_cursor}", self)
             from functools import partial as _partial
-            copy_action.triggered.connect(_partial(self._emit_copy_at, int(kf_at_cursor)))
+
+            copy_action.triggered.connect(
+                _partial(self._emit_copy_at, int(kf_at_cursor))
+            )
             menu.addAction(copy_action)
         paste_action: QAction = QAction(f"Paste @ {f}", self)
         from functools import partial as _partial
+
         paste_action.triggered.connect(_partial(self._emit_paste_at, int(f)))
         menu.addAction(paste_action)
         menu.exec(e.globalPosition().toPoint())
