@@ -22,7 +22,7 @@ from controllers.object_controller import ObjectController
 from ui.onion_skin import OnionSkinManager
 from ui.overlay_manager import OverlayManager
 from ui.playback_controller import PlaybackController
-from ui.scene import SceneController
+from ui.scene import SceneController, SceneView
 from ui.scene.scene_visuals import SceneVisuals
 from ui.settings_manager import SettingsManager
 from ui.docks import setup_timeline_dock
@@ -139,8 +139,9 @@ class MainWindow(QMainWindow):
 
     def _setup_scene_controller(self) -> None:
         """Creates the scene controller facade."""
+        view = SceneView(self, self.visuals)
         self.scene_controller: SceneController = SceneController(
-            self, visuals=self.visuals, onion=self.onion
+            self, view=view, onion=self.onion
         )
 
     def _connect_actions(self) -> None:

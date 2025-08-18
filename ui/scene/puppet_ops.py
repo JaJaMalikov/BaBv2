@@ -15,14 +15,16 @@ from core.svg_loader import SvgLoader
 
 if TYPE_CHECKING:
     from .scene_controller import MainWindowProtocol
+    from controllers.scene_service import SceneService
 
 
 class PuppetOps:
     """Operations related to puppet manipulation in the scene."""
 
-    def __init__(self, win: MainWindowProtocol) -> None:
-        """Initialize helper with a reference to the main window."""
+    def __init__(self, win: MainWindowProtocol, scene_service: SceneService) -> None:
+        """Initialize helper with a reference to la fenêtre et au service."""
         self.win = win
+        self.scene_service = scene_service
 
     def add_puppet(self, file_path: str, puppet_name: str) -> None:
         """Adds a puppet to the scene."""
@@ -54,7 +56,7 @@ class PuppetOps:
         except Exception:  # pylint: disable=broad-except
             logging.exception("Sidecar variants loading failed for %s", file_path)
         puppet.build_from_svg(loader)
-        self.win.scene_model.add_puppet(puppet_name, puppet)
+        self.scene_service.add_puppet(puppet_name, puppet)
         self.win.object_manager.puppet_scales[puppet_name] = 1.0
         self.win.object_manager.puppet_paths[puppet_name] = file_path
         self.win.object_manager.puppet_z_offsets[puppet_name] = 0
@@ -189,7 +191,7 @@ class PuppetOps:
                         self.win.scene.removeItem(piece.pivot_handle)
                     if piece.rotation_handle:
                         self.win.scene.removeItem(piece.rotation_handle)
-            self.win.scene_model.remove_puppet(puppet_name)
+            self.scene_service.remove_puppet(puppet_name)
             self.win.object_manager.puppet_scales.pop(puppet_name, None)
             self.win.object_manager.puppet_paths.pop(puppet_name, None)
             self.win.object_manager.puppet_z_offsets.pop(puppet_name, None)
