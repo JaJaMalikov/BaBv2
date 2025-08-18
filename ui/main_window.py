@@ -25,6 +25,7 @@ from ui.playback_controller import PlaybackController
 from ui.scene import SceneController
 from ui.scene.scene_visuals import SceneVisuals
 from ui.settings_manager import SettingsManager
+from ui.ui_profile import UIProfile
 from ui.docks import setup_timeline_dock
 from ui.zoomable_view import ZoomableView
 from ui.library import actions as library_actions
@@ -34,15 +35,14 @@ from ui.inspector import actions as inspector_actions
 class MainWindow(QMainWindow):
     """Main application window.
 
-    This class orchestrates all UI components, including the scene, timeline,
-    inspector, and library. It holds the central `SceneModel` and manages
-    interactions between different parts of the UI.
+    Orchestrates UI components et conserve un ``UIProfile`` centralisé.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, profile: UIProfile | None = None) -> None:
         """Initialize the main window, scene, and all UI components."""
         super().__init__()
         self.setWindowTitle("Borne and the Bayrou - Disco MIX")
+        self.profile: UIProfile = profile or UIProfile.import_json("ui_profile.json")
 
         # Core components (model, scene, object manager) must exist before
         # any other setup step.  They are grouped into a dedicated function so
@@ -155,7 +155,7 @@ class MainWindow(QMainWindow):
 
     def _setup_settings(self) -> None:
         """Initializes the settings manager and loads settings."""
-        self.settings = SettingsManager(self)
+        self.settings = SettingsManager(self, self.profile)
         self.load_settings()
 
     def _apply_startup_preferences(self) -> None:

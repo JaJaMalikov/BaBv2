@@ -3,6 +3,7 @@
 import logging
 from PySide6.QtGui import QFont
 from .theme_settings import ThemeSettings
+from .ui_profile import UIProfile
 
 # This is used for the fallback icon drawing function.
 ICON_COLOR = "#2D3748"
@@ -282,34 +283,30 @@ QToolTip {{ background-color: {tip_bg}; color: {tip_text}; border: 1px solid {ti
 """
 
 
-def apply_stylesheet(app):
-    """Apply the application's stylesheet.
+def apply_stylesheet(app, profile: UIProfile | None = None) -> None:
+    """Applique la feuille de style de l'application.
 
-    Reads QSettings 'ui/theme' to select light/dark theme.
+    Si ``profile`` est fourni, le thème est lu depuis celui-ci. Sinon, le système
+    revient à ``QSettings`` pour compatibilité.
     """
     try:
-        from PySide6.QtCore import QSettings
+        if profile is None:
+            from PySide6.QtCore import QSettings
 
-        s = QSettings("JaJa", "Macronotron")
-        ts = ThemeSettings.from_qsettings(s)
+            s = QSettings("JaJa", "Macronotron")
+            ts = ThemeSettings.from_qsettings(s)
+            custom_css = s.value("ui/custom_stylesheet") if ts.preset == "custom" else None
+        else:
+            ts = profile.theme
+            custom_css = build_stylesheet(ts.custom_params) if ts.preset == "custom" else None
+
         if ts.preset == "custom":
-            # Prefer explicit stored CSS, otherwise build from params
-            custom_css = s.value("ui/custom_stylesheet")
-            if not custom_css:
-                try:
-                    custom_css = build_stylesheet(ts.custom_params)
-                except Exception:
-                    logging.exception(
-                        "Failed to build custom stylesheet; falling back to light theme"
-                    )
-                    custom_css = STYLE_SHEET_LIGHT
-            app.setStyleSheet(str(custom_css))
+            app.setStyleSheet(str(custom_css or STYLE_SHEET_LIGHT))
         else:
             preset = ts.preset
             if preset == "dark":
                 css = STYLE_SHEET_DARK
             elif preset == "high contrast":
-                # No dedicated stylesheet; reuse dark for now
                 css = STYLE_SHEET_DARK
             else:
                 css = STYLE_SHEET_LIGHT
@@ -319,7 +316,7 @@ def apply_stylesheet(app):
         except RuntimeError:
             logging.warning("Requested font not found, using system default.")
     except Exception:
-        logging.exception("Failed to apply theme from settings; using dark fallback")
+        logging.exception("Failed to apply theme; using dark fallback")
         app.setStyleSheet(STYLE_SHEET_DARK)
         try:
             app.setFont(QFont("Poppins", 10))
@@ -327,12 +324,17 @@ def apply_stylesheet(app):
             logging.warning("Poppins font not found, using system default.")
 
 
-def get_theme_colors() -> dict[str, str]:
-    """Get current theme colors for non-stylesheet elements (e.g., QGraphicsScene)."""
-    from PySide6.QtCore import QSettings
+def get_theme_colors(profile: UIProfile | None = None) -> dict[str, str]:
+    """Retourne les couleurs du thème pour les éléments hors stylesheet."""
+    if profile is None:
+        try:
+            from PySide6.QtCore import QSettings
 
-    s = QSettings("JaJa", "Macronotron")
-    theme = str(s.value("ui/theme", "dark")).lower()
+            theme = str(QSettings("JaJa", "Macronotron").value("ui/theme", "dark")).lower()
+        except Exception:
+            theme = "dark"
+    else:
+        theme = profile.theme.preset
     if theme == "dark":
         return {
             "background": "#1F2937",

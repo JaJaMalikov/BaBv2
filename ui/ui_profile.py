@@ -1,8 +1,8 @@
-"""Central UI profile: a single source of truth for all visual settings.
+"""Profil UI centralisé : source de vérité unique pour les réglages visuels.
 
-Includes theme (colors, fonts), icon palette, timeline colors, overlay/menu
-visibility and order, basic overlay geometries, and icon overrides. Provides
-safe JSON import/export with defaults and QSettings round‑trip.
+Regroupe thème, icônes, couleurs de timeline, visibilité des menus et
+géométries de base. La persistance s'effectue uniquement via un fichier JSON,
+sans recours à ``QSettings``.
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from PySide6.QtCore import QSettings, QRect
+from PySide6.QtCore import QRect
 
 from .theme_settings import ThemeSettings
 from .menu_defaults import MAIN_DEFAULT_ORDER, QUICK_DEFAULT_ORDER, CUSTOM_DEFAULT_ORDER
@@ -86,6 +86,7 @@ class UIProfile:
     icon_overrides: Dict[str, str] = field(default_factory=dict)
 
     # Basic overlay geometries (optional): (x,y,w,h)
+    geom_mainwindow: Optional[Tuple[int, int, int, int]] = None
     geom_library: Optional[Tuple[int, int, int, int]] = None
     geom_inspector: Optional[Tuple[int, int, int, int]] = None
     geom_view_toolbar: Optional[Tuple[int, int, int, int]] = None
@@ -101,148 +102,6 @@ class UIProfile:
         p.theme.preset = "dark"
         p.theme.font_family = "Poppins"
         return p
-
-    @classmethod
-    def from_qsettings(cls, s: Optional[QSettings] = None) -> "UIProfile":
-        s = s or QSettings(cls.ORG, cls.APP)
-        p = cls()
-        p.theme = ThemeSettings.from_qsettings(s)
-
-        # Icon base
-        p.icon_dir = s.value("ui/icon_dir") or None
-        try:
-            p.icon_size = int(s.value("ui/icon_size", p.icon_size))
-        except Exception:
-            pass
-        p.icon_color_normal = str(
-            s.value("ui/icon_color_normal") or p.icon_color_normal
-        )
-        p.icon_color_hover = str(s.value("ui/icon_color_hover") or p.icon_color_hover)
-        p.icon_color_active = str(
-            s.value("ui/icon_color_active") or p.icon_color_active
-        )
-
-        # Timeline
-        p.timeline_bg = str(s.value("timeline/bg") or p.timeline_bg)
-        p.timeline_ruler_bg = str(s.value("timeline/ruler_bg") or p.timeline_ruler_bg)
-        p.timeline_track_bg = str(s.value("timeline/track_bg") or p.timeline_track_bg)
-        p.timeline_tick = str(s.value("timeline/tick") or p.timeline_tick)
-        p.timeline_tick_major = str(
-            s.value("timeline/tick_major") or p.timeline_tick_major
-        )
-        p.timeline_playhead = str(s.value("timeline/playhead") or p.timeline_playhead)
-        p.timeline_kf = str(s.value("timeline/kf") or p.timeline_kf)
-        p.timeline_kf_hover = str(s.value("timeline/kf_hover") or p.timeline_kf_hover)
-        try:
-            p.timeline_inout_alpha = int(
-                s.value("timeline/inout_alpha", p.timeline_inout_alpha)
-            )
-        except Exception:
-            pass
-
-        # Scene bg
-        p.scene_bg = s.value("ui/style/scene_bg") or None
-
-        # Overlay/menu
-        p.custom_overlay_visible = _bool(s.value("ui/menu/custom/visible"), False)
-
-        def get_order_vis(
-            prefix: str, default_order: List[str]
-        ) -> Tuple[List[str], Dict[str, bool]]:
-            order = s.value(f"ui/menu/{prefix}/order") or list(default_order)
-            if isinstance(order, str):
-                order = [k for k in order.split(",") if k]
-            vis: Dict[str, bool] = {}
-            for k in order:
-                vis[k] = _bool(s.value(f"ui/menu/{prefix}/{k}"), True)
-            return list(order), vis
-
-        p.menu_main_order, p.menu_main_vis = get_order_vis("main", p.menu_main_order)
-        p.menu_quick_order, p.menu_quick_vis = get_order_vis(
-            "quick", p.menu_quick_order
-        )
-        p.menu_custom_order, p.menu_custom_vis = get_order_vis(
-            "custom", p.menu_custom_order
-        )
-
-        # Icon overrides (shallow scan of known keys)
-        # Persist what we find in the overlay specs keys to keep JSON small.
-        keys = set(p.menu_main_order + p.menu_quick_order + p.menu_custom_order)
-        overrides: Dict[str, str] = {}
-        for k in keys:
-            v = s.value(f"ui/icon_override/{k}")
-            if v:
-                overrides[k] = str(v)
-        p.icon_overrides = overrides
-
-        # Geometries
-        p.geom_library = _rect_to_tuple(s.value("geometry/library")) or p.geom_library
-        p.geom_inspector = (
-            _rect_to_tuple(s.value("geometry/inspector")) or p.geom_inspector
-        )
-        p.geom_view_toolbar = (
-            _rect_to_tuple(s.value("geometry/view_toolbar")) or p.geom_view_toolbar
-        )
-        p.geom_main_toolbar = (
-            _rect_to_tuple(s.value("geometry/main_toolbar")) or p.geom_main_toolbar
-        )
-        p.timeline_visible = _bool(s.value("layout/timeline_visible"), True)
-        return p
-
-    def apply_to_qsettings(self, s: Optional[QSettings] = None) -> None:
-        s = s or QSettings(self.ORG, self.APP)
-        # Theme first
-        self.theme.to_qsettings(s)
-        # Icon base
-        s.setValue("ui/icon_dir", self.icon_dir or "")
-        s.setValue("ui/icon_size", int(self.icon_size))
-        s.setValue("ui/icon_color_normal", self.icon_color_normal)
-        s.setValue("ui/icon_color_hover", self.icon_color_hover)
-        s.setValue("ui/icon_color_active", self.icon_color_active)
-        # Timeline
-        s.setValue("timeline/bg", self.timeline_bg)
-        s.setValue("timeline/ruler_bg", self.timeline_ruler_bg)
-        s.setValue("timeline/track_bg", self.timeline_track_bg)
-        s.setValue("timeline/tick", self.timeline_tick)
-        s.setValue("timeline/tick_major", self.timeline_tick_major)
-        s.setValue("timeline/playhead", self.timeline_playhead)
-        s.setValue("timeline/kf", self.timeline_kf)
-        s.setValue("timeline/kf_hover", self.timeline_kf_hover)
-        s.setValue("timeline/inout_alpha", int(self.timeline_inout_alpha))
-        # Scene
-        s.setValue("ui/style/scene_bg", self.scene_bg or "")
-        # Menus
-        s.setValue("ui/menu/custom/visible", bool(self.custom_overlay_visible))
-
-        def set_order_vis(prefix: str, order: List[str], vis: Dict[str, bool]) -> None:
-            s.setValue(f"ui/menu/{prefix}/order", order)
-            for k in order:
-                s.setValue(f"ui/menu/{prefix}/{k}", bool(vis.get(k, True)))
-
-        set_order_vis("main", self.menu_main_order, self.menu_main_vis)
-        set_order_vis("quick", self.menu_quick_order, self.menu_quick_vis)
-        set_order_vis("custom", self.menu_custom_order, self.menu_custom_vis)
-        # Overrides
-        for k, v in (self.icon_overrides or {}).items():
-            s.setValue(f"ui/icon_override/{k}", v)
-        # Geometries
-        if self.geom_library:
-            r = _tuple_to_rect(self.geom_library)
-            if r:
-                s.setValue("geometry/library", r)
-        if self.geom_inspector:
-            r = _tuple_to_rect(self.geom_inspector)
-            if r:
-                s.setValue("geometry/inspector", r)
-        if self.geom_view_toolbar:
-            r = _tuple_to_rect(self.geom_view_toolbar)
-            if r:
-                s.setValue("geometry/view_toolbar", r)
-        if self.geom_main_toolbar:
-            r = _tuple_to_rect(self.geom_main_toolbar)
-            if r:
-                s.setValue("geometry/main_toolbar", r)
-        s.setValue("layout/timeline_visible", bool(self.timeline_visible))
 
     # JSON I/O -----------------------------------------------------------
     def to_dict(self) -> Dict[str, Any]:
@@ -306,6 +165,7 @@ class UIProfile:
                 setattr(p, k, dict(data[k]))
         # Geoms
         for k in [
+            "geom_mainwindow",
             "geom_library",
             "geom_inspector",
             "geom_view_toolbar",

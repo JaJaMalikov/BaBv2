@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from pathlib import Path
+from typing import Any, Optional
 
-from PySide6.QtCore import QSettings
+from PySide6.QtCore import QSettings, QRect
 from PySide6.QtWidgets import QApplication
 
 import ui.icons as app_icons
@@ -13,67 +14,64 @@ from ui.styles import apply_stylesheet, build_stylesheet
 from ui.ui_profile import UIProfile
 
 
+def _rect_to_tuple(r: Any) -> Optional[tuple[int, int, int, int]]:
+    try:
+        return (r.x(), r.y(), r.width(), r.height())
+    except Exception:
+        return None
+
+
 class SettingsManager:
     """Encapsulates the saving and restoring of UI settings (geometries, visibility)."""
 
-    def __init__(self, win: Any) -> None:
-        """
-        Initializes the SettingsManager.
-
-        Args:
-            win: The main window instance.
-        """
+    def __init__(self, win: Any, profile: UIProfile, path: str = "ui_profile.json") -> None:
+        """Initialise le gestionnaire de paramètres."""
         self.win = win
+        self.profile = profile
+        self.path = Path(path)
         self.org = "JaJa"
         self.app = "Macronotron"
 
     def save(self) -> None:
-        """Saves the current UI settings."""
-        s = QSettings(self.org, self.app)
-        s.setValue("geometry/mainwindow", self.win.saveGeometry())
-        s.setValue("geometry/library", self.win.library_overlay.geometry())
-        s.setValue("geometry/inspector", self.win.inspector_overlay.geometry())
-        s.setValue("layout/timeline_visible", self.win.timeline_dock.isVisible())
+        """Persist current UI geometry/visibility into the profile."""
+        self.profile.geom_mainwindow = _rect_to_tuple(self.win.geometry())
+        self.profile.geom_library = _rect_to_tuple(self.win.library_overlay.geometry())
+        self.profile.geom_inspector = _rect_to_tuple(self.win.inspector_overlay.geometry())
+        self.profile.timeline_visible = self.win.timeline_dock.isVisible()
         if hasattr(self.win.view, "_overlay") and self.win.view._overlay:
-            s.setValue("geometry/view_toolbar", self.win.view._overlay.geometry())
-        if (
-            hasattr(self.win.view, "_main_tools_overlay")
-            and self.win.view._main_tools_overlay
-        ):
-            s.setValue(
-                "geometry/main_toolbar", self.win.view._main_tools_overlay.geometry()
+            self.profile.geom_view_toolbar = _rect_to_tuple(self.win.view._overlay.geometry())
+        if hasattr(self.win.view, "_main_tools_overlay") and self.win.view._main_tools_overlay:
+            self.profile.geom_main_toolbar = _rect_to_tuple(
+                self.win.view._main_tools_overlay.geometry()
             )
+        self.profile.export_json(str(self.path))
 
     def load(self) -> None:
-        """Loads the UI settings."""
-        s = QSettings(self.org, self.app)
-        if s.contains("geometry/mainwindow"):
-            self.win.restoreGeometry(s.value("geometry/mainwindow"))
+        """Applique les paramètres stockés dans le profil."""
+        if self.profile.geom_mainwindow:
+            self.win.setGeometry(QRect(*self.profile.geom_mainwindow))
             self.win._settings_loaded = True
-        if s.contains("geometry/library"):
-            self.win.library_overlay.setGeometry(s.value("geometry/library"))
+        if self.profile.geom_library:
+            self.win.library_overlay.setGeometry(QRect(*self.profile.geom_library))
         self.win.set_library_overlay_visible(True)
 
-        if s.contains("geometry/inspector"):
-            self.win.inspector_overlay.setGeometry(s.value("geometry/inspector"))
+        if self.profile.geom_inspector:
+            self.win.inspector_overlay.setGeometry(QRect(*self.profile.geom_inspector))
         self.win.set_inspector_overlay_visible(True)
-        if s.contains("layout/timeline_visible"):
-            is_visible = s.value("layout/timeline_visible")
-            # QSettings might return string 'true'/'false'
-            self.win.timeline_dock.setVisible(is_visible in [True, "true"])
+        self.win.timeline_dock.setVisible(self.profile.timeline_visible)
         if (
             hasattr(self.win.view, "_overlay")
             and self.win.view._overlay
-            and s.contains("geometry/view_toolbar")
+            and self.profile.geom_view_toolbar
         ):
-            self.win.view._overlay.setGeometry(s.value("geometry/view_toolbar"))
+            self.win.view._overlay.setGeometry(QRect(*self.profile.geom_view_toolbar))
         if (
             hasattr(self.win.view, "_main_tools_overlay")
             and self.win.view._main_tools_overlay
-            and s.contains("geometry/main_toolbar")
+            and self.profile.geom_main_toolbar
         ):
             self.win.view._main_tools_overlay.setGeometry(
-                s.value("geometry/main_toolbar")
+                QRect(*self.profile.geom_main_toolbar)
             )
 
         # Ensure toolbars are always on top
@@ -101,17 +99,13 @@ class SettingsManager:
 
     def clear(self) -> None:
         """Clears all application settings."""
-        s = QSettings(self.org, self.app)
-        # Only clear geometry/layout; keep theme, icons, overlays builder, timeline colors
-        for key in [
-            "geometry/mainwindow",
-            "geometry/library",
-            "geometry/inspector",
-            "geometry/view_toolbar",
-            "geometry/main_toolbar",
-            "layout/timeline_visible",
-        ]:
-            s.remove(key)
+        self.profile.geom_mainwindow = None
+        self.profile.geom_library = None
+        self.profile.geom_inspector = None
+        self.profile.geom_view_toolbar = None
+        self.profile.geom_main_toolbar = None
+        self.profile.timeline_visible = True
+        self.profile.export_json(str(self.path))
 
     def open_dialog(self) -> None:
         """Opens the settings dialog and applies the changes if accepted."""
@@ -832,7 +826,8 @@ class SettingsManager:
                 )
 
                 # Persistance centralisée
-                prof.apply_to_qsettings(s)
+                self.profile = prof
+                self.profile.export_json(str(self.path))
 
                 # Raccourcis
                 if hasattr(win, "shortcuts"):
@@ -851,6 +846,6 @@ class SettingsManager:
                     self.win.timeline_widget.update()
                 except Exception:
                     pass
-                apply_stylesheet(QApplication.instance())
+                apply_stylesheet(QApplication.instance(), self.profile)
             except Exception:
                 logging.exception("Failed to persist UIProfile from dialog")
