@@ -98,6 +98,44 @@ class SettingsManager:
                 action.setShortcut(seq)
         s.endGroup()
 
+    def _sync_profile_qsettings(self, s: QSettings) -> None:
+        """Recopie le ``UIProfile`` courant dans ``QSettings`` pour compatibilité."""
+        p = self.profile
+        s.setValue("ui/icon_dir", p.icon_dir or "")
+        s.setValue("ui/icon_size", int(p.icon_size))
+        s.setValue("ui/icon_color_normal", p.icon_color_normal)
+        s.setValue("ui/icon_color_hover", p.icon_color_hover)
+        s.setValue("ui/icon_color_active", p.icon_color_active)
+        s.setValue("ui/theme", p.theme.preset)
+        s.setValue("ui/font_family", p.theme.font_family or "Poppins")
+        if p.theme.preset == "custom":
+            s.beginGroup("ui/custom_params")
+            try:
+                for k, v in p.theme.custom_params.items():
+                    s.setValue(k, v)
+            finally:
+                s.endGroup()
+        s.setValue("timeline/bg", p.timeline_bg)
+        s.setValue("timeline/ruler_bg", p.timeline_ruler_bg)
+        s.setValue("timeline/track_bg", p.timeline_track_bg)
+        s.setValue("timeline/tick", p.timeline_tick)
+        s.setValue("timeline/tick_major", p.timeline_tick_major)
+        s.setValue("timeline/playhead", p.timeline_playhead)
+        s.setValue("timeline/kf", p.timeline_kf)
+        s.setValue("timeline/kf_hover", p.timeline_kf_hover)
+        s.setValue("timeline/inout_alpha", int(p.timeline_inout_alpha))
+        s.setValue("ui/style/scene_bg", p.scene_bg or "")
+        s.setValue("ui/menu/custom/visible", p.custom_overlay_visible)
+        s.setValue("ui/menu/main/order", ",".join(p.menu_main_order))
+        for k, v in p.menu_main_vis.items():
+            s.setValue(f"ui/menu/main/{k}", v)
+        s.setValue("ui/menu/quick/order", ",".join(p.menu_quick_order))
+        for k, v in p.menu_quick_vis.items():
+            s.setValue(f"ui/menu/quick/{k}", v)
+        s.setValue("ui/menu/custom/order", ",".join(p.menu_custom_order))
+        for k, v in p.menu_custom_vis.items():
+            s.setValue(f"ui/menu/custom/{k}", v)
+
     def clear(self) -> None:
         """Clears all application settings."""
         self.profile.geom_mainwindow = None
@@ -118,6 +156,7 @@ class SettingsManager:
             dlg.set_shortcut_actions(win.shortcuts)
 
         s = QSettings(self.org, self.app)
+        self._sync_profile_qsettings(s)
         icon_dir = s.value("ui/icon_dir")
         if icon_dir:
             try:
@@ -850,5 +889,6 @@ class SettingsManager:
                 except Exception:
                     pass
                 apply_stylesheet(QApplication.instance(), self.profile)
+                self._sync_profile_qsettings(s)
             except Exception:
                 logging.exception("Failed to persist UIProfile from dialog")
