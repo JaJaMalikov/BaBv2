@@ -310,7 +310,9 @@ class ZoomableView(QGraphicsView):
             "settings": make_btn(main_window.settings_action),
             "reset_scene": make_btn(main_window.reset_scene_action),
             "reset_ui": make_btn(main_window.reset_ui_action),
-            "toggle_library": make_btn(main_window.toggle_library_action, checkable=True),
+            "toggle_library": make_btn(
+                main_window.toggle_library_action, checkable=True
+            ),
             "toggle_inspector": make_btn(
                 main_window.toggle_inspector_action, checkable=True
             ),
@@ -318,13 +320,9 @@ class ZoomableView(QGraphicsView):
                 main_window.timeline_dock.toggleViewAction(), checkable=True
             ),
         }
-        order = s.value("ui/menu/custom/order") or [
-            "save",
-            "load",
-            "scene_size",
-            "background",
-            "settings",
-        ]
+        from ui.menu_defaults import CUSTOM_DEFAULT_ORDER
+
+        order = s.value("ui/menu/custom/order") or list(CUSTOM_DEFAULT_ORDER[:5])
         if isinstance(order, str):
             order = [k for k in order.split(",") if k]
         for key in order:
@@ -528,7 +526,10 @@ class ZoomableView(QGraphicsView):
                 self.main_tool_buttons.append(btn)
             self.main_tools_layout.addWidget(self.main_collapse_btn)
             # Adjust overlay size after relayout
-            if hasattr(self, "_main_tools_overlay") and self._main_tools_overlay is not None:
+            if (
+                hasattr(self, "_main_tools_overlay")
+                and self._main_tools_overlay is not None
+            ):
                 self._main_tools_overlay.adjustSize()
         except (RuntimeError, AttributeError):
             logging.exception("Failed to apply main menu settings")

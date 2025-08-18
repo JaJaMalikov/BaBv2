@@ -82,6 +82,15 @@ class PlaybackController(QObject):
         """Deletes a keyframe."""
         self._handler.delete_keyframe(frame_index)
 
+    # --- Copy/Paste passthroughs -----------------------------------------
+    def copy_keyframe(self, frame_index: int) -> None:
+        """Copies the keyframe state at ``frame_index`` (facade to handler)."""
+        self._handler.copy_keyframe(frame_index)
+
+    def paste_keyframe(self, frame_index: int) -> None:
+        """Pastes the copied keyframe state at ``frame_index`` (facade to handler)."""
+        self._handler.paste_keyframe(frame_index)
+
     def update_timeline_ui_from_model(self) -> None:
         """Updates the timeline UI from the model."""
         self._handler.update_timeline_ui_from_model()

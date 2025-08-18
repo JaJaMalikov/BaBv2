@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QApplication, QGraphicsItem
 
 from ui.main_window import MainWindow
 
+
 @pytest.fixture(scope="module")
 def app():
     """Create a QApplication instance for the tests."""
@@ -24,7 +25,9 @@ def test_object_state_is_per_keyframe(_app):
     """Test that object state is correctly saved and restored per keyframe."""
     win = MainWindow()
 
-    win.scene_controller.add_puppet(str(Path("assets/pantins/manu.svg").resolve()), "manu")
+    win.scene_controller.add_puppet(
+        str(Path("assets/pantins/manu.svg").resolve()), "manu"
+    )
 
     # Ensure on frame 0
     win.playback_handler.go_to_frame(0)

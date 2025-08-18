@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QFileDialog, QInputDialog
 
 from . import scene_io
 
+
 def reset_scene(win: Any) -> None:
     """Clear the current scene and create a new blank one."""
     scene_io.create_blank_scene(win, add_default_puppet=False)
@@ -26,6 +27,7 @@ def set_background(win: Any) -> None:
     )
     if file_path:
         win.scene_controller.set_background_path(file_path)
+
 
 def set_scene_size(win) -> None:
     """Prompt the user for scene width/height and apply to the scene.

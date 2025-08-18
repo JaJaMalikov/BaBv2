@@ -101,7 +101,9 @@ class SvgLoader:
         # Bounding box
         bounding_box: Optional[BoundingBox] = self.get_group_bounding_box(group_id)
         if bounding_box is None:
-            logging.warning("Impossible de calculer la bounding box du groupe SVG: %s", group_id)
+            logging.warning(
+                "Impossible de calculer la bounding box du groupe SVG: %s", group_id
+            )
             return None
 
         x_min, y_min, x_max, y_max = bounding_box

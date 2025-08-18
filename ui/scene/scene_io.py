@@ -122,7 +122,9 @@ def import_scene(win: MainWindow, file_path: str) -> None:
                 win.scene_controller._add_object_graphics(obj)
             except RuntimeError as e:
                 logging.error(
-                    "Failed to create graphics for '%s': %s", getattr(obj, "name", "?"), e
+                    "Failed to create graphics for '%s': %s",
+                    getattr(obj, "name", "?"),
+                    e,
                 )
 
         win.timeline_widget.clear_keyframes()

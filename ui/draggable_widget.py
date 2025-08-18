@@ -8,6 +8,7 @@ from PySide6.QtCore import Qt, QPoint, QRect
 from PySide6.QtWidgets import QGraphicsDropShadowEffect
 from PySide6.QtGui import QColor
 
+
 class DraggableOverlay(QWidget):
     """Base overlay that can be moved with the right mouse button."""
 

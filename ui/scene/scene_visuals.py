@@ -69,4 +69,3 @@ class SceneVisuals:
             logging.error("Failed to load background image: %s", e)
         except (OSError, RuntimeError, ValueError):
             logging.exception("Unexpected error while updating background")
-

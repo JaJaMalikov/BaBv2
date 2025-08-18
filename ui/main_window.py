@@ -1,10 +1,10 @@
-'''Main window of the application, orchestrating UI components and scene management.'''
+"""Main window of the application, orchestrating UI components and scene management."""
 
 import logging
 from typing import Any, Dict, cast
 
 from PySide6.QtCore import Qt, QTimer, QEvent, QSettings
-from PySide6.QtGui import QPainter
+from PySide6.QtGui import QPainter, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QMainWindow,
     QGraphicsScene,
@@ -113,6 +113,16 @@ class MainWindow(QMainWindow):
     def _setup_actions(self) -> None:
         """Builds application actions."""
         app_actions.build_actions(self)
+        # Global shortcuts for keyframe copy/paste (work even if timeline has no focus)
+        try:
+            self._kf_copy_sc = QShortcut(QKeySequence("Ctrl+C"), self)
+            self._kf_copy_sc.setContext(Qt.ApplicationShortcut)
+            self._kf_copy_sc.activated.connect(self._copy_current_keyframe)
+            self._kf_paste_sc = QShortcut(QKeySequence("Ctrl+V"), self)
+            self._kf_paste_sc.setContext(Qt.ApplicationShortcut)
+            self._kf_paste_sc.activated.connect(self._paste_current_keyframe)
+        except Exception:  # Safety: do not fail setup if shortcuts cannot be created
+            logging.exception("Failed to install global keyframe copy/paste shortcuts")
 
     def _setup_tool_overlays(self) -> None:
         """Builds tool overlays for the view."""
@@ -152,10 +162,18 @@ class MainWindow(QMainWindow):
         """Applies stored startup preferences."""
         try:
             s = QSettings("JaJa", "Macronotron")
-            self.onion.prev_count = int(cast(int, s.value("onion/prev_count", self.onion.prev_count)))
-            self.onion.next_count = int(cast(int, s.value("onion/next_count", self.onion.next_count)))
-            self.onion.opacity_prev = float(cast(float, s.value("onion/opacity_prev", self.onion.opacity_prev)))
-            self.onion.opacity_next = float(cast(float, s.value("onion/opacity_next", self.onion.opacity_next)))
+            self.onion.prev_count = int(
+                cast(int, s.value("onion/prev_count", self.onion.prev_count))
+            )
+            self.onion.next_count = int(
+                cast(int, s.value("onion/next_count", self.onion.next_count))
+            )
+            self.onion.opacity_prev = float(
+                cast(float, s.value("onion/opacity_prev", self.onion.opacity_prev))
+            )
+            self.onion.opacity_next = float(
+                cast(float, s.value("onion/opacity_next", self.onion.opacity_next))
+            )
             self.overlays.apply_menu_settings()
         except (RuntimeError, ValueError, ImportError):
             logging.exception("Failed to apply startup preferences")
@@ -163,13 +181,19 @@ class MainWindow(QMainWindow):
     def showEvent(self, event: QEvent) -> None:
         """Ensure the view is fitted and overlays are positioned on show."""
         super().showEvent(event)
+
         def _layout_then_fit() -> None:
             try:
-                self.resizeDocks([self.timeline_dock], [int(max(140, self.height()*0.22))], cast(Any, Qt).Vertical)
+                self.resizeDocks(
+                    [self.timeline_dock],
+                    [int(max(140, self.height() * 0.22))],
+                    cast(Any, Qt).Vertical,
+                )
             except RuntimeError as e:
                 logging.debug("Failed to resize docks: %s", e)
             self.fit_to_view()
             self._position_overlays()
+
         QTimer.singleShot(0, _layout_then_fit)
         QTimer.singleShot(200, self._position_overlays)
 
@@ -185,7 +209,11 @@ class MainWindow(QMainWindow):
         self._settings_loaded = False
         self._position_overlays()
 
-        QMessageBox.information(self, "Interface réinitialisée", "La disposition de l'interface a été réinitialisée.")
+        QMessageBox.information(
+            self,
+            "Interface réinitialisée",
+            "La disposition de l'interface a été réinitialisée.",
+        )
 
     def reset_scene(self) -> None:
         """Reset the scene to a blank state."""
@@ -258,16 +286,22 @@ class MainWindow(QMainWindow):
             return
 
         graphics_items: Dict[str, Any] = self.object_manager.graphics_items
-        logging.debug(f"update_scene_from_model: frame={index}, keyframes={list(keyframes.keys())}")
+        logging.debug(
+            f"update_scene_from_model: frame={index}, keyframes={list(keyframes.keys())}"
+        )
 
         self._apply_puppet_states(graphics_items, keyframes, index)
         self._apply_object_states(graphics_items, keyframes, index)
 
-    def _apply_puppet_states(self, graphics_items: Dict[str, Any], keyframes: Dict[int, Keyframe], index: int) -> None:
+    def _apply_puppet_states(
+        self, graphics_items: Dict[str, Any], keyframes: Dict[int, Keyframe], index: int
+    ) -> None:
         """Applies the puppet states to the scene."""
         self.scene_controller.apply_puppet_states(graphics_items, keyframes, index)
 
-    def _apply_object_states(self, graphics_items: Dict[str, Any], keyframes: Dict[int, Keyframe], index: int) -> None:
+    def _apply_object_states(
+        self, graphics_items: Dict[str, Any], keyframes: Dict[int, Keyframe], index: int
+    ) -> None:
         """Applies the object states to the scene."""
         self.scene_controller.apply_object_states(graphics_items, keyframes, index)
 
@@ -284,6 +318,7 @@ class MainWindow(QMainWindow):
     def _on_scene_selection_changed(self) -> None:
         """Handle the scene selection changed event."""
         selection_sync.scene_selection_changed(self)
+
     def _on_frame_update(self) -> None:
         """Handle the frame update event."""
         self.update_scene_from_model()
@@ -320,3 +355,20 @@ class MainWindow(QMainWindow):
         """Open the settings dialog."""
         # Délègue entièrement au SettingsManager
         self.settings.open_dialog()
+
+    # --- Keyframe copy/paste shortcuts ---------------------------------
+    def _copy_current_keyframe(self) -> None:
+        try:
+            idx = int(self.scene_model.current_frame)
+            # Only copy if a keyframe exists at current index
+            if idx in getattr(self.timeline_widget, "_kfs", set()):
+                self.playback_handler.copy_keyframe(idx)  # type: ignore[attr-defined]
+        except Exception:
+            logging.debug("Copy current keyframe shortcut failed")
+
+    def _paste_current_keyframe(self) -> None:
+        try:
+            idx = int(self.scene_model.current_frame)
+            self.playback_handler.paste_keyframe(idx)  # type: ignore[attr-defined]
+        except Exception:
+            logging.debug("Paste current keyframe shortcut failed")

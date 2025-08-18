@@ -16,7 +16,6 @@ from core.scene_validation import (
 
 
 @dataclass
-# pylint: disable=R0902
 class SceneObject:
     """Représente un objet générique de la scène.
 
@@ -65,6 +64,7 @@ class SceneObject:
             obj.attached_to = tuple(attached)
         return obj
 
+
 @dataclass
 class Keyframe:
     """Snapshot of the scene state at a given frame.
@@ -77,14 +77,14 @@ class Keyframe:
     objects: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     puppets: Dict[str, Dict[str, Dict[str, Any]]] = field(default_factory=dict)
 
-# pylint: disable=R0902
+
 class SceneModel:
     """Central store for puppets, objects and timeline keyframes."""
 
     def __init__(self) -> None:
         """Initialize an empty scene with default settings."""
-        self.puppets = {}    # name -> Puppet instance
-        self.objects = {}    # name -> SceneObject
+        self.puppets = {}  # name -> Puppet instance
+        self.objects = {}  # name -> SceneObject
         self.keyframes = {}  # index -> Keyframe
         self.current_frame = 0
         self.start_frame = 0
@@ -176,7 +176,6 @@ class SceneModel:
     # -----------------------------
     # IMPORT/EXPORT
     # -----------------------------
-    # pylint: disable=R0911, R0912
     def _validate_data(self, data: Any) -> bool:
         """Validate minimally the loaded scene JSON structure without mutating state.
 
@@ -196,6 +195,7 @@ class SceneModel:
         if not validate_keyframes(data.get("keyframes")):
             return False
         return True
+
     def to_dict(self) -> Dict[str, Any]:
         """Serialize the whole scene into a JSON-friendly dictionary."""
         return {

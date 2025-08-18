@@ -1,4 +1,4 @@
-'''Module for creating and connecting QActions in the main window.'''
+"""Module for creating and connecting QActions in the main window."""
 
 from __future__ import annotations
 

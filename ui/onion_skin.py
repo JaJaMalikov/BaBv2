@@ -27,7 +27,9 @@ class OnionSkinManager:
     au modèle et aux items graphiques.
     """
 
-    def __init__(self, main_window: 'Any') -> None:  # avoid circular import in type hints
+    def __init__(
+        self, main_window: "Any"
+    ) -> None:  # avoid circular import in type hints
         """Initializes the onion skin manager.
 
         Args:
@@ -121,8 +123,12 @@ class OnionSkinManager:
             clone_root.setPos(*state.get("pos", (clone_root.x(), clone_root.y())))
             clone_root.setRotation(state.get("rotation", 0.0))
 
-        def propagate(member_name: str, p_puppet_name, p_clones, p_scale_factor, p_puppet_state):
-            base_piece: PuppetPiece = graphics_items.get(f"{p_puppet_name}:{member_name}")
+        def propagate(
+            member_name: str, p_puppet_name, p_clones, p_scale_factor, p_puppet_state
+        ):
+            base_piece: PuppetPiece = graphics_items.get(
+                f"{p_puppet_name}:{member_name}"
+            )
             clone_piece: PuppetPiece = p_clones.get(member_name)
             if not base_piece or not clone_piece:
                 return
@@ -155,7 +161,9 @@ class OnionSkinManager:
                 )
                 child_state = p_puppet_state.get(child.name, {})
                 child_clone.setRotation(parent_rot + child_state.get("rotation", 0.0))
-                propagate(child.name, p_puppet_name, p_clones, p_scale_factor, p_puppet_state)
+                propagate(
+                    child.name, p_puppet_name, p_clones, p_scale_factor, p_puppet_state
+                )
 
         for root_member in puppet.get_root_members():
             propagate(root_member.name, puppet_name, clones, scale_factor, puppet_state)
@@ -210,7 +218,9 @@ class OnionSkinManager:
                         item.setRotation(
                             st.get("rotation", getattr(base_obj, "rotation", 0.0))
                         )
-                        item.setZValue(st.get("z", getattr(base_obj, "z", 0)) + z_offset)
+                        item.setZValue(
+                            st.get("z", getattr(base_obj, "z", 0)) + z_offset
+                        )
                         item.setPos(
                             st.get("x", getattr(base_obj, "x", 0.0)),
                             st.get("y", getattr(base_obj, "y", 0.0)),
@@ -220,7 +230,9 @@ class OnionSkinManager:
                         item.setRotation(
                             st.get("rotation", getattr(base_obj, "rotation", 0.0))
                         )
-                        item.setZValue(st.get("z", getattr(base_obj, "z", 0)) + z_offset)
+                        item.setZValue(
+                            st.get("z", getattr(base_obj, "z", 0)) + z_offset
+                        )
                         item.setPos(
                             st.get("x", getattr(base_obj, "x", 0.0)),
                             st.get("y", getattr(base_obj, "y", 0.0)),

@@ -189,7 +189,12 @@ class SettingsDialog(QDialog):
         self.cust_w = QSpinBox()
         self.cust_h = QSpinBox()
         for sp in (
-            self.lib_x, self.lib_y, self.insp_x, self.insp_y, self.cust_x, self.cust_y
+            self.lib_x,
+            self.lib_y,
+            self.insp_x,
+            self.insp_y,
+            self.cust_x,
+            self.cust_y,
         ):
             sp.setRange(0, 10000)
         for sp in (self.cust_w, self.cust_h):
@@ -334,6 +339,7 @@ class SettingsDialog(QDialog):
         controls = QWidget()
         controls_layout = QFormLayout(controls)
         controls_layout.setLabelAlignment(Qt.AlignRight)
+        controls_layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
         # Presets
         self.preset_combo = QComboBox()
         self.preset_combo.addItems(["Light", "Dark", "High Contrast", "Custom"])
@@ -364,6 +370,7 @@ class SettingsDialog(QDialog):
             # Live update swatch on text change
             le.textChanged.connect(lambda _=None, e=le: self._update_swatch(e))
             return le, btn, wrap
+
         # Variant: add a color row into a specific form layout (for Timeline tab)
         def mk_color_row_into(form_layout: QFormLayout, title: str):
             le = QLineEdit()
@@ -371,7 +378,9 @@ class SettingsDialog(QDialog):
             btn.setFixedWidth(28)
             sw = QLabel()
             sw.setFixedSize(24, 16)
-            sw.setStyleSheet("QLabel{border:1px solid #A0AEC0; border-radius:3px; background:#FFFFFF;}")
+            sw.setStyleSheet(
+                "QLabel{border:1px solid #A0AEC0; border-radius:3px; background:#FFFFFF;}"
+            )
             row = QHBoxLayout()
             row.setSpacing(6)
             row.addWidget(sw)
@@ -389,20 +398,74 @@ class SettingsDialog(QDialog):
 
         self.bg_edit, self.bg_btn, wrap_bg = mk_color_row("Fond application:")
         self.text_edit, self.text_btn, wrap_text = mk_color_row("Texte (global):")
-        self.accent_edit, self.accent_btn, wrap_accent = mk_color_row("Couleur d'accent:")
+        self.accent_edit, self.accent_btn, wrap_accent = mk_color_row(
+            "Couleur d'accent:"
+        )
         self.hover_edit, self.hover_btn, wrap_hover = mk_color_row("Couleur de survol:")
         self.panel_edit, self.panel_btn, wrap_panel = mk_color_row("Fond des panneaux:")
-        self.border_edit, self.border_btn, wrap_border = mk_color_row("Bordure des panneaux:")
+        self.border_edit, self.border_btn, wrap_border = mk_color_row(
+            "Bordure des panneaux:"
+        )
         # Header (overlays) colors
-        self.header_bg_edit, self.header_bg_btn, wrap_hbg = mk_color_row("Fond des en-têtes:")
-        self.header_text_edit, self.header_text_btn, wrap_htxt = mk_color_row("Texte des en-têtes:")
-        self.header_border_edit, self.header_border_btn, wrap_hb = mk_color_row("Bordure des en-têtes:")
+        self.header_bg_edit, self.header_bg_btn, wrap_hbg = mk_color_row(
+            "Fond des en-têtes:"
+        )
+        self.header_text_edit, self.header_text_btn, wrap_htxt = mk_color_row(
+            "Texte des en-têtes:"
+        )
+        self.header_border_edit, self.header_border_btn, wrap_hb = mk_color_row(
+            "Bordure des en-têtes:"
+        )
         # Scene background color (no image)
-        self.scene_bg_edit, self.scene_bg_btn, wrap_scene = mk_color_row("Fond de la scène:")
+        self.scene_bg_edit, self.scene_bg_btn, wrap_scene = mk_color_row(
+            "Fond de la scène:"
+        )
         # Tooltips colors
-        self.tooltip_bg_edit, self.tooltip_bg_btn, wrap_tipbg = mk_color_row("Fond des info‑bulles:")
-        self.tooltip_text_edit, self.tooltip_text_btn, wrap_tiptext = mk_color_row("Texte des info‑bulles:")
+        self.tooltip_bg_edit, self.tooltip_bg_btn, wrap_tipbg = mk_color_row(
+            "Fond des info‑bulles:"
+        )
+        self.tooltip_text_edit, self.tooltip_text_btn, wrap_tiptext = mk_color_row(
+            "Texte des info‑bulles:"
+        )
         self.group_edit, self.group_btn, wrap_group = mk_color_row("Titres de groupe:")
+        # Inputs & lists & checkboxes (exposés du stylesheet)
+        self.input_bg_edit, self.input_bg_btn, wrap_inbg = mk_color_row("Champ: fond:")
+        self.input_border_edit, self.input_border_btn, wrap_inb = mk_color_row(
+            "Champ: bordure:"
+        )
+        self.input_text_edit, self.input_text_btn, wrap_int = mk_color_row(
+            "Champ: texte:"
+        )
+        self.input_focus_bg_edit, self.input_focus_bg_btn, wrap_infbg = mk_color_row(
+            "Champ focus: fond:"
+        )
+        self.input_focus_border_edit, self.input_focus_border_btn, wrap_infb = (
+            mk_color_row("Champ focus: bordure:")
+        )
+        self.list_hover_edit, self.list_hover_btn, wrap_lh = mk_color_row(
+            "Liste: survol:"
+        )
+        self.list_sel_bg_edit, self.list_sel_bg_btn, wrap_lsb = mk_color_row(
+            "Liste: sélection fond:"
+        )
+        self.list_sel_text_edit, self.list_sel_text_btn, wrap_lst = mk_color_row(
+            "Liste: sélection texte:"
+        )
+        self.cb_un_bg_edit, self.cb_un_bg_btn, wrap_cub = mk_color_row(
+            "Case non cochée: fond:"
+        )
+        self.cb_un_border_edit, self.cb_un_border_btn, wrap_cubd = mk_color_row(
+            "Case non cochée: bordure:"
+        )
+        self.cb_ch_bg_edit, self.cb_ch_bg_btn, wrap_ccb = mk_color_row(
+            "Case cochée: fond:"
+        )
+        self.cb_ch_border_edit, self.cb_ch_border_btn, wrap_ccbd = mk_color_row(
+            "Case cochée: bordure:"
+        )
+        self.cb_ch_hover_edit, self.cb_ch_hover_btn, wrap_cch = mk_color_row(
+            "Case cochée: survol:"
+        )
         # Numeric controls
         self.opacity_spin = QSpinBox()
         self.opacity_spin.setRange(0, 100)
@@ -421,10 +484,13 @@ class SettingsDialog(QDialog):
         controls_layout.addRow("Police (famille):", self.font_family_edit)
         # Action buttons
         actions = QHBoxLayout()
-        self.btn_preview = QPushButton("Prévisualiser")
-        self.btn_save_custom = QPushButton("Enregistrer comme Custom")
-        actions.addWidget(self.btn_preview)
-        actions.addWidget(self.btn_save_custom)
+        self.btn_import_profile = QPushButton("Importer profil…")
+        self.btn_export_profile = QPushButton("Exporter profil…")
+        self.btn_reset_profile = QPushButton("Réinitialiser défaut (Dark)")
+        actions.addStretch(1)
+        actions.addWidget(self.btn_import_profile)
+        actions.addWidget(self.btn_export_profile)
+        actions.addWidget(self.btn_reset_profile)
         actions_wrap = QWidget()
         actions_wrap.setLayout(actions)
         controls_layout.addRow("", actions_wrap)
@@ -511,13 +577,13 @@ class SettingsDialog(QDialog):
         preview_layout.addWidget(bg_wrap)
         preview_layout.addStretch(1)
 
-        style_layout.addWidget(controls, 2)
-        style_layout.addWidget(self.preview_root, 3)
+        style_layout.addWidget(controls, 1)
+        # Supprime l’aperçu: pas ajouté à la mise en page
         style_scroll = QScrollArea()
         style_scroll.setWidgetResizable(True)
         style_scroll.setWidget(tab_style_inner)
         tabs.addTab(style_scroll, "Styles")
-        
+
         # --- Tab: Timeline ---
         tab_tl = QWidget()
         tl_form = QFormLayout(tab_tl)
@@ -539,9 +605,6 @@ class SettingsDialog(QDialog):
 
         btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         main_layout.addWidget(btns)
-        # Add Apply button
-        self.btn_apply = QPushButton("Appliquer")
-        main_layout.addWidget(self.btn_apply)
 
         btns.accepted.connect(self.accept)
         btns.rejected.connect(self.reject)
@@ -560,18 +623,61 @@ class SettingsDialog(QDialog):
             (self.group_edit, self.group_btn),
             (self.tooltip_bg_edit, self.tooltip_bg_btn),
             (self.tooltip_text_edit, self.tooltip_text_btn),
+            # Inputs/lists/checkboxes
+            (self.input_bg_edit, self.input_bg_btn),
+            (self.input_border_edit, self.input_border_btn),
+            (self.input_text_edit, self.input_text_btn),
+            (self.input_focus_bg_edit, self.input_focus_bg_btn),
+            (self.input_focus_border_edit, self.input_focus_border_btn),
+            (self.list_hover_edit, self.list_hover_btn),
+            (self.list_sel_bg_edit, self.list_sel_bg_btn),
+            (self.list_sel_text_edit, self.list_sel_text_btn),
+            (self.cb_un_bg_edit, self.cb_un_bg_btn),
+            (self.cb_un_border_edit, self.cb_un_border_btn),
+            (self.cb_ch_bg_edit, self.cb_ch_bg_btn),
+            (self.cb_ch_border_edit, self.cb_ch_border_btn),
+            (self.cb_ch_hover_edit, self.cb_ch_hover_btn),
         ]
         for le, btn in color_rows:
             btn.clicked.connect(lambda _, e=le: self._pick_color_into(e))
-            # Live preview on color text change
-            le.textChanged.connect(lambda _=None: self._preview_theme())
-        # Presets & actions
-        # Track style controls to toggle visibility (keep preset combo visible)
-        self._style_wraps = [
-            wrap_bg, wrap_text, wrap_accent, wrap_hover, wrap_panel, wrap_border,
-            wrap_hbg, wrap_htxt, wrap_hb, wrap_scene, wrap_tipbg, wrap_tiptext, wrap_group,
+            # Met à jour uniquement les pastilles (pas de prévisualisation live)
+            le.textChanged.connect(lambda _=None, e=le: self._update_swatch(e))
+            # Presets & actions
+            # Track style controls to toggle visibility (keep preset combo visible)
+            self._style_wraps = [
+                wrap_bg,
+                wrap_text,
+                wrap_accent,
+                wrap_hover,
+                wrap_panel,
+                wrap_border,
+                wrap_hbg,
+                wrap_htxt,
+                wrap_hb,
+                wrap_scene,
+                wrap_tipbg,
+                wrap_tiptext,
+                wrap_group,
+                wrap_inbg,
+                wrap_inb,
+                wrap_int,
+                wrap_infbg,
+                wrap_infb,
+                wrap_lh,
+                wrap_lsb,
+                wrap_lst,
+                wrap_cub,
+                wrap_cubd,
+                wrap_ccb,
+                wrap_ccbd,
+                wrap_cch,
+            ]
+        self._style_fields = [
+            self.opacity_spin,
+            self.radius_spin,
+            self.font_spin,
+            self.font_family_edit,
         ]
-        self._style_fields = [self.opacity_spin, self.radius_spin, self.font_spin, self.font_family_edit]
 
         def _on_preset_changed(name: str) -> None:
             self._load_preset_values(name)
@@ -581,15 +687,28 @@ class SettingsDialog(QDialog):
                 w.setVisible(is_custom)
             for w in self._style_fields:
                 w.setVisible(is_custom)
-            self.preview_root.setVisible(is_custom)
+            # Pas d’aperçu
 
         self.preset_combo.currentTextChanged.connect(_on_preset_changed)
-        self.btn_preview.clicked.connect(self._preview_theme)
-        self.btn_save_custom.clicked.connect(self._save_params_as_custom)
-        # Live preview on numeric changes
-        self.opacity_spin.valueChanged.connect(lambda _=None: self._preview_theme())
-        self.radius_spin.valueChanged.connect(lambda _=None: self._preview_theme())
-        self.font_spin.valueChanged.connect(lambda _=None: self._preview_theme())
+        # Pas de boutons Prévisualiser / Enregistrer custom / Appliquer
+        # Désactive l’aperçu live
+
+        # Réduit la gêne des SpinBox: largeur et molette
+        def _no_wheel(sp):
+            sp.setFocusPolicy(Qt.StrongFocus)
+            sp.wheelEvent = lambda e: e.ignore()
+            sp.setMaximumWidth(100)
+
+        for sp in (
+            self.opacity_spin,
+            self.radius_spin,
+            self.font_spin,
+            self.icon_size_spin,
+            self.tl_inout_alpha,
+            self.prev_count,
+            self.next_count,
+        ):
+            _no_wheel(sp)
 
         # Build icon-based lists for builder
         self._init_icon_lists()
@@ -676,11 +795,19 @@ class SettingsDialog(QDialog):
             "panel_opacity": (self.opacity_spin.value() / 100.0),
             "panel_border": self.border_edit.text() or "#D0D5DD",
             "header_bg": self.header_bg_edit.text() or "",
-            "header_text": self.header_text_edit.text() or self.text_edit.text() or "#1A202C",
-            "header_border": self.header_border_edit.text() or self.border_edit.text() or "#D0D5DD",
+            "header_text": self.header_text_edit.text()
+            or self.text_edit.text()
+            or "#1A202C",
+            "header_border": self.header_border_edit.text()
+            or self.border_edit.text()
+            or "#D0D5DD",
             "group_title_color": self.group_edit.text() or "#2D3748",
-            "tooltip_bg": self.tooltip_bg_edit.text() or self.panel_edit.text() or "#F7F8FC",
-            "tooltip_text": self.tooltip_text_edit.text() or self.text_edit.text() or "#1A202C",
+            "tooltip_bg": self.tooltip_bg_edit.text()
+            or self.panel_edit.text()
+            or "#F7F8FC",
+            "tooltip_text": self.tooltip_text_edit.text()
+            or self.text_edit.text()
+            or "#1A202C",
             "radius": self.radius_spin.value(),
             "font_size": self.font_spin.value(),
             "font_family": self.font_family_edit.text() or "Poppins",
@@ -871,7 +998,9 @@ class SettingsDialog(QDialog):
             lw.setDragDropMode(QAbstractItemView.InternalMove)
             lw.setResizeMode(QListView.Adjust)
             lw.setSpacing(8)
-            lw.setIconSize(QSize(self.icon_size_spin.value(), self.icon_size_spin.value()))
+            lw.setIconSize(
+                QSize(self.icon_size_spin.value(), self.icon_size_spin.value())
+            )
 
         self._main_specs = [
             ("save", "Sauver", icon_save()),
@@ -931,7 +1060,9 @@ class SettingsDialog(QDialog):
                 | Qt.ItemIsDragEnabled
                 | Qt.ItemIsSelectable
             )
-            item.setCheckState(Qt.Checked if visibility_map.get(key, True) else Qt.Unchecked)
+            item.setCheckState(
+                Qt.Checked if visibility_map.get(key, True) else Qt.Unchecked
+            )
             lw.addItem(item)
         # No special height handling
 
@@ -959,6 +1090,7 @@ class SettingsDialog(QDialog):
         # Expose ALL available icon keys from assets and override directory,
         # plus those referenced by overlays/specs to ensure complete coverage.
         from pathlib import Path
+
         s = QSettings("JaJa", "Macronotron")
         icon_dir_override = s.value("ui/icon_dir")
 
@@ -968,7 +1100,14 @@ class SettingsDialog(QDialog):
                 p = Path(str(dirpath))
                 if p.exists() and p.is_dir():
                     for fn in p.iterdir():
-                        if fn.suffix.lower() in (".svg", ".png", ".jpg", ".jpeg", ".bmp", ".ico"):
+                        if fn.suffix.lower() in (
+                            ".svg",
+                            ".png",
+                            ".jpg",
+                            ".jpeg",
+                            ".bmp",
+                            ".ico",
+                        ):
                             keys.add(fn.stem)
             except Exception:
                 pass
@@ -984,16 +1123,9 @@ class SettingsDialog(QDialog):
         keys |= {k for (k, _label, _ic) in getattr(self, "_main_specs", [])}
         keys |= {k for (k, _label, _ic) in getattr(self, "_quick_specs", [])}
         # Common keys used across the app
-        keys |= {
-            "open_menu", "close_menu", "close_menu_inv",
-            "chevron_left", "chevron_right",
-            "save", "open", "scene_size", "background", "settings",
-            "reset_scene", "reset_ui", "library", "inspector", "timeline",
-            "layers", "zoom_out", "zoom_in", "fit", "handles", "onion",
-            "delete", "duplicate", "link", "link_off", "close",
-            "objets", "puppet", "new_file", "plus", "minus", "rotate",
-            "custom",
-        }
+        from ui.menu_defaults import COMMON_ICON_KEYS
+
+        keys |= set(COMMON_ICON_KEYS)
         self._icon_keys = sorted(keys)
         self._populate_icons_list()
         if self.list_icons.count():
@@ -1002,9 +1134,12 @@ class SettingsDialog(QDialog):
     def _populate_icons_list(self) -> None:
         """Populates the list of customizable icons."""
         from ui.icons import get_icon
+
         self.list_icons.clear()
         # Uniform grid for cleaner alignment
-        icon_h = max(16, int(QSettings("JaJa", "Macronotron").value("ui/icon_size", 32)))
+        icon_h = max(
+            16, int(QSettings("JaJa", "Macronotron").value("ui/icon_size", 32))
+        )
         cell_w = max(64, icon_h + 48)
         cell_h = max(64, icon_h + 32)
         self.list_icons.setIconSize(QSize(icon_h, icon_h))

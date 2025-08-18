@@ -3,6 +3,7 @@
 This module provides utilities for creating, duplicating, attaching and
 detaching objects within the scene and from puppet members.
 """
+
 from __future__ import annotations
 
 import logging
@@ -45,7 +46,7 @@ class ObjectOps:
         Args:
             name: The name of the object to delete.
         """
-        if (item := self.win.object_manager.graphics_items.pop(name, None)):
+        if item := self.win.object_manager.graphics_items.pop(name, None):
             self.win.scene.removeItem(item)
         self.win.scene_model.remove_object(name)
 
@@ -125,9 +126,11 @@ class ObjectOps:
             member_name: The name of the puppet member to attach to.
         """
         obj: Optional[SceneObject] = self.win.scene_model.objects.get(obj_name)
-        item: Optional[QGraphicsItem] = self.win.object_manager.graphics_items.get(obj_name)
-        parent_piece: Optional[PuppetPiece] = self.win.object_manager.graphics_items.get(
-            f"{puppet_name}:{member_name}"
+        item: Optional[QGraphicsItem] = self.win.object_manager.graphics_items.get(
+            obj_name
+        )
+        parent_piece: Optional[PuppetPiece] = (
+            self.win.object_manager.graphics_items.get(f"{puppet_name}:{member_name}")
         )
         if not obj or not item or not parent_piece:
             return
@@ -179,7 +182,9 @@ class ObjectOps:
             obj.scale = float(item.scale())
             obj.z = int(item.zValue())
         except RuntimeError as e:
-            logging.debug("Failed to read item transform on attach for '%s': %s", obj_name, e)
+            logging.debug(
+                "Failed to read item transform on attach for '%s': %s", obj_name, e
+            )
         cur_idx = self.win.scene_model.current_frame
         if cur_idx not in self.win.scene_model.keyframes:
             self.win.add_keyframe(cur_idx)
@@ -195,7 +200,9 @@ class ObjectOps:
             obj_name: The name of the object to detach.
         """
         obj: Optional[SceneObject] = self.win.scene_model.objects.get(obj_name)
-        item: Optional[QGraphicsItem] = self.win.object_manager.graphics_items.get(obj_name)
+        item: Optional[QGraphicsItem] = self.win.object_manager.graphics_items.get(
+            obj_name
+        )
         if not obj or not item:
             return
         prev_attachment = getattr(obj, "attached_to", None)
@@ -265,7 +272,9 @@ class ObjectOps:
             obj.scale = float(item.scale())
             obj.z = int(item.zValue())
         except RuntimeError as e:
-            logging.debug("Failed to read item transform on detach for '%s': %s", obj_name, e)
+            logging.debug(
+                "Failed to read item transform on detach for '%s': %s", obj_name, e
+            )
         cur_idx = self.win.scene_model.current_frame
         if cur_idx not in self.win.scene_model.keyframes:
             self.win.add_keyframe(cur_idx)
@@ -350,7 +359,9 @@ class ObjectOps:
                 state["scale"] = float(gi.scale())
                 state["z"] = int(gi.zValue())
             except RuntimeError as e:
-                logging.debug("Reading graphics item state for '%s' failed: %s", name, e)
+                logging.debug(
+                    "Reading graphics item state for '%s' failed: %s", name, e
+                )
             state["attached_to"] = attached_to
             kf.objects[name] = state
         self.win.inspector_widget.refresh()

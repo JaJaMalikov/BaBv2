@@ -17,13 +17,16 @@ from core.svg_loader import SvgLoader
 logger = logging.getLogger(__name__)
 
 
-def compute_child_map(parent_map: Dict[str, Optional[str]]) -> defaultdict[str, List[str]]:
+def compute_child_map(
+    parent_map: Dict[str, Optional[str]],
+) -> defaultdict[str, List[str]]:
     """Compute reverse mapping: parent -> list of children."""
     child_map: defaultdict[str, List[str]] = defaultdict(list)
     for child, parent in parent_map.items():
         if parent:
             child_map[parent].append(child)
     return child_map
+
 
 # Mapping d'exception possible pour certains segments (ex : "torse" → "cou")
 HANDLE_EXCEPTION = {
@@ -37,14 +40,14 @@ class PuppetMember:
     """Node in the puppet hierarchy with pivot, bbox and z-order metadata."""
 
     name: str
-    parent: Optional['PuppetMember'] = None
+    parent: Optional["PuppetMember"] = None
     pivot: Tuple[float, float] = (0.0, 0.0)
     bbox: Tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0)
     z_order: int = 0
     rel_pos: Tuple[float, float] = (0.0, 0.0)
-    children: List['PuppetMember'] = field(default_factory=list)
+    children: List["PuppetMember"] = field(default_factory=list)
 
-    def add_child(self, child: 'PuppetMember') -> None:
+    def add_child(self, child: "PuppetMember") -> None:
         """Attach child and compute its relative offset from this node's pivot."""
         self.children.append(child)
         child.parent = self
@@ -89,45 +92,10 @@ class Puppet:
         self.pivot_map = data.get("pivot", {})
         self.z_order_map = data.get("z_order", {})
         raw_variants = data.get("variants", {})
-        # Normalize variants: support entries as strings or {"name": str, "z": int}
-        if isinstance(raw_variants, dict):
-            vmap: Dict[str, List[str]] = {}
-            vz: Dict[str, int] = {}
-            for slot, items in raw_variants.items():
-                names: List[str] = []
-                if isinstance(items, list):
-                    for it in items:
-                        if isinstance(it, dict):
-                            nm = it.get("name")
-                            if isinstance(nm, str):
-                                names.append(nm)
-                                zval = it.get("z")
-                                if isinstance(zval, int):
-                                    vz[nm] = zval
-                                else:
-                                    zval2 = it.get("z_order")
-                                    if isinstance(zval2, int):
-                                        vz[nm] = zval2
-                        elif isinstance(it, (list, tuple)) and len(it) == 2:
-                            nm, zval = it[0], it[1]
-                            if isinstance(nm, str):
-                                names.append(nm)
-                                if isinstance(zval, int):
-                                    vz[nm] = zval
-                        elif isinstance(it, str):
-                            names.append(it)
-                vmap[str(slot)] = names
-            self.variants = vmap
-            self.variant_z = vz
-        else:
-            # Fallback (legacy): expect dict[str, list[str]]
-            try:
-                self.variants = dict(raw_variants)  # type: ignore[arg-type]
-            except Exception:  # pylint: disable=broad-except
-                self.variants = {}
+        self.variants, self.variant_z = normalize_variants(raw_variants)
         self.child_map = dict(compute_child_map(self.parent_map))
 
-    def build_from_svg(self, svg_loader: 'SvgLoader') -> None:
+    def build_from_svg(self, svg_loader: "SvgLoader") -> None:
         """Populate members from an SVG using the loaded configuration."""
         groups = svg_loader.get_groups()
         for group_id in groups:
@@ -160,9 +128,16 @@ class Puppet:
                         continue
                     if cand not in groups:
                         continue
-                    bbox = svg_loader.get_group_bounding_box(cand) or (0.0, 0.0, 0.0, 0.0)
+                    bbox = svg_loader.get_group_bounding_box(cand) or (
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                    )
                     pivot = svg_loader.get_pivot(base_pivot_group)
-                    self.members[cand] = PuppetMember(cand, None, pivot, bbox, int(base_z))
+                    self.members[cand] = PuppetMember(
+                        cand, None, pivot, bbox, int(base_z)
+                    )
                     # Lier au même parent que la base si possible
                     if base_parent_name:
                         parent_member = self.members.get(base_parent_name)
@@ -173,7 +148,9 @@ class Puppet:
         """Return members with no parent (roots)."""
         return [m for m in self.members.values() if m.parent is None]
 
-    def _resolve_child_pivot(self, name: str, override: Optional[str] = None) -> Tuple[float, float]:
+    def _resolve_child_pivot(
+        self, name: str, override: Optional[str] = None
+    ) -> Tuple[float, float]:
         """Return pivot of ``override`` member or the first child of ``name``."""
         target_name: Optional[str] = override
         if not target_name:
@@ -186,30 +163,81 @@ class Puppet:
                 return target_member.pivot
         return (0.0, 0.0)
 
-    def get_first_child_pivot(self, name: str) -> Tuple[float, float]:
-        """Return pivot of the first child of a member, or (0,0) if none."""
-        return self._resolve_child_pivot(name)
 
-    def get_handle_target_pivot(self, name: str) -> Tuple[float, float]:
-        """Pivot used for handle placement (exceptions or first child)."""
-        override = HANDLE_EXCEPTION.get(name)
-        return self._resolve_child_pivot(name, override)
+def normalize_variants(
+    raw_variants: object,
+) -> tuple[Dict[str, List[str]], Dict[str, int]]:
+    """Normalize variants structure to mapping slot->list[name], and z overrides.
 
-    def print_hierarchy(self, member: Optional[PuppetMember] = None, indent: str = "") -> None:
-        """Print the puppet hierarchy starting from ``member`` (or roots)."""
-        if member is None:
-            for root in self.get_root_members():
-                self.print_hierarchy(root, indent)
-        else:
-            logger.info("%s- %s (pivot=%s z=%s)", indent, member.name, member.pivot, member.z_order)
-            for child in member.children:
-                self.print_hierarchy(child, indent + "  ")
+    Supports items as strings, dicts with 'name' and optional 'z'/'z_order',
+    or pairs [name, z]. Unknown shapes are ignored.
+    """
+    vmap: Dict[str, List[str]] = {}
+    vz: Dict[str, int] = {}
+    if isinstance(raw_variants, dict):
+        for slot, items in raw_variants.items():
+            names: List[str] = []
+            if isinstance(items, list):
+                for it in items:
+                    if isinstance(it, dict):
+                        nm = it.get("name")
+                        if isinstance(nm, str):
+                            names.append(nm)
+                            zval = it.get("z")
+                            if isinstance(zval, int):
+                                vz[nm] = zval
+                            else:
+                                zval2 = it.get("z_order")
+                                if isinstance(zval2, int):
+                                    vz[nm] = zval2
+                    elif isinstance(it, (list, tuple)) and len(it) == 2:
+                        nm, zval = it[0], it[1]
+                        if isinstance(nm, str):
+                            names.append(nm)
+                            if isinstance(zval, int):
+                                vz[nm] = zval
+                    elif isinstance(it, str):
+                        names.append(it)
+            vmap[str(slot)] = names
+        return vmap, vz
+    # Legacy: dict[str, list[str]] or invalid
+    try:
+        return dict(raw_variants), {}
+    except Exception:  # pylint: disable=broad-except
+        return {}, {}
+
+def get_first_child_pivot(self, name: str) -> Tuple[float, float]:
+    """Return pivot of the first child of a member, or (0,0) if none."""
+    return self._resolve_child_pivot(name)
+
+def get_handle_target_pivot(self, name: str) -> Tuple[float, float]:
+    """Pivot used for handle placement (exceptions or first child)."""
+    override = HANDLE_EXCEPTION.get(name)
+    return self._resolve_child_pivot(name, override)
+
+def print_hierarchy(
+        self, member: Optional[PuppetMember] = None, indent: str = ""
+) -> None:
+    """Print the puppet hierarchy starting from ``member`` (or roots)."""
+    if member is None:
+        for root in self.get_root_members():
+            self.print_hierarchy(root, indent)
+    else:
+        logger.info(
+                "%s- %s (pivot=%s z=%s)",
+                indent,
+                member.name,
+                member.pivot,
+                member.z_order,
+        )
+        for child in member.children:
+            self.print_hierarchy(child, indent + "  ")
 
 
 def validate_svg_structure(
-    svg_loader: 'SvgLoader',
+    svg_loader: "SvgLoader",
     parent_map: Dict[str, Optional[str]],
-    pivot_map: Dict[str, str]
+    pivot_map: Dict[str, str],
 ) -> None:
     """Audit the SVG against parent/pivot maps and print discrepancies."""
     groups_in_svg: set[str] = set(svg_loader.get_groups())
@@ -229,7 +257,7 @@ def validate_svg_structure(
     if extra_in_svg:
         logger.warning(
             "⚠️ Groupes présents dans le SVG mais non utilisés dans parent_map : %s",
-            extra_in_svg
+            extra_in_svg,
         )
     if pivots_missing:
         logger.warning(

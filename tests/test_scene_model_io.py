@@ -1,4 +1,5 @@
 """Tests for scene model serialization and deserialization."""
+
 import json
 
 from core.scene_model import SceneModel, SceneObject
@@ -18,6 +19,7 @@ def test_scene_object_roundtrip():
     assert cloned.rotation == 3
     assert cloned.scale == 0.5
     assert cloned.attached_to == ("p", "arm")
+
 
 def test_scene_object_export_import(tmp_path):
     """Test that a scene with an object can be exported and imported."""

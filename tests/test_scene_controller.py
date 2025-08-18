@@ -1,4 +1,5 @@
 from ui.scene import SceneController
+
 """Tests for the SceneController class."""
 
 import pytest

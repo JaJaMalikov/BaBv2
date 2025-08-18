@@ -10,8 +10,10 @@ from typing import Any
 
 from ui import panels
 
+
 class OverlayManager:
     """Manages the creation, positioning, and visibility of overlays."""
+
     def __init__(self, win: Any) -> None:
         """Initializes the overlay manager.
 
@@ -29,6 +31,7 @@ class OverlayManager:
             self.win.inspector_overlay,
             self.win.inspector_widget,
         ) = panels.build_side_overlays(self.win)
+
     def position_overlays(self) -> None:
         """Position overlays within the main window."""
         panels.position_overlays(self.win)
@@ -50,7 +53,7 @@ class OverlayManager:
 
     def set_custom_visible(self, visible: bool) -> None:
         """Toggle the optional custom tools overlay if present."""
-        overlay = getattr(self.win.view, '_custom_tools_overlay', None)
+        overlay = getattr(self.win.view, "_custom_tools_overlay", None)
         if overlay is not None:
             overlay.setVisible(visible)
         self.win.toggle_custom_action.blockSignals(True)

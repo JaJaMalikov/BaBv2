@@ -4,11 +4,15 @@ from typing import Optional, Tuple, List, Any
 import logging
 import math
 
-from PySide6.QtWidgets import QGraphicsEllipseItem, QGraphicsSceneMouseEvent, QGraphicsItem
+from PySide6.QtWidgets import (
+    QGraphicsEllipseItem,
+    QGraphicsSceneMouseEvent,
+    QGraphicsItem,
+)
 from PySide6.QtSvgWidgets import QGraphicsSvgItem
 from PySide6.QtCore import Qt, QPointF
 from PySide6.QtGui import QBrush, QPen, QColor, QTransform
-from PySide6.QtSvg import QSvgRenderer # Added for type hinting
+from PySide6.QtSvg import QSvgRenderer  # Added for type hinting
 
 # --- Constantes ---
 PIVOT_KEYWORDS = ["coude", "genou", "hanche", "epaule", "cheville", "poignet", "cou"]
@@ -19,10 +23,10 @@ PIVOT_Z_VALUE = 999
 class RotationHandle(QGraphicsEllipseItem):
     """Circular handle used to rotate a ``PuppetPiece`` around its pivot."""
 
-    def __init__(self, piece: 'PuppetPiece') -> None:
+    def __init__(self, piece: "PuppetPiece") -> None:
         """Create a rotation handle bound to ``piece``."""
         super().__init__(-10, -10, 20, 20)
-        self.piece: 'PuppetPiece' = piece
+        self.piece: "PuppetPiece" = piece
         self.setBrush(QBrush(Qt.transparent))
         self.setPen(QPen(Qt.transparent))
         self.setFlag(QGraphicsItem.ItemIsMovable)
@@ -33,7 +37,9 @@ class RotationHandle(QGraphicsEllipseItem):
     # pylint: disable=invalid-name
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """Record starting angle and rotation when interaction begins."""
-        pivot_in_scene: QPointF = self.piece.mapToScene(self.piece.transformOriginPoint())
+        pivot_in_scene: QPointF = self.piece.mapToScene(
+            self.piece.transformOriginPoint()
+        )
         mouse_in_scene: QPointF = event.scenePos()
         vector: QPointF = mouse_in_scene - pivot_in_scene
         self.start_angle = math.degrees(math.atan2(vector.y(), vector.x()))
@@ -43,7 +49,9 @@ class RotationHandle(QGraphicsEllipseItem):
     # pylint: disable=invalid-name
     def mouseMoveEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """Rotate the bound piece based on mouse movement."""
-        pivot_in_scene: QPointF = self.piece.mapToScene(self.piece.transformOriginPoint())
+        pivot_in_scene: QPointF = self.piece.mapToScene(
+            self.piece.transformOriginPoint()
+        )
         mouse_in_scene: QPointF = event.scenePos()
         vector: QPointF = mouse_in_scene - pivot_in_scene
         current_angle: float = math.degrees(math.atan2(vector.y(), vector.x()))
@@ -56,6 +64,7 @@ class RotationHandle(QGraphicsEllipseItem):
         self.start_angle = 0.0
         self.start_rotation = 0.0
         super().mouseReleaseEvent(event)
+
 
 # pylint: disable=R0903
 class PivotHandle(QGraphicsEllipseItem):
@@ -101,8 +110,8 @@ class PuppetPiece(QGraphicsSvgItem):
         self.pivot_y: float = pivot_y
         self.setTransformOriginPoint(self.pivot_x, self.pivot_y)
 
-        self.parent_piece: Optional['PuppetPiece'] = None
-        self.children: List['PuppetPiece'] = []
+        self.parent_piece: Optional["PuppetPiece"] = None
+        self.children: List["PuppetPiece"] = []
         self.rel_to_parent: Tuple[float, float] = (0.0, 0.0)
         self.local_rotation: float = 0.0
 
@@ -130,7 +139,6 @@ class PuppetPiece(QGraphicsSvgItem):
             self.rotation_handle = None
             # Initialize if no rotation handle
             self.handle_local_pos: Optional[QPointF] = None
-
 
     def set_handle_visibility(self, visible: bool) -> None:
         """Show or hide pivot and rotation handles with themed styling."""
@@ -190,7 +198,7 @@ class PuppetPiece(QGraphicsSvgItem):
         if not self.parent_piece:
             return
 
-        parent: 'PuppetPiece' = self.parent_piece
+        parent: "PuppetPiece" = self.parent_piece
         parent_rotation: float = parent.rotation()
         dx, dy = self.rel_to_parent
         transform: QTransform = QTransform()

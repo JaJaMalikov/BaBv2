@@ -7,8 +7,17 @@ to manipulate the scene model and graphics items.
 import logging
 
 from PySide6.QtWidgets import (
-    QWidget, QListWidget, QListWidgetItem, QVBoxLayout, QHBoxLayout,
-    QDoubleSpinBox, QComboBox, QToolButton, QFormLayout, QFrame, QLabel
+    QWidget,
+    QListWidget,
+    QListWidgetItem,
+    QVBoxLayout,
+    QHBoxLayout,
+    QDoubleSpinBox,
+    QComboBox,
+    QToolButton,
+    QFormLayout,
+    QFrame,
+    QLabel,
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
@@ -23,6 +32,7 @@ class InspectorWidget(QWidget):
     - Edits object scale/rotation/z
     - Attaches/detaches an object to a puppet member
     """
+
     def __init__(self, main_window):
         """Initializes the inspector widget.
 
@@ -122,7 +132,9 @@ class InspectorWidget(QWidget):
         self.duplicate_btn.clicked.connect(self._on_duplicate_clicked)
         self.rot_spin.valueChanged.connect(self._on_rotation_changed)
         self.z_spin.valueChanged.connect(self._on_z_changed)
-        self.attach_puppet_combo.currentTextChanged.connect(self._on_attach_puppet_changed)
+        self.attach_puppet_combo.currentTextChanged.connect(
+            self._on_attach_puppet_changed
+        )
         self.attach_btn.clicked.connect(self._on_attach_clicked)
         self.detach_btn.clicked.connect(self._on_detach_clicked)
 
@@ -135,13 +147,17 @@ class InspectorWidget(QWidget):
         puppet = mw.scene_model.puppets.get(puppet_name)
         if not puppet:
             return None
-        candidates = getattr(puppet, 'variants', {}).get(slot, [])
+        candidates = getattr(puppet, "variants", {}).get(slot, [])
         # Resolve from keyframes
         idx = mw.scene_model.current_frame
         si = sorted(mw.scene_model.keyframes.keys())
         last_kf = next((i for i in reversed(si) if i <= idx), None)
         if last_kf is not None:
-            vmap = mw.scene_model.keyframes[last_kf].puppets.get(puppet_name, {}).get('_variants', {})
+            vmap = (
+                mw.scene_model.keyframes[last_kf]
+                .puppets.get(puppet_name, {})
+                .get("_variants", {})
+            )
             if isinstance(vmap, dict):
                 val = vmap.get(slot)
                 if isinstance(val, str) and val in candidates:
@@ -166,11 +182,11 @@ class InspectorWidget(QWidget):
             if w:
                 w.deleteLater()
         self.variant_combos.clear()
-        slots = list(getattr(puppet, 'variants', {}).keys()) if puppet else []
+        slots = list(getattr(puppet, "variants", {}).keys()) if puppet else []
         self.variants_panel.setVisible(bool(slots))
         for slot in sorted(slots):
             combo = QComboBox()
-            options = getattr(puppet, 'variants', {}).get(slot, [])
+            options = getattr(puppet, "variants", {}).get(slot, [])
             combo.addItems(options)
             current = self._current_variant_for_slot(puppet_name, slot)
             if current:
@@ -180,7 +196,9 @@ class InspectorWidget(QWidget):
             # Connect change
             # Lier le nom du slot et du pantin dans la closure (évite la capture tardive)
             combo.currentTextChanged.connect(
-                lambda s, slot_name=slot, puppet=puppet_name: self.main_window.scene_controller.set_member_variant(puppet, slot_name, s)
+                lambda s, slot_name=slot, puppet=puppet_name: self.main_window.scene_controller.set_member_variant(
+                    puppet, slot_name, s
+                )
             )
             self.variant_combos[slot] = combo
             self.variants_layout.addRow(f"{slot}:", combo)
@@ -227,7 +245,7 @@ class InspectorWidget(QWidget):
             obj = self.main_window.scene_model.objects.get(name)
             scale = obj.scale if obj else 1.0
             rot = obj.rotation if obj else 0.0
-            z = getattr(obj, 'z', 0)
+            z = getattr(obj, "z", 0)
             # Sélectionner l'objet dans la scène
             for it in self.main_window.scene.selectedItems():
                 it.setSelected(False)
@@ -357,7 +375,9 @@ class InspectorWidget(QWidget):
         puppet = self.attach_puppet_combo.currentText()
         self.attach_member_combo.clear()
         if puppet and puppet in self.main_window.scene_model.puppets:
-            members = sorted(self.main_window.scene_model.puppets[puppet].members.keys())
+            members = sorted(
+                self.main_window.scene_model.puppets[puppet].members.keys()
+            )
             self.attach_member_combo.addItems(members)
 
     def _on_attach_puppet_changed(self, _):
@@ -372,7 +392,9 @@ class InspectorWidget(QWidget):
         puppet = self.attach_puppet_combo.currentText()
         member = self.attach_member_combo.currentText()
         if puppet and member:
-            self.main_window.scene_controller.attach_object_to_member(name, puppet, member)
+            self.main_window.scene_controller.attach_object_to_member(
+                name, puppet, member
+            )
             self._on_item_changed(self.list_widget.currentItem(), None)
             self._update_list_attachment_icons()
 
@@ -396,14 +418,24 @@ class InspectorWidget(QWidget):
         idx = mw.scene_model.current_frame
         si = sorted(mw.scene_model.keyframes.keys())
         last_kf = next((i for i in reversed(si) if i <= idx), None)
-        if last_kf is not None and obj_name not in mw.scene_model.keyframes[last_kf].objects:
+        if (
+            last_kf is not None
+            and obj_name not in mw.scene_model.keyframes[last_kf].objects
+        ):
             return (None, None)
-        prev = next((i for i in reversed(si) if i <= idx and obj_name in mw.scene_model.keyframes[i].objects), None)
+        prev = next(
+            (
+                i
+                for i in reversed(si)
+                if i <= idx and obj_name in mw.scene_model.keyframes[i].objects
+            ),
+            None,
+        )
         if prev is None:
             obj = mw.scene_model.objects.get(obj_name)
             return obj.attached_to if obj and obj.attached_to else (None, None)
         st = mw.scene_model.keyframes[prev].objects.get(obj_name, {})
-        attached = st.get('attached_to')
+        attached = st.get("attached_to")
         if attached:
             try:
                 pu, me = attached
@@ -442,7 +474,7 @@ class InspectorWidget(QWidget):
         if typ == "puppet" and name and self.variants_panel.isVisible():
             puppet = self.main_window.scene_model.puppets.get(name)
             for slot, combo in list(self.variant_combos.items()):
-                if slot not in getattr(puppet, 'variants', {}):
+                if slot not in getattr(puppet, "variants", {}):
                     continue
                 cur = self._current_variant_for_slot(name, slot)
                 if cur is None:
@@ -460,7 +492,7 @@ class InspectorWidget(QWidget):
         for i in range(self.list_widget.count()):
             it: QListWidgetItem = self.list_widget.item(i)
             typ, nm = it.data(Qt.UserRole)
-            if typ != 'object':
+            if typ != "object":
                 continue
             pu, me = self._attached_state_for_frame(nm)
             if pu and me:

@@ -9,7 +9,7 @@ from PySide6.QtCore import QPointF
 from PySide6.QtWidgets import QGraphicsItem
 from PySide6.QtSvg import QSvgRenderer
 
-from core.puppet_model import Puppet, PuppetMember
+from core.puppet_model import Puppet, PuppetMember, normalize_variants
 from core.puppet_piece import PuppetPiece
 from core.svg_loader import SvgLoader
 
@@ -34,48 +34,22 @@ class PuppetOps:
         # pour définir des variantes spécifiques au pantin (sans toucher au fichier global).
         try:
             from pathlib import Path
+
             svg_path = Path(file_path)
             candidates = [
-                svg_path.with_suffix('.json'),
+                svg_path.with_suffix(".json"),
                 svg_path.with_name(f"conf_{svg_path.stem}.json"),
             ]
             for sidecar in candidates:
                 if sidecar.exists():
                     import json
-                    with sidecar.open('r', encoding='utf-8') as fh:
+
+                    with sidecar.open("r", encoding="utf-8") as fh:
                         data = json.load(fh)
                     if isinstance(data, dict):
-                        v = data.get('variants')
-                        if isinstance(v, dict):
-                            # Normalize to list[str] per slot and record z overrides
-                            vmap: dict[str, list[str]] = {}
-                            vz: dict[str, int] = {}
-                            for slot, items in v.items():
-                                names: list[str] = []
-                                if isinstance(items, list):
-                                    for it in items:
-                                        if isinstance(it, dict):
-                                            nm = it.get('name')
-                                            if isinstance(nm, str):
-                                                names.append(nm)
-                                                zval = it.get('z')
-                                                if isinstance(zval, int):
-                                                    vz[nm] = zval
-                                                else:
-                                                    z2 = it.get('z_order')
-                                                    if isinstance(z2, int):
-                                                        vz[nm] = z2
-                                        elif isinstance(it, (list, tuple)) and len(it) == 2:
-                                            nm, zval = it[0], it[1]
-                                            if isinstance(nm, str):
-                                                names.append(nm)
-                                                if isinstance(zval, int):
-                                                    vz[nm] = zval
-                                        elif isinstance(it, str):
-                                            names.append(it)
-                                vmap[str(slot)] = names
-                            puppet.variants = vmap
-                            puppet.variant_z = vz
+                        vmap, vz = normalize_variants(data.get("variants", {}))
+                        puppet.variants = vmap
+                        puppet.variant_z = vz
                     break
         except Exception:  # pylint: disable=broad-except
             logging.exception("Sidecar variants loading failed for %s", file_path)
@@ -100,7 +74,9 @@ class PuppetOps:
         for name, member in puppet.members.items():
             offset_x, offset_y = loader.get_group_offset(name) or (0.0, 0.0)
             pivot_x, pivot_y = member.pivot[0] - offset_x, member.pivot[1] - offset_y
-            piece: PuppetPiece = PuppetPiece(file_path, name, pivot_x, pivot_y, renderer)
+            piece: PuppetPiece = PuppetPiece(
+                file_path, name, pivot_x, pivot_y, renderer
+            )
             piece.setZValue(member.z_order)
             pieces[name] = piece
             self.win.object_manager.graphics_items[f"{puppet_name}:{name}"] = piece
@@ -110,7 +86,9 @@ class PuppetOps:
             member: PuppetMember = puppet.members[name]
             if member.parent:
                 parent_piece: PuppetPiece = pieces[member.parent.name]
-                piece.set_parent_piece(parent_piece, member.rel_pos[0], member.rel_pos[1])
+                piece.set_parent_piece(
+                    parent_piece, member.rel_pos[0], member.rel_pos[1]
+                )
             else:  # Root piece
                 offset_x, offset_y = loader.get_group_offset(name) or (0.0, 0.0)
                 final_x: float = scene_center.x() - (member.pivot[0] - offset_x)
@@ -168,18 +146,11 @@ class PuppetOps:
                         piece = self.win.object_manager.graphics_items.get(gi_key)
                         if not piece:
                             continue
-                        is_on = (cand == default_var)
-                        piece.setVisible(is_on)
-                        # Keep handle items in sync with piece visibility
-                        try:
-                            piece.pivot_handle.setVisible(is_on)
-                            if piece.rotation_handle:
-                                piece.rotation_handle.setVisible(is_on)
-                        except (RuntimeError, AttributeError):
-                            logging.debug("Variant handle visibility sync failed for %s", gi_key)
-                        if is_on:
-                            piece.update_handle_positions()
-            except Exception: # pylint: disable=broad-except
+                        is_on = cand == default_var
+                        from .visibility_utils import update_piece_visibility
+
+                        update_piece_visibility(self.win, piece, is_on)
+            except Exception:  # pylint: disable=broad-except
                 logging.exception("Failed to apply initial variants visibility")
 
     def scale_puppet(self, puppet_name: str, ratio: float) -> None:
@@ -200,22 +171,18 @@ class PuppetOps:
                     piece.rel_to_parent[1] * ratio,
                 )
         for root_member in puppet.get_root_members():
-            if (
-                root_piece := self.win.object_manager.graphics_items.get(
-                    f"{puppet_name}:{root_member.name}"
-                )
+            if root_piece := self.win.object_manager.graphics_items.get(
+                f"{puppet_name}:{root_member.name}"
             ):
                 for child in root_piece.children:
                     child.update_transform_from_parent()
 
     def delete_puppet(self, puppet_name: str) -> None:
         """Deletes a puppet from the scene."""
-        if (puppet := self.win.scene_model.puppets.get(puppet_name)):
+        if puppet := self.win.scene_model.puppets.get(puppet_name):
             for member_name in list(puppet.members.keys()):
-                if (
-                    piece := self.win.object_manager.graphics_items.pop(
-                        f"{puppet_name}:{member_name}", None
-                    )
+                if piece := self.win.object_manager.graphics_items.pop(
+                    f"{puppet_name}:{member_name}", None
                 ):
                     self.win.scene.removeItem(piece)
                     if piece.pivot_handle:
@@ -309,7 +276,9 @@ class PuppetOps:
             logging.exception("Failed to sync handles button state")
 
     # --- Variants ---------------------------------------------------------
-    def set_member_variant(self, puppet_name: str, slot: str, variant_name: str) -> None:
+    def set_member_variant(
+        self, puppet_name: str, slot: str, variant_name: str
+    ) -> None:
         """Set the active variant for a logical slot on a puppet and update visibility."""
         puppet: Optional[Puppet] = self.win.scene_model.puppets.get(puppet_name)
         if not puppet:
@@ -325,21 +294,12 @@ class PuppetOps:
             piece = self.win.object_manager.graphics_items.get(gi_key)
             if not piece:
                 continue
-            is_on = (cand == variant_name)
+            is_on = cand == variant_name
             try:
-                piece.setVisible(is_on)
-                piece.pivot_handle.setVisible(is_on)
-                if piece.rotation_handle:
-                    piece.rotation_handle.setVisible(is_on)
-                if is_on:
-                    # Keep handle styling consistent with global toggle
-                    try:
-                        handles_on = bool(getattr(self.win.view, "handles_btn").isChecked())
-                        piece.set_handle_visibility(handles_on)
-                    except Exception: # pylint: disable=broad-except
-                        pass
-                    piece.update_handle_positions()
-            except (RuntimeError, AttributeError):
+                from .visibility_utils import update_piece_visibility
+
+                update_piece_visibility(self.win, piece, is_on)
+            except Exception:
                 logging.debug("Failed to update visibility for variant %s", gi_key)
 
     def get_active_variant(self, puppet_name: str, slot: str) -> Optional[str]:
@@ -358,7 +318,9 @@ class PuppetOps:
         return candidates[0] if candidates else None
 
     # --- Helpers ---------------------------------------------------------
-    def _align_puppet_bottom(self, puppet_name: str, pieces: dict[str, PuppetPiece]) -> None:
+    def _align_puppet_bottom(
+        self, puppet_name: str, pieces: dict[str, PuppetPiece]
+    ) -> None:
         """Align the union bbox of visible puppet pieces to scene bottom, keep X center.
 
         Computes the union of sceneBoundingRect for all visible pieces of the puppet

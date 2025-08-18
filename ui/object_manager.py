@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Dict, Optional, Any
 
-from PySide6.QtWidgets import QGraphicsItem, QGraphicsScene # Added QGraphicsScene
+from PySide6.QtWidgets import QGraphicsItem, QGraphicsScene  # Added QGraphicsScene
 
 from core.scene_model import SceneModel
 from core.puppet_piece import PuppetPiece
@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 # pylint: disable=R0902
 class ObjectManager:
     """Manages puppets and objects (creation, deletion, manipulation) in the scene."""
+
     def __init__(self, win: MainWindow) -> None:
         """Initialize the object manager.
 
@@ -26,7 +27,7 @@ class ObjectManager:
         self.scene: QGraphicsScene = win.scene
         self.scene_model: SceneModel = win.scene_model
         self.graphics_items: Dict[str, QGraphicsItem] = {}
-        self.renderers: Dict[str, Any] = {} # QSvgRenderer is not directly imported
+        self.renderers: Dict[str, Any] = {}  # QSvgRenderer is not directly imported
         self.puppet_scales: Dict[str, float] = {}
         self.puppet_paths: Dict[str, str] = {}
         self.puppet_z_offsets: Dict[str, int] = {}
@@ -37,11 +38,13 @@ class ObjectManager:
         for name, puppet in self.scene_model.puppets.items():
             puppet_state: Dict[str, Dict[str, Any]] = {}
             for member_name in puppet.members:
-                piece: Optional[PuppetPiece] = self.graphics_items.get(f"{name}:{member_name}")
+                piece: Optional[PuppetPiece] = self.graphics_items.get(
+                    f"{name}:{member_name}"
+                )
                 if piece:
                     puppet_state[member_name] = {
-                        'rotation': piece.local_rotation,
-                        'pos': (piece.x(), piece.y()),
+                        "rotation": piece.local_rotation,
+                        "pos": (piece.x(), piece.y()),
                     }
             # If the puppet defines variant slots, snapshot which variant is visible
             if getattr(puppet, "variants", None):
@@ -91,7 +94,9 @@ class ObjectManager:
                     data["scale"] = float(gi.scale())
                     data["z"] = int(gi.zValue())
                 except RuntimeError as e:
-                    logging.debug("Reading graphics item state for '%s' failed: %s", name, e)
+                    logging.debug(
+                        "Reading graphics item state for '%s' failed: %s", name, e
+                    )
                 data["attached_to"] = attached_to
                 states[name] = data
         return states

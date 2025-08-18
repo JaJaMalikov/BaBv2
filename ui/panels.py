@@ -14,7 +14,9 @@ from ui.library.library_widget import LibraryWidget
 from ui.inspector.inspector_widget import InspectorWidget
 
 
-def build_side_overlays(win) -> Tuple[PanelOverlay, LibraryWidget, PanelOverlay, InspectorWidget]:
+def build_side_overlays(
+    win,
+) -> Tuple[PanelOverlay, LibraryWidget, PanelOverlay, InspectorWidget]:
     """Builds Library and Inspector overlays attached to the view and returns them.
 
     Returns (library_overlay, library_widget, inspector_overlay, inspector_widget).
@@ -53,6 +55,7 @@ def build_side_overlays(win) -> Tuple[PanelOverlay, LibraryWidget, PanelOverlay,
 
     return library_overlay, library_widget, inspector_overlay, inspector_widget
 
+
 def _get_overlay_geometry(s: QSettings, name: str) -> Optional[QRect]:
     """Get overlay geometry from settings."""
     size_val = s.value(f"ui/default/{name}_size")
@@ -61,15 +64,24 @@ def _get_overlay_geometry(s: QSettings, name: str) -> Optional[QRect]:
     w, h = 290, 550
     if size_val:
         try:
-            w = int(size_val.width()) if hasattr(size_val, 'width') else int(size_val[0])
-            h = int(size_val.height()) if hasattr(size_val, 'height') else int(size_val[1])
+            w = (
+                int(size_val.width())
+                if hasattr(size_val, "width")
+                else int(size_val[0])
+            )
+            h = (
+                int(size_val.height())
+                if hasattr(size_val, "height")
+                else int(size_val[1])
+            )
         except (TypeError, ValueError, AttributeError):
             pass
 
-    if pos_val and hasattr(pos_val, 'x'):
+    if pos_val and hasattr(pos_val, "x"):
         return QRect(int(pos_val.x()), int(pos_val.y()), w, h)
 
     return None
+
 
 def position_overlays(win) -> None:
     """Position default Library/Inspector overlays and adjust tool overlays."""

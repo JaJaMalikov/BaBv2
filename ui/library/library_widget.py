@@ -9,7 +9,14 @@ from pathlib import Path
 from typing import Optional
 
 from PySide6.QtCore import Qt, QMimeData, QByteArray, Signal, QPoint, QSize
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QListWidget, QListWidgetItem, QMenu, QTabWidget
+from PySide6.QtWidgets import (
+    QWidget,
+    QVBoxLayout,
+    QListWidget,
+    QListWidgetItem,
+    QMenu,
+    QTabWidget,
+)
 from PySide6.QtGui import QDrag, QIcon
 
 from ui.icons import get_icon
@@ -83,6 +90,7 @@ class _DraggableGrid(QListWidget):
                 event.accept()
                 return
         super().mouseDoubleClickEvent(event)
+
 
 class LibraryWidget(QWidget):  # pylint: disable=too-few-public-methods
     """Widget listing available assets for drag and drop."""

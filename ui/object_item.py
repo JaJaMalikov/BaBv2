@@ -12,6 +12,7 @@ from PySide6.QtSvgWidgets import QGraphicsSvgItem
 
 class _ObjectItemMixin:
     """A mixin for object items, providing context and item change handling."""
+
     def set_context(self, main_window, obj_name):
         """Sets the context for the object item.
 
@@ -59,6 +60,7 @@ class _ObjectItemMixin:
 
 class ObjectPixmapItem(_ObjectItemMixin, QGraphicsPixmapItem):
     """A QGraphicsPixmapItem for scene objects."""
+
     def __init__(self, file_path: str):
         """Initializes the pixmap item.
 
@@ -70,6 +72,7 @@ class ObjectPixmapItem(_ObjectItemMixin, QGraphicsPixmapItem):
 
 class ObjectSvgItem(_ObjectItemMixin, QGraphicsSvgItem):
     """A QGraphicsSvgItem for scene objects."""
+
     def __init__(self, file_path: str):
         """Initializes the SVG item.
 

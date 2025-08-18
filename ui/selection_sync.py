@@ -12,14 +12,14 @@ def select_object_in_inspector(win: Any, name: str) -> None:
 
     Keeps previous behavior: selects only 'object' entries matching name.
     """
-    insp = getattr(win, 'inspector_widget', None)
+    insp = getattr(win, "inspector_widget", None)
     if not insp:
         return
     lw: QListWidget = insp.list_widget
     for i in range(lw.count()):
         it: QListWidgetItem = lw.item(i)
         typ, nm = it.data(Qt.UserRole)
-        if typ == 'object' and nm == name:
+        if typ == "object" and nm == name:
             lw.setCurrentItem(it)
             break
 
@@ -34,4 +34,3 @@ def scene_selection_changed(win: Any) -> None:
         if gi is item and name in win.scene_model.objects:
             select_object_in_inspector(win, name)
             return
-

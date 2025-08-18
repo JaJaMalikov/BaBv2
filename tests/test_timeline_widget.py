@@ -43,15 +43,31 @@ def test_zoom_with_wheel_event(_app):
     tw.resize(400, 100)
     # pylint: disable=protected-access
     initial = tw._px_per_frame
-    ev_in = QWheelEvent(QPointF(0, 0), QPointF(0, 0), QPoint(0, 0), QPoint(0, 120),
-                        Qt.NoButton, Qt.ControlModifier, Qt.ScrollBegin, False)
+    ev_in = QWheelEvent(
+        QPointF(0, 0),
+        QPointF(0, 0),
+        QPoint(0, 0),
+        QPoint(0, 120),
+        Qt.NoButton,
+        Qt.ControlModifier,
+        Qt.ScrollBegin,
+        False,
+    )
     tw.wheelEvent(ev_in)
     # pylint: disable=protected-access
     zoomed = tw._px_per_frame
     assert zoomed > initial
 
-    ev_out = QWheelEvent(QPointF(0, 0), QPointF(0, 0), QPoint(0, 0), QPoint(0, -120),
-                         Qt.NoButton, Qt.ControlModifier, Qt.ScrollBegin, False)
+    ev_out = QWheelEvent(
+        QPointF(0, 0),
+        QPointF(0, 0),
+        QPoint(0, 0),
+        QPoint(0, -120),
+        Qt.NoButton,
+        Qt.ControlModifier,
+        Qt.ScrollBegin,
+        False,
+    )
     tw.wheelEvent(ev_out)
     # pylint: disable=protected-access
     assert tw._px_per_frame < zoomed

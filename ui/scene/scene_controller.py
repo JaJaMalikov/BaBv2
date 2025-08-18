@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Optional, Protocol, cast
 from PySide6.QtCore import QPointF
 from PySide6.QtWidgets import QGraphicsItem, QGraphicsScene
 
-from core.scene_model import Keyframe, SceneModel
+from core.scene_model import Keyframe, SceneModel, SceneObject
 from .state_applier import StateApplier
 from .scene_visuals import SceneVisuals
 from ..onion_skin import OnionSkinManager
@@ -60,14 +60,22 @@ class SceneController:
     ) -> None:
         """Initialize the scene controller."""
         self.win = win
-        self.visuals: SceneVisuals = visuals if visuals is not None else SceneVisuals(win)
+        self.visuals: SceneVisuals = (
+            visuals if visuals is not None else SceneVisuals(win)
+        )
         if visuals is None:
             self.visuals.setup()
-        self.onion: OnionSkinManager = onion if onion is not None else OnionSkinManager(win)
-        self.applier: StateApplier = applier if applier is not None else StateApplier(win)
+        self.onion: OnionSkinManager = (
+            onion if onion is not None else OnionSkinManager(win)
+        )
+        self.applier: StateApplier = (
+            applier if applier is not None else StateApplier(win)
+        )
         self.puppet_ops = PuppetOps(win)
         self.object_ops = ObjectOps(win)
-        self.library_ops = LibraryOps(win, self.puppet_ops, self.object_ops, self.set_background_path)
+        self.library_ops = LibraryOps(
+            win, self.puppet_ops, self.object_ops, self.set_background_path
+        )
 
     # --- Puppet operations -------------------------------------------------
     def add_puppet(self, file_path: str, puppet_name: str) -> None:
@@ -103,7 +111,9 @@ class SceneController:
         self.puppet_ops.set_rotation_handles_visible(visible)
 
     # --- Variants ---------------------------------------------------------
-    def set_member_variant(self, puppet_name: str, slot: str, variant_name: str) -> None:
+    def set_member_variant(
+        self, puppet_name: str, slot: str, variant_name: str
+    ) -> None:
         """Choose a variant for a puppet slot at the current frame.
 
         - Immediately updates scene visibility
@@ -119,7 +129,9 @@ class SceneController:
                 self.win.add_keyframe(cur)
         except Exception:  # pylint: disable=broad-except
             # Fallback: attempt to create an empty keyframe if UI path fails
-            self.win.scene_model.add_keyframe(cur, self.win.object_manager.capture_scene_state())
+            self.win.scene_model.add_keyframe(
+                cur, self.win.object_manager.capture_scene_state()
+            )
 
         kf = self.win.scene_model.keyframes.get(cur)
         if not kf:
@@ -149,7 +161,9 @@ class SceneController:
         """Duplicate an object."""
         self.object_ops.duplicate_object(name)
 
-    def attach_object_to_member(self, obj_name: str, puppet_name: str, member_name: str) -> None:
+    def attach_object_to_member(
+        self, obj_name: str, puppet_name: str, member_name: str
+    ) -> None:
         """Attach an object to a puppet member."""
         self.object_ops.attach_object_to_member(obj_name, puppet_name, member_name)
 
@@ -157,9 +171,24 @@ class SceneController:
         """Detach an object from any parent."""
         self.object_ops.detach_object(obj_name)
 
-    def _create_object_from_file(self, file_path: str, scene_pos: Optional[QPointF] = None) -> Optional[str]:
+    def _create_object_from_file(
+        self, file_path: str, scene_pos: Optional[QPointF] = None
+    ) -> Optional[str]:
         """Create an object from a file."""
-        return cast(Optional[str], self.object_ops.create_object_from_file(file_path, scene_pos))
+        return cast(
+            Optional[str], self.object_ops.create_object_from_file(file_path, scene_pos)
+        )
+
+    def _add_object_graphics(self, obj: SceneObject) -> None:
+        """Compatibility shim used by scene import to create graphics for an object.
+
+        Delegates to ObjectOps' internal method until a public API is standardized.
+        """
+        # Using the internal helper keeps import logic simple; it's limited in scope.
+        try:
+            self.object_ops._add_object_graphics(obj)  # type: ignore[attr-defined]
+        except AttributeError as e:
+            logging.error("ObjectOps has no _add_object_graphics: %s", e)
 
     def delete_object_from_current_frame(self, name: str) -> None:
         """Delete an object from the current frame."""

@@ -215,3 +215,8 @@ Prochaines étapes :
 - Clic droit: “Copy keyframe @ f” et “Paste @ f”.
 - Raccourcis: Ctrl+C copie la keyframe courante (si présente), Ctrl+V colle sur la frame courante.
 - Implémentation non destructive: crée/écrase la keyframe cible et rafraîchit l’affichage.
+## Profil UI centralisé (nouveau)
+
+- Un modèle `UIProfile` centralise tous les paramètres visuels (thème, police, couleurs de la timeline, palette d’icônes, ordre/visibilité des overlays, quelques géométries).
+- Import/Export JSON robuste avec champ `version`, tolérant aux clés inconnues; repli automatique sur un profil « Default Dark » en cas d’erreur.
+- `SettingsDialog` expose « Importer profil… », « Exporter profil… », « Réinitialiser défaut (Dark) » et applique immédiatement via QSettings + `apply_stylesheet()`.
