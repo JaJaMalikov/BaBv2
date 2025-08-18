@@ -11,7 +11,7 @@ from PySide6.QtCore import QPointF
 if TYPE_CHECKING:
     from .scene_controller import MainWindowProtocol
     from .puppet_ops import PuppetOps
-    from .object_ops import ObjectOps
+    from controllers.object_controller import ObjectController
     from typing import Callable
 
 
@@ -29,13 +29,13 @@ class LibraryOps:
         self,
         win: MainWindowProtocol,
         puppet_ops: PuppetOps,
-        object_ops: ObjectOps,
+        object_ctrl: ObjectController,
         set_background_path: "Callable[[Optional[str]], None]",
     ) -> None:
         """Initialize helpers to route library items into the scene."""
         self.win = win
         self.puppets = puppet_ops
-        self.objects = object_ops
+        self.objects = object_ctrl
         self.set_background_path = set_background_path
 
     def add_library_item_to_scene(self, payload: LibraryPayload) -> None:
