@@ -503,7 +503,7 @@ class SettingsManager:
                 self.win.view.apply_menu_settings_main()
                 self.win.view.apply_menu_settings_quick()
                 self.win.timeline_widget.update()
-                apply_stylesheet(QApplication.instance())
+                apply_stylesheet(QApplication.instance(), UIProfile.from_qsettings())
             except Exception:
                 logging.exception("Apply settings failed")
 
@@ -851,6 +851,6 @@ class SettingsManager:
                     self.win.timeline_widget.update()
                 except Exception:
                     pass
-                apply_stylesheet(QApplication.instance())
+                apply_stylesheet(QApplication.instance(), prof)
             except Exception:
                 logging.exception("Failed to persist UIProfile from dialog")

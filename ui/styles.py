@@ -2,186 +2,10 @@
 
 import logging
 from PySide6.QtGui import QFont
-from .theme_settings import ThemeSettings
+from .ui_profile import UIProfile
 
 # This is used for the fallback icon drawing function.
 ICON_COLOR = "#2D3748"
-
-STYLE_SHEET_LIGHT = """
-/* GLOBAL SETTINGS */
-* {
-    color: #1A202C; /* Default dark text */
-    font-family: Poppins, sans-serif;
-}
-
-/* MAIN WINDOW & VIEW */
-QMainWindow, QDialog {
-    background-color: #E2E8F0; /* Light grey background */
-}
-
-QGraphicsView {
-    border: none;
-}
-
-/* PANELS & DOCKS (Library, Inspector, Timeline) */
-DraggableOverlay, PanelOverlay {
-    background-color: rgba(247, 248, 252, 0.9); /* Semi-transparent white */
-    border-radius: 12px;
-    border: 1px solid #D0D5DD;
-}
-
-DraggableHeader { background-color: rgba(237, 242, 247, 0.9); border-bottom: 1px solid rgba(203, 213, 224, 0.5); border-top-left-radius: 12px; border-top-right-radius: 12px; }
-DraggableHeader QLabel { font-weight: bold; color: #2D3748; }
-
-
-/* TOOL BUTTONS & ICONS */
-QToolButton {
-    background-color: transparent;
-    border: none;
-    border-radius: 6px;
-    padding: 5px;
-}
-
-QToolButton:hover {
-    background-color: #E3E6FD; /* Lavender hover */
-}
-
-QToolButton:checked {
-    background-color: #E53E3E; /* Red background when active */
-}
-
-
-/* WIDGETS (Inputs, Lists, etc.) */
-QLineEdit, QDoubleSpinBox, QSpinBox, QComboBox {
-    background-color: #EDF2F7;
-    border: 1px solid #CBD5E0;
-    border-radius: 4px;
-    padding: 4px;
-    color: #1A202C;
-}
-
-QLineEdit:focus, QDoubleSpinBox:focus, QSpinBox:focus, QComboBox:focus {
-    border-color: #E53E3E;
-    background-color: white;
-}
-
-QTreeView, QListWidget {
-    background-color: transparent;
-    border: none;
-}
-
-QTreeView::item, QListWidget::item {
-    padding: 4px;
-    border-radius: 4px;
-}
-
-QTreeView::item:hover, QListWidget::item:hover {
-    background-color: #E2E8F0;
-}
-
-QTreeView::item:selected, QListWidget::item:selected {
-    background-color: #E53E3E;
-    color: white;
-}
-
-QScrollArea {
-    border: none;
-}
-
-/* CHECKBOXES: Improve contrast and checked visibility */
-QCheckBox {
-    spacing: 6px;
-}
-QCheckBox::indicator {
-    width: 16px; height: 16px;
-    border-radius: 3px;
-}
-QCheckBox::indicator:unchecked {
-    background-color: #EDF2F7;
-    border: 1px solid #A0AEC0;
-}
-QCheckBox::indicator:unchecked:hover {
-    background-color: #E2E8F0;
-}
-QCheckBox::indicator:checked {
-    background-color: #E53E3E; /* Accent */
-    border: 1px solid #C53030;
-}
-QCheckBox::indicator:checked:hover {
-    background-color: #F56565;
-}
-
-/* GROUP BOX TITLES */
-QGroupBox {
-    font-weight: 600;
-    color: #2D3748;
-    margin-top: 8px;
-}
-QGroupBox:title {
-    subcontrol-origin: margin;
-    left: 6px;
-    padding: 2px 4px;
-}
-
-/* TOOLTIP */
-QToolTip {
-    background-color: #F7F8FC;
-    color: #1A202C;
-    border: 1px solid #D0D5DD;
-    border-radius: 6px;
-    padding: 4px 8px;
-}
-
-/* TIMELINE */
-TimelineWidget {
-    background-color: #2D3748;
-    color: #E2E8F0;
-}
-
-TimelineWidget QToolButton {
-    background-color: transparent;
-    color: #E2E8F0;
-}
-
-TimelineWidget QToolButton:hover {
-    background-color: #4A5568;
-}
-
-TimelineWidget QToolButton:checked {
-    background-color: #E53E3E;
-    color: white;
-}
-
-"""
-
-STYLE_SHEET_DARK = """
-* { color: #E2E8F0; font-family: Poppins, sans-serif; }
-QMainWindow, QDialog { background-color: #1F2937; }
-DraggableOverlay, PanelOverlay { background-color: rgba(31,41,55,0.92); border-radius: 12px; border: 1px solid #374151; }
-DraggableHeader { background-color: rgba(55,65,81,0.9); border-bottom: 1px solid rgba(75,85,99,0.6); border-top-left-radius: 12px; border-top-right-radius: 12px; }
-QToolButton { background: transparent; border: none; border-radius: 6px; padding: 5px; }
-QToolButton:hover { background-color: #374151; }
-QToolButton:checked { background-color: #EF4444; }
-QLineEdit, QDoubleSpinBox, QSpinBox, QComboBox { background-color: #111827; border: 1px solid #374151; border-radius: 4px; padding: 4px; color: #E5E7EB; }
-QLineEdit:focus, QDoubleSpinBox:focus, QSpinBox:focus, QComboBox:focus { border-color: #EF4444; background-color: #0B0F16; }
-QTreeView, QListWidget { background-color: transparent; border: none; }
-QTreeView::item, QListWidget::item { padding: 4px; border-radius: 4px; }
-QTreeView::item:hover, QListWidget::item:hover { background-color: #374151; }
-QTreeView::item:selected, QListWidget::item:selected { background-color: #EF4444; color: white; }
-QCheckBox { spacing: 6px; }
-QCheckBox::indicator { width: 16px; height: 16px; border-radius: 3px; }
-QCheckBox::indicator:unchecked { background-color: #111827; border: 1px solid #4B5563; }
-QCheckBox::indicator:unchecked:hover { background-color: #0B0F16; }
-QCheckBox::indicator:checked { background-color: #EF4444; border: 1px solid #B91C1C; }
-QCheckBox::indicator:checked:hover { background-color: #F87171; }
-QGroupBox { font-weight: 600; color: #E5E7EB; margin-top: 8px; }
-QGroupBox:title { subcontrol-origin: margin; left: 6px; padding: 2px 4px; }
-TimelineWidget { background-color: #111827; color: #D1D5DB; }
-TimelineWidget QToolButton { background: transparent; color: #D1D5DB; }
-TimelineWidget QToolButton:hover { background-color: #1F2937; }
-TimelineWidget QToolButton:checked { background-color: #EF4444; color: white; }
-QToolTip { background-color: #111827; color: #E5E7EB; border: 1px solid #374151; border-radius: 6px; padding: 4px 8px; }
-"""
 
 
 def build_stylesheet(params: dict) -> str:
@@ -282,49 +106,22 @@ QToolTip {{ background-color: {tip_bg}; color: {tip_text}; border: 1px solid {ti
 """
 
 
-def apply_stylesheet(app):
-    """Apply the application's stylesheet.
+def apply_stylesheet(app, profile: "UIProfile | None" = None) -> None:
+    """Applique la feuille de style à partir d'un :class:`UIProfile`.
 
-    Reads QSettings 'ui/theme' to select light/dark theme.
+    Si aucun profil n'est fourni, il est chargé depuis :class:`QSettings`.
     """
-    try:
-        from PySide6.QtCore import QSettings
 
-        s = QSettings("JaJa", "Macronotron")
-        ts = ThemeSettings.from_qsettings(s)
-        if ts.preset == "custom":
-            # Prefer explicit stored CSS, otherwise build from params
-            custom_css = s.value("ui/custom_stylesheet")
-            if not custom_css:
-                try:
-                    custom_css = build_stylesheet(ts.custom_params)
-                except Exception:
-                    logging.exception(
-                        "Failed to build custom stylesheet; falling back to light theme"
-                    )
-                    custom_css = STYLE_SHEET_LIGHT
-            app.setStyleSheet(str(custom_css))
-        else:
-            preset = ts.preset
-            if preset == "dark":
-                css = STYLE_SHEET_DARK
-            elif preset == "high contrast":
-                # No dedicated stylesheet; reuse dark for now
-                css = STYLE_SHEET_DARK
-            else:
-                css = STYLE_SHEET_LIGHT
-            app.setStyleSheet(css)
+    try:
+        prof = profile or UIProfile.from_qsettings()
+        css = build_stylesheet(prof.theme.custom_params)
+        app.setStyleSheet(str(css))
         try:
-            app.setFont(QFont(str(ts.font_family or "Poppins"), 10))
+            app.setFont(QFont(str(prof.theme.font_family or "Poppins"), 10))
         except RuntimeError:
             logging.warning("Requested font not found, using system default.")
     except Exception:
-        logging.exception("Failed to apply theme from settings; using dark fallback")
-        app.setStyleSheet(STYLE_SHEET_DARK)
-        try:
-            app.setFont(QFont("Poppins", 10))
-        except RuntimeError:
-            logging.warning("Poppins font not found, using system default.")
+        logging.exception("Failed to apply stylesheet")
 
 
 def get_theme_colors() -> dict[str, str]:
