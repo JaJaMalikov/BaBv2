@@ -13,6 +13,15 @@ from ui.styles import apply_stylesheet, build_stylesheet
 from ui.ui_profile import UIProfile
 
 
+def load_active_profile() -> UIProfile:
+    """Charge le profil UI courant depuis le stockage persistant."""
+    try:
+        return UIProfile.from_qsettings(QSettings("JaJa", "Macronotron"))
+    except Exception:
+        logging.exception("Failed to load UIProfile; using default dark")
+        return UIProfile.default_dark()
+
+
 class SettingsManager:
     """Encapsulates the saving and restoring of UI settings (geometries, visibility)."""
 
@@ -503,7 +512,7 @@ class SettingsManager:
                 self.win.view.apply_menu_settings_main()
                 self.win.view.apply_menu_settings_quick()
                 self.win.timeline_widget.update()
-                apply_stylesheet(QApplication.instance())
+                apply_stylesheet(QApplication.instance(), load_active_profile())
             except Exception:
                 logging.exception("Apply settings failed")
 
@@ -851,6 +860,6 @@ class SettingsManager:
                     self.win.timeline_widget.update()
                 except Exception:
                     pass
-                apply_stylesheet(QApplication.instance())
+                apply_stylesheet(QApplication.instance(), prof)
             except Exception:
                 logging.exception("Failed to persist UIProfile from dialog")

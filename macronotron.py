@@ -6,12 +6,13 @@ from typing import List
 from PySide6.QtWidgets import QApplication
 from ui.main_window import MainWindow
 from ui.styles import apply_stylesheet
+from ui.settings_manager import load_active_profile
 
 
 def create_app(argv: List[str]) -> QApplication:
     """Crée (ou récupère) l'instance QApplication et applique le thème."""
     app = QApplication.instance() or QApplication(argv)
-    apply_stylesheet(app)
+    apply_stylesheet(app, load_active_profile())
     return app
 
 
