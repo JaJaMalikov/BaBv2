@@ -58,8 +58,7 @@ class AppController:
     # --- Manipulation de keyframes ------------------------------------
     def add_keyframe(self, frame_index: int) -> None:
         """Ajoute un keyframe en capturant l'état courant de la scène."""
-        state = self.win.object_controller.capture_scene_state()
-        self.win.scene_model.add_keyframe(frame_index, state)
+        self.win.scene_controller.service.add_keyframe(frame_index)
         self.win.timeline_widget.add_keyframe_marker(frame_index)
 
     def update_scene_from_model(self) -> None:

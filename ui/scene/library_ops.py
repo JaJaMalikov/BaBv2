@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from .scene_controller import MainWindowProtocol
     from .puppet_ops import PuppetOps
     from controllers.object_controller import ObjectController
-    from typing import Callable
+    from controllers.scene_service import SceneService
 
 
 class LibraryPayload(TypedDict, total=False):
@@ -30,13 +30,13 @@ class LibraryOps:
         win: MainWindowProtocol,
         puppet_ops: PuppetOps,
         object_ctrl: ObjectController,
-        set_background_path: "Callable[[Optional[str]], None]",
+        scene_service: SceneService,
     ) -> None:
         """Initialize helpers to route library items into the scene."""
         self.win = win
         self.puppets = puppet_ops
         self.objects = object_ctrl
-        self.set_background_path = set_background_path
+        self.scene_service = scene_service
 
     def add_library_item_to_scene(self, payload: LibraryPayload) -> None:
         """Adds a library item to the scene."""
@@ -57,12 +57,7 @@ class LibraryOps:
             return
 
         if kind == "background":
-            try:
-                self.set_background_path(path)
-            except (OSError, RuntimeError):
-                logging.exception("Failed to set background path")
-                self.win.scene_model.background_path = path
-                self.win._update_background()
+            self.scene_service.set_background_path(path)
         elif kind == "object":
             self.objects.create_object_from_file(path, scene_pos)
             try:
@@ -76,7 +71,9 @@ class LibraryOps:
             if scene_pos is not None:
                 try:
                     root_member_name: str = (
-                        self.win.scene_model.puppets[name].get_root_members()[0].name
+                        self.scene_service.model.puppets[name]
+                        .get_root_members()[0]
+                        .name
                     )
                     root_piece = self.win.object_manager.graphics_items.get(
                         f"{name}:{root_member_name}"

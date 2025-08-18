@@ -9,8 +9,9 @@ from PySide6.QtCore import QPointF
 from PySide6.QtWidgets import QGraphicsItem, QGraphicsScene
 
 from core.scene_model import Keyframe, SceneModel, SceneObject
+from controllers.scene_service import SceneService
 from .state_applier import StateApplier
-from .scene_visuals import SceneVisuals
+from .scene_view import SceneView
 from ..onion_skin import OnionSkinManager
 from .puppet_ops import PuppetOps
 from .library_ops import LibraryOps, LibraryPayload
@@ -52,27 +53,29 @@ class SceneController:
         self,
         win: MainWindowProtocol,
         *,
-        visuals: SceneVisuals | None = None,
+        service: SceneService | None = None,
+        view: SceneView | None = None,
         onion: OnionSkinManager | None = None,
         applier: StateApplier | None = None,
     ) -> None:
         """Initialize the scene controller."""
         self.win = win
-        self.visuals: SceneVisuals = (
-            visuals if visuals is not None else SceneVisuals(win)
+        self.service = service if service is not None else SceneService(
+            win.scene_model, win.object_controller.capture_scene_state
         )
-        if visuals is None:
-            self.visuals.setup()
+        self.view = view if view is not None else SceneView(win)
         self.onion: OnionSkinManager = (
             onion if onion is not None else OnionSkinManager(win)
         )
         self.applier: StateApplier = (
             applier if applier is not None else StateApplier(win)
         )
-        self.puppet_ops = PuppetOps(win)
+        self.puppet_ops = PuppetOps(win, self.service)
         self.library_ops = LibraryOps(
-            win, self.puppet_ops, win.object_controller, self.set_background_path
+            win, self.puppet_ops, win.object_controller, self.service
         )
+        self.service.background_changed.connect(self.view.update_background)
+        self.service.scene_resized.connect(self.view.handle_scene_resized)
 
     # --- Puppet operations -------------------------------------------------
     def add_puppet(self, file_path: str, puppet_name: str) -> None:
@@ -118,31 +121,7 @@ class SceneController:
         """
         # Update visuals immediately
         self.puppet_ops.set_member_variant(puppet_name, slot, variant_name)
-        # Ensure there's a keyframe to store this change
-        cur = int(self.win.scene_model.current_frame)
-        try:
-            # Snapshot current state if the frame has no keyframe yet
-            if cur not in self.win.scene_model.keyframes:
-                self.win.controller.add_keyframe(cur)
-        except Exception:  # pylint: disable=broad-except
-            # Fallback: attempt to create an empty keyframe if UI path fails
-            self.win.scene_model.add_keyframe(
-                cur, self.win.object_controller.capture_scene_state()
-            )
-
-        kf = self.win.scene_model.keyframes.get(cur)
-        if not kf:
-            return
-        pup_map = kf.puppets.get(puppet_name)
-        if pup_map is None:
-            pup_map = {}
-            kf.puppets[puppet_name] = pup_map
-        vmap = pup_map.get("_variants")
-        if not isinstance(vmap, dict):
-            vmap = {}
-            pup_map["_variants"] = vmap
-        vmap[str(slot)] = str(variant_name)
-        # Re-apply scene from model to keep everything in sync (onion, etc.)
+        self.service.set_member_variant(puppet_name, slot, variant_name)
         try:
             self.win.controller.update_scene_from_model()
             self.win.update_onion_skins()
@@ -238,26 +217,20 @@ class SceneController:
     # --- Visuals -----------------------------------------------------------
     def update_scene_visuals(self) -> None:
         """Update scene visuals."""
-        self.visuals.update_scene_visuals()
+        self.view.update_scene_visuals()
 
     def update_background(self) -> None:
         """Update the scene background."""
-        self.visuals.update_background()
+        self.view.update_background()
 
     def set_background_path(self, path: Optional[str]) -> None:
         """Set the path for the scene background."""
-        self.win.scene_model.background_path = path
-        self.update_background()
+        self.service.set_background_path(path)
 
     # --- View & zoom ------------------------------------------------------
     def zoom(self, factor: float) -> None:
         """Zoom the view by a factor."""
-        self.win.view.scale(factor, factor)
-        self.win.zoom_factor *= factor
-        try:
-            self.win._update_zoom_status()
-        except (RuntimeError, AttributeError):
-            logging.exception("Failed to update zoom status")
+        self.view.zoom(factor)
 
     # --- Onion skin -------------------------------------------------------
     def set_onion_enabled(self, enabled: bool) -> None:
@@ -294,12 +267,4 @@ class SceneController:
     # --- Scene settings ---------------------------------------------------
     def set_scene_size(self, width: int, height: int) -> None:
         """Set the scene dimensions."""
-        self.win.scene_model.scene_width = int(width)
-        self.win.scene_model.scene_height = int(height)
-        self.win.scene.setSceneRect(0, 0, int(width), int(height))
-        self.update_scene_visuals()
-        self.update_background()
-        try:
-            self.win._update_zoom_status()
-        except (RuntimeError, AttributeError):
-            logging.exception("Failed to update zoom status after scene resize")
+        self.service.set_scene_size(width, height)
