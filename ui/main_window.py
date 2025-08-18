@@ -27,8 +27,8 @@ from ui.scene.scene_visuals import SceneVisuals
 from ui.settings_manager import SettingsManager
 from ui.docks import setup_timeline_dock
 from ui.zoomable_view import ZoomableView
-from ui.library import actions as library_actions
-from ui.inspector import actions as inspector_actions
+from ui.views.library import actions as library_actions
+from ui.views.inspector import actions as inspector_actions
 from controllers.app_controller import AppController
 
 

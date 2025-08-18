@@ -9,8 +9,8 @@ from PySide6.QtCore import QObject, Signal
 from core.scene_model import SceneModel
 from controllers.playback_service import PlaybackService
 from ui.playback_view_adapter import PlaybackViewAdapter
-from ui.timeline_widget import TimelineWidget
-from ui.inspector.inspector_widget import InspectorWidget
+from ui.views.timeline_widget import TimelineWidget
+from ui.views.inspector.inspector_widget import InspectorWidget
 
 
 class PlaybackController(QObject):

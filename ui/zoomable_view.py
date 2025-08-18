@@ -39,7 +39,7 @@ from ui.icons import (
     icon_plus,
     icon_rotate,
 )
-from ui.library.library_widget import LIB_MIME
+from ui.views.library.library_widget import LIB_MIME
 from ui.utils import make_tool_button
 
 

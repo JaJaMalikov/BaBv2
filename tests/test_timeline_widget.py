@@ -5,7 +5,7 @@ from PySide6.QtCore import QPoint, QPointF, Qt
 from PySide6.QtGui import QWheelEvent
 from PySide6.QtWidgets import QApplication
 
-from ui.timeline_widget import TimelineWidget
+from ui.views.timeline_widget import TimelineWidget
 
 
 @pytest.fixture(scope="module")

@@ -10,8 +10,8 @@ from typing import Optional
 from PySide6.QtCore import QObject
 
 from controllers.playback_service import PlaybackService
-from ui.timeline_widget import TimelineWidget
-from ui.inspector.inspector_widget import InspectorWidget
+from ui.views.timeline_widget import TimelineWidget
+from ui.views.inspector.inspector_widget import InspectorWidget
 
 
 class PlaybackViewAdapter(QObject):

@@ -3,7 +3,7 @@
 ## Project Structure & Module Organization
 - `macronotron.py`: Entry point; starts the PySide6 app.
 - `core/`: Domain and data layer (model). Pure Python logic and serialization live here (e.g., `scene_model.py`, `puppet_model.py`, `puppet_piece.py`).
-- `ui/`: Presentation layer (views/controllers). Widgets and orchestration (e.g., `main_window.py`, `timeline_widget.py`, `scene/*`).
+- `ui/`: Presentation layer (views/controllers). Widgets and orchestration (e.g., `main_window.py`, `views/timeline_widget.py`, `scene/*`).
 - `assets/`: Images/SVG and other static resources.
 - `tests/`: Pytest suite (`test_*.py`). Keep tests mirroring module names.
 
@@ -34,6 +34,6 @@
 
 ## Agent‑Specific Instructions
 - Répondre en français.
-- Respect MV architecture boundaries; integrate new UI via signals in `ui/timeline_widget.py` and slots in `ui/main_window.py` updating `core/scene_model.py`.
+- Respect MV architecture boundaries; integrate new UI via signals in `ui/views/timeline_widget.py` and slots in `ui/main_window.py` updating `core/scene_model.py`.
 - Follow incremental workflow: small, reviewable changes. Do not auto‑run the app; the user launches `python macronotron.py`.
 - After notable features, update `STATE_OF_THE_ART.md` to reflect current capabilities.

@@ -10,8 +10,8 @@ from PySide6.QtWidgets import QVBoxLayout
 from PySide6.QtCore import QSettings, QRect
 
 from ui.draggable_widget import PanelOverlay, DraggableHeader
-from ui.library.library_widget import LibraryWidget
-from ui.inspector.inspector_widget import InspectorWidget
+from ui.views.library.library_widget import LibraryWidget
+from ui.views.inspector.inspector_widget import InspectorWidget
 
 
 def build_side_overlays(
