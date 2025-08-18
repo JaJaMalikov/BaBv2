@@ -874,7 +874,6 @@ class SettingsDialog(QDialog):
         css = build_stylesheet(self._params_from_ui())
         s = QSettings("JaJa", "Macronotron")
         s.setValue("ui/custom_stylesheet", css)
-        s.setValue("ui/theme", "custom")
 
     def _update_swatch(self, edit: QLineEdit) -> None:
         """

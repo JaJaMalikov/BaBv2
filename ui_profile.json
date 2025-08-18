@@ -1,7 +1,6 @@
 {
   "version": 1,
   "theme": {
-    "preset": "custom",
     "font_family": "Poppins",
     "custom_params": {
       "bg_color": "#E2E8F0",
@@ -35,7 +34,6 @@
       "checkbox_checked_border": "#C53030",
       "checkbox_checked_hover": "#F56565"
     },
-    "theme_file": null,
     "ORG": "JaJa",
     "APP": "Macronotron"
   },

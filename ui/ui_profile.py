@@ -96,13 +96,6 @@ class UIProfile:
     APP: str = "Macronotron"
 
     @classmethod
-    def default_dark(cls) -> "UIProfile":
-        p = cls()
-        p.theme.preset = "dark"
-        p.theme.font_family = "Poppins"
-        return p
-
-    @classmethod
     def from_qsettings(cls, s: Optional[QSettings] = None) -> "UIProfile":
         s = s or QSettings(cls.ORG, cls.APP)
         p = cls()
@@ -252,7 +245,7 @@ class UIProfile:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "UIProfile":
-        p = cls.default_dark() if not isinstance(data, dict) else cls()
+        p = cls()
         try:
             p.version = int(data.get("version", p.version))
         except Exception:
@@ -261,7 +254,6 @@ class UIProfile:
         tdata = data.get("theme")
         if isinstance(tdata, dict):
             t = ThemeSettings()
-            t.preset = str(tdata.get("preset", t.preset)).lower()
             t.font_family = str(tdata.get("font_family", t.font_family))
             if isinstance(tdata.get("custom_params"), dict):
                 t.custom_params.update(tdata["custom_params"])  # type: ignore[index]
@@ -332,5 +324,5 @@ class UIProfile:
                 data = load(f)
             return cls.from_dict(data if isinstance(data, dict) else {})
         except Exception:
-            # Fallback to default dark
-            return cls.default_dark()
+            # Fallback to defaults
+            return cls()

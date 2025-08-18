@@ -1,8 +1,7 @@
 """Theme settings model and persistence helpers.
 
-Encapsulates theme preset, custom style parameters, and font settings.
-Centralizes QSettings keys and JSON import/export to reduce duplication
-across the UI settings code.
+Stores font and arbitrary style parameters, providing JSON and QSettings
+helpers to keep the UI consistent.
 """
 
 from __future__ import annotations
@@ -53,12 +52,10 @@ DEFAULT_CUSTOM_PARAMS: Dict[str, Any] = {
 class ThemeSettings:
     """Serializable theme and font settings with helpers for persistence."""
 
-    preset: str = "dark"  # "light" | "dark" | "high contrast" | "custom"
     font_family: str = "Poppins"
     custom_params: Dict[str, Any] = field(
         default_factory=lambda: dict(DEFAULT_CUSTOM_PARAMS)
     )
-    theme_file: Optional[str] = None
 
     ORG: str = "JaJa"
     APP: str = "Macronotron"
@@ -67,73 +64,29 @@ class ThemeSettings:
     def from_qsettings(cls, s: Optional[QSettings] = None) -> "ThemeSettings":
         """Load theme settings from QSettings, falling back to defaults."""
         s = s or QSettings(cls.ORG, cls.APP)
-        preset = str(s.value("ui/theme", "light")).lower()
         font_family = str(s.value("ui/font_family") or "Poppins")
-        theme_file = s.value("ui/theme_file")
         custom_params: Dict[str, Any] = dict(DEFAULT_CUSTOM_PARAMS)
-
-        if preset == "custom":
-            # Prefer JSON file contents if available, otherwise QSettings group
-            try:
-                from json import load
-
-                if theme_file:
-                    p = Path(str(theme_file))
-                else:
-                    p = Path.home() / ".config/JaJa/Macronotron/theme.json"
-                if p.exists():
-                    with p.open("r", encoding="utf-8") as f:
-                        data = load(f)
-                        if isinstance(data, dict):
-                            custom_params.update(data)
-            except Exception:
-                # Fallback to QSettings copy
-                pass
-            s.beginGroup("ui/custom_params")
-            try:
-                for k, dv in DEFAULT_CUSTOM_PARAMS.items():
-                    v = s.value(k)
-                    if v is not None and v != "":
-                        custom_params[k] = v
-            finally:
-                s.endGroup()
-            # Ensure font_family mirrors top-level value if not explicitly set
-            custom_params.setdefault("font_family", font_family)
-
-        return cls(
-            preset=preset,
-            font_family=font_family,
-            custom_params=custom_params,
-            theme_file=str(theme_file) if theme_file else None,
-        )
+        s.beginGroup("ui/custom_params")
+        try:
+            for k in list(custom_params.keys()):
+                v = s.value(k)
+                if v not in [None, ""]:
+                    custom_params[k] = v
+        finally:
+            s.endGroup()
+        custom_params.setdefault("font_family", font_family)
+        return cls(font_family=font_family, custom_params=custom_params)
 
     def to_qsettings(self, s: Optional[QSettings] = None) -> None:
-        """Persist current theme settings to QSettings (and JSON for custom)."""
+        """Persist current theme settings to QSettings."""
         s = s or QSettings(self.ORG, self.APP)
-        s.setValue("ui/theme", self.preset)
         s.setValue("ui/font_family", self.font_family or "Poppins")
-        if self.preset == "custom":
-            # Keep a JSON copy for resilience
-            p = (
-                Path(self.theme_file)
-                if self.theme_file
-                else Path.home() / ".config/JaJa/Macronotron/theme.json"
-            )
-            try:
-                p.parent.mkdir(parents=True, exist_ok=True)
-                from json import dumps
-
-                p.write_text(dumps(self.custom_params, indent=2), encoding="utf-8")
-                s.setValue("ui/theme_file", str(p))
-            except Exception:
-                # Non-fatal; QSettings copy remains
-                pass
-            s.beginGroup("ui/custom_params")
-            try:
-                for k, v in self.custom_params.items():
-                    s.setValue(k, v)
-            finally:
-                s.endGroup()
+        s.beginGroup("ui/custom_params")
+        try:
+            for k, v in self.custom_params.items():
+                s.setValue(k, v)
+        finally:
+            s.endGroup()
 
     @classmethod
     def from_json(cls, path: str) -> "ThemeSettings":
@@ -147,25 +100,18 @@ class ThemeSettings:
                 raw = load(f)
             if isinstance(raw, dict):
                 data = raw
-        # Assume custom when loading from file
-        ts = cls(preset="custom")
+        ts = cls()
         ts.custom_params.update(
             {k: v for k, v in data.items() if k in DEFAULT_CUSTOM_PARAMS}
         )
-        ts.theme_file = str(p)
         ts.font_family = str(data.get("font_family", ts.font_family))
         return ts
 
-    def to_json(self, path: Optional[str] = None) -> str:
+    def to_json(self, path: str) -> str:
         """Write current custom params to JSON; return path used."""
-        if path is None:
-            path = self.theme_file or str(
-                Path.home() / ".config/JaJa/Macronotron/theme.json"
-            )
         p = Path(path)
         p.parent.mkdir(parents=True, exist_ok=True)
         from json import dumps
 
         p.write_text(dumps(self.custom_params, indent=2), encoding="utf-8")
-        self.theme_file = str(p)
         return str(p)
