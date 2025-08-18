@@ -132,8 +132,10 @@ def connect_signals(win: Any) -> None:
     win.playback_handler.snapshot_requested.connect(
         win.object_manager.snapshot_current_frame
     )
-    win.playback_handler.frame_update_requested.connect(win._on_frame_update)
-    win.playback_handler.keyframe_add_requested.connect(win.add_keyframe)
+    win.playback_handler.frame_update_requested.connect(
+        win.controller.on_frame_update
+    )
+    win.playback_handler.keyframe_add_requested.connect(win.controller.add_keyframe)
 
     # Library signals
     win.library_widget.addRequested.connect(

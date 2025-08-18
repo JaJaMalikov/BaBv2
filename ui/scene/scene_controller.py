@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Optional, Protocol, cast
+from typing import TYPE_CHECKING, Any, Optional, Protocol, cast
 
 from PySide6.QtCore import QPointF
 from PySide6.QtWidgets import QGraphicsItem, QGraphicsScene
@@ -39,8 +39,7 @@ class MainWindowProtocol(Protocol):
     _suspend_item_updates: bool
     inspector_widget: InspectorWidgetProtocol
 
-    def add_keyframe(self, index: int) -> None:
-        """Insert a keyframe at the given timeline index."""
+    controller: Any
 
     def _update_background(self) -> None: ...
 
@@ -126,7 +125,7 @@ class SceneController:
         try:
             # Snapshot current state if the frame has no keyframe yet
             if cur not in self.win.scene_model.keyframes:
-                self.win.add_keyframe(cur)
+                self.win.controller.add_keyframe(cur)
         except Exception:  # pylint: disable=broad-except
             # Fallback: attempt to create an empty keyframe if UI path fails
             self.win.scene_model.add_keyframe(
@@ -147,7 +146,7 @@ class SceneController:
         vmap[str(slot)] = str(variant_name)
         # Re-apply scene from model to keep everything in sync (onion, etc.)
         try:
-            self.win.update_scene_from_model()
+            self.win.controller.update_scene_from_model()
             self.win.update_onion_skins()
         except (RuntimeError, AttributeError):
             logging.exception("Failed to refresh scene after variant change")

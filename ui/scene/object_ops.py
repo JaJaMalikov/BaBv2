@@ -193,7 +193,7 @@ class ObjectOps:
             )
         cur_idx = self.win.scene_model.current_frame
         if cur_idx not in self.win.scene_model.keyframes:
-            self.win.add_keyframe(cur_idx)
+            self.win.controller.add_keyframe(cur_idx)
         kf: Optional[Keyframe] = self.win.scene_model.keyframes.get(cur_idx)
         if kf is not None:
             kf.objects[obj_name] = obj.to_dict()
@@ -283,7 +283,7 @@ class ObjectOps:
             )
         cur_idx = self.win.scene_model.current_frame
         if cur_idx not in self.win.scene_model.keyframes:
-            self.win.add_keyframe(cur_idx)
+            self.win.controller.add_keyframe(cur_idx)
         kf: Optional[Keyframe] = self.win.scene_model.keyframes.get(cur_idx)
         if kf is not None:
             kf.objects[obj_name] = obj.to_dict()
@@ -340,7 +340,7 @@ class ObjectOps:
         self._add_object_graphics(obj)
         cur: int = self.win.scene_model.current_frame
         if cur not in self.win.scene_model.keyframes:
-            self.win.add_keyframe(cur)
+            self.win.controller.add_keyframe(cur)
         kf: Optional[Keyframe] = self.win.scene_model.keyframes.get(cur)
         gi: Optional[QGraphicsItem] = self.win.object_manager.graphics_items.get(name)
         if kf is not None and gi is not None:
@@ -401,7 +401,7 @@ class ObjectOps:
         self._add_object_graphics(obj)
         cur: int = self.win.scene_model.current_frame
         if cur not in self.win.scene_model.keyframes:
-            self.win.add_keyframe(cur)
+            self.win.controller.add_keyframe(cur)
         kf: Optional[Keyframe] = self.win.scene_model.keyframes.get(cur)
         if kf is not None:
             kf.objects[name] = obj.to_dict()
@@ -417,7 +417,7 @@ class ObjectOps:
         """
         cur: int = self.win.scene_model.current_frame
         if cur not in self.win.scene_model.keyframes:
-            self.win.add_keyframe(cur)
+            self.win.controller.add_keyframe(cur)
         for fr, kf in list(self.win.scene_model.keyframes.items()):
             if fr >= cur and name in kf.objects:
                 del kf.objects[name]

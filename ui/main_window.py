@@ -1,7 +1,7 @@
 """Main window of the application, orchestrating UI components and scene management."""
 
 import logging
-from typing import Any, Dict, cast
+from typing import Any, cast
 
 from PySide6.QtCore import Qt, QTimer, QEvent, QSettings
 from PySide6.QtGui import QPainter, QKeySequence, QShortcut
@@ -14,10 +14,9 @@ from PySide6.QtWidgets import (
     QMessageBox,
 )
 
-from ui.scene import scene_io, actions as scene_actions
-from core.scene_model import SceneModel, Keyframe
+from ui.scene import actions as scene_actions
+from core.scene_model import SceneModel
 from ui import actions as app_actions
-from ui import selection_sync
 from ui.object_manager import ObjectManager
 from ui.onion_skin import OnionSkinManager
 from ui.overlay_manager import OverlayManager
@@ -29,6 +28,7 @@ from ui.docks import setup_timeline_dock
 from ui.zoomable_view import ZoomableView
 from ui.library import actions as library_actions
 from ui.inspector import actions as inspector_actions
+from controllers.app_controller import AppController
 
 
 class MainWindow(QMainWindow):
@@ -63,8 +63,9 @@ class MainWindow(QMainWindow):
         for hook in self._setup_hooks:
             hook()
 
+        self.controller: AppController = AppController(self)
         self._connect_actions()
-        self._startup_sequence()
+        self.controller.startup_sequence()
         self._setup_settings()
         self._apply_startup_preferences()
 
@@ -113,14 +114,12 @@ class MainWindow(QMainWindow):
     def _setup_actions(self) -> None:
         """Builds application actions."""
         app_actions.build_actions(self)
-        # Global shortcuts for keyframe copy/paste (work even if timeline has no focus)
+        # Raccourcis globaux de copie/collage des keyframes
         try:
             self._kf_copy_sc = QShortcut(QKeySequence("Ctrl+C"), self)
             self._kf_copy_sc.setContext(Qt.ApplicationShortcut)
-            self._kf_copy_sc.activated.connect(self._copy_current_keyframe)
             self._kf_paste_sc = QShortcut(QKeySequence("Ctrl+V"), self)
             self._kf_paste_sc.setContext(Qt.ApplicationShortcut)
-            self._kf_paste_sc.activated.connect(self._paste_current_keyframe)
         except Exception:  # Safety: do not fail setup if shortcuts cannot be created
             logging.exception("Failed to install global keyframe copy/paste shortcuts")
 
@@ -141,17 +140,6 @@ class MainWindow(QMainWindow):
     def _connect_actions(self) -> None:
         """Connects application actions to their slots."""
         app_actions.connect_signals(self)
-
-    def _startup_sequence(self) -> None:
-        """Runs the UI startup sequence."""
-        self.showMaximized()
-        self.timeline_dock.show()
-        self.timeline_dock.visibilityChanged.connect(lambda _: self.ensure_fit())
-        self.timeline_dock.topLevelChanged.connect(lambda _: self.ensure_fit())
-        self.ensure_fit()
-        scene_io.create_blank_scene(self)
-        self.ensure_fit()
-        self.scene.selectionChanged.connect(self._on_scene_selection_changed)
 
     def _setup_settings(self) -> None:
         """Initializes the settings manager and loads settings."""
@@ -215,9 +203,10 @@ class MainWindow(QMainWindow):
             "La disposition de l'interface a été réinitialisée.",
         )
 
-    def reset_scene(self) -> None:
-        """Reset the scene to a blank state."""
-        scene_actions.reset_scene(self)
+    def _setup_scene_visuals(self) -> None:
+        """Sets up the scene visuals."""
+        self.visuals = SceneVisuals(self)
+        self.visuals.setup()
 
     def _build_side_overlays(self) -> None:
         """Builds the side overlays for the library and inspector."""
@@ -235,11 +224,6 @@ class MainWindow(QMainWindow):
     def set_custom_overlay_visible(self, visible: bool) -> None:
         """Set the visibility of the custom overlay."""
         self.overlays.set_custom_visible(visible)
-
-    def _setup_scene_visuals(self) -> None:
-        """Sets up the scene visuals."""
-        self.visuals = SceneVisuals(self)
-        self.visuals.setup()
 
     def _update_scene_visuals(self) -> None:
         """Updates the scene visuals."""
@@ -278,52 +262,6 @@ class MainWindow(QMainWindow):
         """Toggle the visibility of the rotation handles."""
         self.scene_controller.set_rotation_handles_visible(visible)
 
-    def update_scene_from_model(self) -> None:
-        """Update the scene from the model."""
-        index: int = self.scene_model.current_frame
-        keyframes: Dict[int, Keyframe] = self.scene_model.keyframes
-        if not keyframes:
-            return
-
-        graphics_items: Dict[str, Any] = self.object_manager.graphics_items
-        logging.debug(
-            f"update_scene_from_model: frame={index}, keyframes={list(keyframes.keys())}"
-        )
-
-        self._apply_puppet_states(graphics_items, keyframes, index)
-        self._apply_object_states(graphics_items, keyframes, index)
-
-    def _apply_puppet_states(
-        self, graphics_items: Dict[str, Any], keyframes: Dict[int, Keyframe], index: int
-    ) -> None:
-        """Applies the puppet states to the scene."""
-        self.scene_controller.apply_puppet_states(graphics_items, keyframes, index)
-
-    def _apply_object_states(
-        self, graphics_items: Dict[str, Any], keyframes: Dict[int, Keyframe], index: int
-    ) -> None:
-        """Applies the object states to the scene."""
-        self.scene_controller.apply_object_states(graphics_items, keyframes, index)
-
-    def add_keyframe(self, frame_index: int) -> None:
-        """Add a keyframe to the scene."""
-        state = self.object_manager.capture_scene_state()
-        self.scene_model.add_keyframe(frame_index, state)
-        self.timeline_widget.add_keyframe_marker(frame_index)
-
-    def select_object_in_inspector(self, name: str) -> None:
-        """Select an object in the inspector."""
-        selection_sync.select_object_in_inspector(self, name)
-
-    def _on_scene_selection_changed(self) -> None:
-        """Handle the scene selection changed event."""
-        selection_sync.scene_selection_changed(self)
-
-    def _on_frame_update(self) -> None:
-        """Handle the frame update event."""
-        self.update_scene_from_model()
-        self.update_onion_skins()
-
     def closeEvent(self, event: QEvent) -> None:
         """Save settings when the window is closed."""
         self.save_settings()
@@ -356,19 +294,3 @@ class MainWindow(QMainWindow):
         # Délègue entièrement au SettingsManager
         self.settings.open_dialog()
 
-    # --- Keyframe copy/paste shortcuts ---------------------------------
-    def _copy_current_keyframe(self) -> None:
-        try:
-            idx = int(self.scene_model.current_frame)
-            # Only copy if a keyframe exists at current index
-            if idx in getattr(self.timeline_widget, "_kfs", set()):
-                self.playback_handler.copy_keyframe(idx)  # type: ignore[attr-defined]
-        except Exception:
-            logging.debug("Copy current keyframe shortcut failed")
-
-    def _paste_current_keyframe(self) -> None:
-        try:
-            idx = int(self.scene_model.current_frame)
-            self.playback_handler.paste_keyframe(idx)  # type: ignore[attr-defined]
-        except Exception:
-            logging.debug("Paste current keyframe shortcut failed")
