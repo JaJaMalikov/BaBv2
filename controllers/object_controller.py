@@ -9,18 +9,20 @@ s'appuie sur un ``ObjectViewAdapter`` pour toutes les interactions Qt.
 from typing import Dict, Any, Optional
 
 from core.scene_model import SceneModel, SceneObject, Keyframe
+from core.types import SceneSnapshot
+from ui.protocols import ObjectViewAdapterProtocol
 
 
 class ObjectController:
     """Manipule les objets du modèle de scène."""
 
-    def __init__(self, model: SceneModel, view_adapter: Any) -> None:
+    def __init__(self, model: SceneModel, view_adapter: ObjectViewAdapterProtocol) -> None:
         self.model = model
         self.view = view_adapter
 
     # ------------------------------------------------------------------
     # Capture d'état
-    def capture_scene_state(self) -> Dict[str, Dict[str, Any]]:
+    def capture_scene_state(self) -> SceneSnapshot:
         """Capture l'état courant des pantins et objets visibles."""
         return {
             "puppets": self.view.capture_puppet_states(),

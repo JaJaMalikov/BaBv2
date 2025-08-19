@@ -7,6 +7,7 @@ from typing import Dict, Any, Optional
 import logging
 import json
 from dataclasses import dataclass, field, asdict
+from core.types import ObjectStateMap, PuppetStateMap, SceneSnapshot
 from core.puppet_model import Puppet
 from core.scene_validation import (
     validate_settings,
@@ -75,12 +76,12 @@ class Keyframe:
     """Snapshot of the scene state at a given frame.
 
     ``objects`` maps object names to their state (position, rotation, scale,
-    attachment, etc.). ``puppets`` maps puppet names to un dict d'états de membres.
+    attachment, etc.). ``puppets`` maps puppet names to a map of member states.
     """
 
     index: int
-    objects: Dict[str, Dict[str, Any]] = field(default_factory=dict)
-    puppets: Dict[str, Dict[str, Dict[str, Any]]] = field(default_factory=dict)
+    objects: ObjectStateMap = field(default_factory=dict)
+    puppets: PuppetStateMap = field(default_factory=dict)
 
 
 class SceneModel:
@@ -137,7 +138,7 @@ class SceneModel:
     # KEYFRAMES ET TIMELINE
     # -----------------------------
     def add_keyframe(
-        self, index: int, state: Optional[Dict[str, Dict[str, Dict[str, Any]]]] = None
+        self, index: int, state: Optional[SceneSnapshot] = None
     ) -> Keyframe:
         """Create or overwrite a keyframe at ``index`` with captured puppet and object states.
 

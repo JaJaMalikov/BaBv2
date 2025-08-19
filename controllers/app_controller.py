@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict
 
+from core.logging_config import log_with_context
 from core.scene_model import Keyframe
 from ui import selection_sync
 from ui.scene import scene_io
@@ -35,8 +36,14 @@ class AppController:
         try:
             self.win._kf_copy_sc.activated.connect(self.copy_current_keyframe)
             self.win._kf_paste_sc.activated.connect(self.paste_current_keyframe)
-        except Exception:  # pylint: disable=broad-except
-            logging.exception("Failed to install keyframe shortcuts")
+        except (AttributeError, RuntimeError) as e:
+            log_with_context(
+                logging.getLogger(__name__),
+                logging.WARNING,
+                "Failed to install keyframe shortcuts",
+                op="install_shortcuts",
+                error=str(e),
+            )
 
     def copy_current_keyframe(self) -> None:
         """Copie le keyframe courant via le `PlaybackController`."""
@@ -44,16 +51,30 @@ class AppController:
             idx = int(self.win.scene_model.current_frame)
             if idx in getattr(self.win.timeline_widget, "_kfs", set()):
                 self.win.playback_handler.copy_keyframe(idx)  # type: ignore[attr-defined]
-        except Exception:  # pylint: disable=broad-except
-            logging.debug("Copy current keyframe shortcut failed")
+        except (AttributeError, RuntimeError, ValueError, TypeError) as e:
+            log_with_context(
+                logging.getLogger(__name__),
+                logging.DEBUG,
+                "Copy current keyframe shortcut failed",
+                op="kf_copy",
+                frame=getattr(self.win.scene_model, "current_frame", None),
+                error=str(e),
+            )
 
     def paste_current_keyframe(self) -> None:
         """Colle le keyframe courant via le `PlaybackController`."""
         try:
             idx = int(self.win.scene_model.current_frame)
             self.win.playback_handler.paste_keyframe(idx)  # type: ignore[attr-defined]
-        except Exception:  # pylint: disable=broad-except
-            logging.debug("Paste current keyframe shortcut failed")
+        except (AttributeError, RuntimeError, ValueError, TypeError) as e:
+            log_with_context(
+                logging.getLogger(__name__),
+                logging.DEBUG,
+                "Paste current keyframe shortcut failed",
+                op="kf_paste",
+                frame=getattr(self.win.scene_model, "current_frame", None),
+                error=str(e),
+            )
 
     # --- Manipulation de keyframes ------------------------------------
     def add_keyframe(self, frame_index: int) -> None:

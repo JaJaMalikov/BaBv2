@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+import logging
 
 from PySide6.QtCore import QSettings, QRect
 
@@ -30,7 +31,7 @@ def _rect_to_tuple(r: Any) -> Optional[Tuple[int, int, int, int]]:
     try:
         if isinstance(r, QRect):
             return (r.x(), r.y(), r.width(), r.height())
-    except Exception:
+    except (AttributeError, TypeError):
         pass
     return None
 
@@ -39,7 +40,7 @@ def _tuple_to_rect(t: Any) -> Optional[QRect]:
     try:
         x, y, w, h = map(int, list(t))
         return QRect(x, y, w, h)
-    except Exception:
+    except (TypeError, ValueError):
         return None
 
 
@@ -112,7 +113,7 @@ class UIProfile:
         p.icon_dir = s.value("ui/icon_dir") or None
         try:
             p.icon_size = int(s.value("ui/icon_size", p.icon_size))
-        except Exception:
+        except (TypeError, ValueError):
             pass
         p.icon_color_normal = str(
             s.value("ui/icon_color_normal") or p.icon_color_normal
@@ -255,7 +256,7 @@ class UIProfile:
         p = cls.default_dark() if not isinstance(data, dict) else cls()
         try:
             p.version = int(data.get("version", p.version))
-        except Exception:
+        except (TypeError, ValueError):
             p.version = 1
         # Theme
         tdata = data.get("theme")
@@ -331,6 +332,7 @@ class UIProfile:
             with open(path, "r", encoding="utf-8") as f:
                 data = load(f)
             return cls.from_dict(data if isinstance(data, dict) else {})
-        except Exception:
+        except (OSError, ValueError, TypeError) as err:
+            logging.warning("Failed to import UIProfile JSON from %s: %s", path, err)
             # Fallback to default dark
             return cls.default_dark()

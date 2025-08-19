@@ -126,8 +126,8 @@ class MainWindow(QMainWindow):
             self._kf_copy_sc.setContext(Qt.ApplicationShortcut)
             self._kf_paste_sc = QShortcut(QKeySequence("Ctrl+V"), self)
             self._kf_paste_sc.setContext(Qt.ApplicationShortcut)
-        except Exception:  # Safety: do not fail setup if shortcuts cannot be created
-            logging.exception("Failed to install global keyframe copy/paste shortcuts")
+        except (RuntimeError, AttributeError) as e:  # Safety: do not fail setup if shortcuts cannot be created
+            logging.warning("Failed to install global keyframe copy/paste shortcuts: %s", e)
 
     def _setup_tool_overlays(self) -> None:
         """Builds tool overlays for the view."""

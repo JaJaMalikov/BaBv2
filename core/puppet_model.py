@@ -271,7 +271,7 @@ def validate_svg_structure(
 
 def main() -> None:
     """Run a quick validation and print the puppet hierarchy for debugging."""
-    svg_path: str = "assets/manululu.svg"
+    svg_path: str = "assets/manu.svg"
     loader: SvgLoader = SvgLoader(svg_path)
     puppet: Puppet = Puppet()
     validate_svg_structure(loader, puppet.parent_map, puppet.pivot_map)

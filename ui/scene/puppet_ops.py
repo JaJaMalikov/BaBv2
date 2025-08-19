@@ -53,7 +53,7 @@ class PuppetOps:
                         puppet.variants = vmap
                         puppet.variant_z = vz
                     break
-        except Exception:  # pylint: disable=broad-except
+        except (OSError, ValueError):
             logging.exception("Sidecar variants loading failed for %s", file_path)
         puppet.build_from_svg(loader)
         self.scene_service.add_puppet(puppet_name, puppet)
@@ -117,7 +117,7 @@ class PuppetOps:
                 member = puppet.members[name]
                 base_z = int(puppet.variant_z.get(name, member.z_order))
                 piece.setZValue(base_z)
-        except Exception:  # pylint: disable=broad-except
+        except (ValueError, TypeError, RuntimeError, KeyError, AttributeError):
             logging.exception("Failed to apply base Z for variants")
 
         # Apply z offset if any (default 0), respecting per-variant base Z

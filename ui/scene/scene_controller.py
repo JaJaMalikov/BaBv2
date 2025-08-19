@@ -15,6 +15,8 @@ from .scene_view import SceneView
 from ..onion_skin import OnionSkinManager
 from .puppet_ops import PuppetOps
 from .library_ops import LibraryOps, LibraryPayload
+from ..utils import show_error_dialog
+from core.logging_config import log_with_context
 
 if TYPE_CHECKING:
     from ..object_view_adapter import ObjectViewAdapter
@@ -186,8 +188,20 @@ class SceneController:
         """
         try:
             self.win.object_view_adapter.add_object_graphics(obj)
-        except Exception as e:  # pylint: disable=broad-except
-            logging.error("add_object_graphics failed: %s", e)
+        except (RuntimeError, AttributeError, TypeError) as e:
+            log_with_context(
+                logging.getLogger(__name__),
+                logging.ERROR,
+                "add_object_graphics failed",
+                op="add_object_graphics",
+                object=obj.name,
+                error=str(e),
+            )
+            show_error_dialog(
+                getattr(self.win, "view", None),
+                "Erreur d'ajout",
+                f"Impossible d'ajouter l'objet '{obj.name}'. Consultez les logs pour plus de détails.",
+            )
 
     def delete_object_from_current_frame(self, name: str) -> None:
         """Delete an object from the current frame."""

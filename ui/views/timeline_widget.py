@@ -42,7 +42,7 @@ def _c(val: str, default: str) -> QColor:
         s = QSettings("JaJa", "Macronotron")
         v = s.value(f"timeline/{val}")
         return QColor(str(v)) if v else QColor(default)
-    except Exception:
+    except (RuntimeError, TypeError, ValueError):
         return QColor(default)
 
 
@@ -51,7 +51,7 @@ def _alpha(default: int) -> int:
         s = QSettings("JaJa", "Macronotron")
         v = s.value("timeline/inout_alpha")
         return int(v) if v is not None else default
-    except Exception:
+    except (RuntimeError, TypeError, ValueError):
         return default
 
 
@@ -209,13 +209,13 @@ class TimelineWidget(QWidget):
     def _emit_copy_at(self, idx: int) -> None:
         try:
             self.copyKeyframeClicked.emit(int(idx))
-        except Exception:
+        except (TypeError, ValueError):
             self.copyKeyframeClicked.emit(0)
 
     def _emit_paste_at(self, idx: int) -> None:
         try:
             self.pasteKeyframeClicked.emit(int(idx))
-        except Exception:
+        except (TypeError, ValueError):
             self.pasteKeyframeClicked.emit(0)
 
     def resizeEvent(self, e: QEvent) -> None:
@@ -441,7 +441,7 @@ class TimelineWidget(QWidget):
         finally:
             try:
                 p.end()
-            except Exception:
+            except (RuntimeError, SystemError):
                 pass
 
     def _draw_ticks(

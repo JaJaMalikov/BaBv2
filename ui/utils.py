@@ -1,10 +1,12 @@
 """Utility functions for common UI components."""
 
 from typing import Optional, Callable
+import os
+import logging
 
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QIcon, QAction
-from PySide6.QtWidgets import QWidget, QToolButton
+from PySide6.QtWidgets import QWidget, QToolButton, QMessageBox, QApplication
 
 
 def make_tool_button(
@@ -71,3 +73,24 @@ def make_tool_button(
     btn.setToolButtonStyle(Qt.ToolButtonIconOnly)
     btn.setAutoRaise(True)
     return btn
+
+
+def show_error_dialog(parent: Optional[QWidget], title: str, message: str) -> None:
+    """Show a user-facing error dialog; safe for offscreen tests.
+
+    In headless/offscreen test environments, this will not create a modal dialog
+    and will instead log an error. This keeps UI tests deterministic.
+    """
+    # Headless/offscreen guard used by tests
+    if os.environ.get("QT_QPA_PLATFORM", "").lower() == "offscreen":
+        logging.getLogger("ui").error("UIError: %s - %s", title, message)
+        return
+
+    # Normal interactive path
+    _ = QApplication.instance()  # ensure QApplication exists
+    box = QMessageBox(parent)
+    box.setIcon(QMessageBox.Critical)
+    box.setWindowTitle(title)
+    box.setText(message)
+    box.setStandardButtons(QMessageBox.Ok)
+    box.exec()

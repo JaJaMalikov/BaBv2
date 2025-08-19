@@ -38,7 +38,7 @@ def _render_svg(svg_data: str, size: QSize = QSize(32, 32)) -> QPixmap:
         painter = QPainter(pixmap)
         renderer.render(painter)
         painter.end()
-    except Exception:
+    except (ValueError, TypeError, RuntimeError):
         # Return transparent pixmap on failure
         pass
     return pixmap

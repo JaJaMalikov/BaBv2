@@ -10,8 +10,7 @@ from typing import Optional
 from PySide6.QtCore import QObject
 
 from controllers.playback_service import PlaybackService
-from ui.views.timeline_widget import TimelineWidget
-from ui.views.inspector.inspector_widget import InspectorWidget
+from ui.protocols import TimelineWidgetProtocol, InspectorWidgetProtocol
 
 
 class PlaybackViewAdapter(QObject):
@@ -19,14 +18,14 @@ class PlaybackViewAdapter(QObject):
 
     def __init__(
         self,
-        timeline_widget: TimelineWidget,
-        inspector_widget: InspectorWidget,
+        timeline_widget: TimelineWidgetProtocol,
+        inspector_widget: InspectorWidgetProtocol,
         service: PlaybackService,
         parent: Optional[QObject] = None,
     ) -> None:
         super().__init__(parent)
-        self.timeline_widget = timeline_widget
-        self.inspector_widget = inspector_widget
+        self.timeline_widget: TimelineWidgetProtocol = timeline_widget
+        self.inspector_widget: InspectorWidgetProtocol = inspector_widget
         self.service = service
         self._connect_signals()
 

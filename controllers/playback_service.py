@@ -7,10 +7,12 @@ simple pour les keyframes."""
 
 from copy import deepcopy
 from typing import Optional
+import logging
 
 from PySide6.QtCore import QObject, QTimer, Signal
 
 from core.scene_model import SceneModel
+from core.logging_config import log_with_context
 
 
 class PlaybackService(QObject):
@@ -99,7 +101,17 @@ class PlaybackService(QObject):
                 "puppets": deepcopy(kf.puppets),
                 "source_index": int(frame_index),
             }
-        except Exception:
+        except (TypeError, RecursionError, MemoryError) as err:
+            # Fall back to shallow copy if deep copy is not possible or too costly.
+            logger = logging.getLogger(__name__)
+            log_with_context(
+                logger,
+                logging.WARNING,
+                "Falling back to shallow copy for keyframe clipboard due to deepcopy error",
+                op="copy_keyframe",
+                frame=frame_index,
+                error=type(err).__name__,
+            )
             self._kf_clipboard = {
                 "objects": dict(kf.objects),
                 "puppets": dict(kf.puppets),

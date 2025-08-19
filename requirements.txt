@@ -1,3 +1,8 @@
 PySide6
 pytest
 pylint
+black
+ruff
+mypy
+pre-commit
+pytest-cov
