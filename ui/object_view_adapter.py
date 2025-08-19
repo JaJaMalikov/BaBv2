@@ -11,7 +11,15 @@ from PySide6.QtWidgets import QGraphicsItem, QGraphicsScene
 
 from core.scene_model import SceneModel, SceneObject
 from core.puppet_piece import PuppetPiece
-from .object_item import ObjectPixmapItem, ObjectSvgItem, LightItem
+from core.naming import unique_name
+from .object_item import (
+    ObjectPixmapItem,
+    ObjectSvgItem,
+    LightItem,
+    DEFAULT_LIGHT_COLOR,
+    DEFAULT_LIGHT_CONE_ANGLE,
+    DEFAULT_LIGHT_CONE_REACH,
+)
 
 if TYPE_CHECKING:  # pragma: no cover - hints only
     from ui.main_window import MainWindow
@@ -19,9 +27,16 @@ if TYPE_CHECKING:  # pragma: no cover - hints only
 
 # pylint: disable=R0902
 class ObjectViewAdapter:
-    """Gère la partie graphique (Qt) des objets et pantins."""
+    """Gère la partie graphique (Qt) des objets et pantins.
+
+    This adapter encapsulates all QGraphics-based manipulations for objects and
+    puppets, keeping controllers/services Qt-agnostic. It exposes helpers to
+    capture current states and to build/remove graphics items corresponding to
+    model objects.
+    """
 
     def __init__(self, win: MainWindow) -> None:
+        """Initialize the adapter with the MainWindow dependencies."""
         self.win = win
         self.scene: QGraphicsScene = win.scene
         self.scene_model: SceneModel = win.scene_model
@@ -34,6 +49,14 @@ class ObjectViewAdapter:
     # ------------------------------------------------------------------
     # Capture d'état
     def capture_puppet_states(self) -> Dict[str, Dict[str, Dict[str, Any]]]:
+        """Return the state of all puppet members and active variants.
+
+        Output structure per puppet name:
+        {
+            member_name: {"rotation": float, "pos": (x: float, y: float)},
+            "_variants": {slot: active_variant}
+        }
+        """
         states: Dict[str, Dict[str, Dict[str, Any]]] = {}
         for name, puppet in self.scene_model.puppets.items():
             puppet_state: Dict[str, Dict[str, Any]] = {}
@@ -68,6 +91,12 @@ class ObjectViewAdapter:
         return states
 
     def capture_visible_object_states(self) -> Dict[str, Dict[str, Any]]:
+        """Return states for all currently visible objects.
+
+        Each entry contains fields from the model plus live graphics values
+        (x, y, rotation, scale, z) and an "attached_to" tuple if the object is
+        parented to a puppet member.
+        """
         states: Dict[str, Dict[str, Any]] = {}
         piece_owner: Dict[QGraphicsItem, tuple[str, str]] = {}
         for key, val in self.graphics_items.items():
@@ -98,6 +127,7 @@ class ObjectViewAdapter:
         return states
 
     def read_item_state(self, name: str) -> Dict[str, Any]:
+        """Return the effective state for a given object name."""
         obj = self.scene_model.objects.get(name)
         if not obj:
             return {}
@@ -107,14 +137,15 @@ class ObjectViewAdapter:
     # ------------------------------------------------------------------
     # Gestion des items
     def add_object_graphics(self, obj: SceneObject) -> None:
+        """Create and add the appropriate QGraphicsItem for the object."""
         item: QGraphicsItem
         if obj.obj_type == "image":
             item = ObjectPixmapItem(obj.file_path)
         elif obj.obj_type == "light":
             item = LightItem(
-                color_str=obj.color or "#FFFFE0",
-                angle=obj.cone_angle or 45.0,
-                reach=obj.cone_reach or 500.0,
+                color_str=obj.color or DEFAULT_LIGHT_COLOR,
+                angle=obj.cone_angle or DEFAULT_LIGHT_CONE_ANGLE,
+                reach=obj.cone_reach or DEFAULT_LIGHT_CONE_REACH,
             )
         else:
             item = ObjectSvgItem(obj.file_path)
@@ -143,10 +174,12 @@ class ObjectViewAdapter:
         self.graphics_items[obj.name] = item
 
     def remove_object_graphics(self, name: str) -> None:
+        """Remove the QGraphicsItem associated with the given object name."""
         if item := self.graphics_items.pop(name, None):
             self.scene.removeItem(item)
 
     def hide_object(self, name: str) -> None:
+        """Hide the graphics item for the given object name (if present)."""
         if item := self.graphics_items.get(name):
             item.setVisible(False)
 
@@ -155,6 +188,11 @@ class ObjectViewAdapter:
     def create_object_from_file(
         self, file_path: str, scene_pos: Optional[QPointF] = None
     ) -> Optional[tuple[SceneObject, Dict[str, Any]]]:
+        """Create an object from a file path and add it to the scene.
+
+        Returns a tuple (SceneObject, state_dict) on success, or None on error.
+        If scene_pos is None, centers the object in the scene.
+        """
         ext: str = Path(file_path).suffix.lower()
         if ext in (".png", ".jpg", ".jpeg"):
             obj_type = "image"
@@ -203,12 +241,8 @@ class ObjectViewAdapter:
         return obj, state
 
     def _unique_object_name(self, base: str) -> str:
-        name = base
-        i = 1
-        while name in self.scene_model.objects or name in self.graphics_items:
-            name = f"{base}_{i}"
-            i += 1
-        return name
+        existing = set(self.scene_model.objects.keys()) | set(self.graphics_items.keys())
+        return unique_name(base, existing)
 
     # ------------------------------------------------------------------
     # Attachements

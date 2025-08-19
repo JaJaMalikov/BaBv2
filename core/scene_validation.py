@@ -18,6 +18,11 @@ def validate_settings(data: Any) -> bool:
     ``data`` should be a mapping of setting keys to integer values. Unknown keys
     are ignored. ``None`` is accepted and treated as valid to allow optional
     sections in the JSON.
+
+    Hardened checks (docs/tasks.md Task 4.25):
+    - Numeric settings must be integers and non-negative.
+    - If both start_frame and end_frame are provided, start_frame <= end_frame.
+    - background_path, when present, must be a string.
     """
     if data is None:
         return True
@@ -25,9 +30,19 @@ def validate_settings(data: Any) -> bool:
         logging.error("settings: expected dict, got %s", type(data).__name__)
         return False
     for key in ("start_frame", "end_frame", "fps", "scene_width", "scene_height"):
-        if key in data and not isinstance(data[key], int):
-            logging.error("settings: %s must be int", key)
-            return False
+        if key in data:
+            if not isinstance(data[key], int):
+                logging.error("settings: %s must be int", key)
+                return False
+            if data[key] < 0:
+                logging.error("settings: %s must be non-negative", key)
+                return False
+    if "start_frame" in data and "end_frame" in data and data["start_frame"] > data["end_frame"]:
+        logging.error("settings: start_frame must be <= end_frame")
+        return False
+    if "background_path" in data and data["background_path"] is not None and not isinstance(data["background_path"], str):
+        logging.error("settings: background_path must be a string or null")
+        return False
     return True
 
 

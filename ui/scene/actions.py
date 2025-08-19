@@ -2,21 +2,24 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING
 import logging
 from PySide6.QtWidgets import QFileDialog, QInputDialog
 
 from . import scene_io
 
+if TYPE_CHECKING:
+    from .scene_controller import MainWindowProtocol
 
-def reset_scene(win: Any) -> None:
+
+def reset_scene(win: "MainWindowProtocol") -> None:
     """Clear the current scene and create a new blank one."""
     scene_io.create_blank_scene(win, add_default_puppet=False)
     win.scene_controller.set_background_path(None)
     win.ensure_fit()
 
 
-def set_background(win: Any) -> None:
+def set_background(win: "MainWindowProtocol") -> None:
     """Open a file dialog to choose a background image and apply it."""
     file_path: str
     file_path, _ = QFileDialog.getOpenFileName(
@@ -29,7 +32,7 @@ def set_background(win: Any) -> None:
         win.scene_controller.set_background_path(file_path)
 
 
-def set_scene_size(win) -> None:
+def set_scene_size(win: "MainWindowProtocol") -> None:
     """Prompt the user for scene width/height and apply to the scene.
 
     Updates the scene rect, visuals, background fit, and zoom status.

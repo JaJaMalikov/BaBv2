@@ -5,12 +5,15 @@ This centralizes logic duplicated in state application and puppet ops.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from core.puppet_piece import PuppetPiece
 
+if TYPE_CHECKING:
+    from .scene_controller import MainWindowProtocol
 
-def update_piece_visibility(win: Any, piece: PuppetPiece, is_on: bool) -> None:
+
+def update_piece_visibility(win: "MainWindowProtocol", piece: PuppetPiece, is_on: bool) -> None:
     """Set piece and its handles visibility, and sync handle state if visible."""
     try:
         piece.setVisible(is_on)

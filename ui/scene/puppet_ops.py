@@ -10,8 +10,13 @@ from PySide6.QtWidgets import QGraphicsItem
 from PySide6.QtSvg import QSvgRenderer
 
 from core.puppet_model import Puppet, PuppetMember, normalize_variants
+from core.naming import unique_name
 from core.puppet_piece import PuppetPiece
 from core.svg_loader import SvgLoader
+
+# Named constants
+DEFAULT_PUPPET_Z_OFFSET = 0
+DUPLICATE_OFFSET = 10
 
 if TYPE_CHECKING:
     from .scene_controller import MainWindowProtocol
@@ -59,7 +64,7 @@ class PuppetOps:
         self.scene_service.add_puppet(puppet_name, puppet)
         self.win.object_manager.puppet_scales[puppet_name] = 1.0
         self.win.object_manager.puppet_paths[puppet_name] = file_path
-        self.win.object_manager.puppet_z_offsets[puppet_name] = 0
+        self.win.object_manager.puppet_z_offsets[puppet_name] = DEFAULT_PUPPET_Z_OFFSET
         self._add_puppet_graphics(puppet_name, puppet, file_path, renderer, loader)
         self.win.inspector_widget.refresh()
 
@@ -197,7 +202,11 @@ class PuppetOps:
             self.win.object_manager.puppet_z_offsets.pop(puppet_name, None)
 
     def duplicate_puppet(self, puppet_name: str) -> None:
-        """Duplicates a puppet."""
+        """Duplicates a puppet with deep-copy semantics.
+
+        Copies visual state (root position with small offset, rotation), scale,
+        z-offset, and currently active variants.
+        """
         path: Optional[str] = self.win.object_manager.puppet_paths.get(puppet_name)
         if not path:
             return
@@ -207,14 +216,50 @@ class PuppetOps:
         while new_name in self.win.scene_model.puppets:
             i += 1
             new_name = f"{base}_{i}"
+        # Create the new puppet
         self.add_puppet(path, new_name)
+
+        # Copy scale first
         scale: float = self.win.object_manager.puppet_scales.get(puppet_name, 1.0)
         if scale != 1.0:
             self.win.object_manager.puppet_scales[new_name] = scale
             self.scale_puppet(new_name, scale)
+
+        # Copy z-offset
         zoff: int = self.win.object_manager.puppet_z_offsets.get(puppet_name, 0)
         if zoff:
             self.set_puppet_z_offset(new_name, zoff)
+
+        # Copy root position and rotation (offset slightly to avoid exact overlap)
+        try:
+            src_root = self._puppet_root_piece(puppet_name)
+            dst_root = self._puppet_root_piece(new_name)
+            if src_root and dst_root:
+                new_x = src_root.x() + float(DUPLICATE_OFFSET)
+                new_y = src_root.y() + float(DUPLICATE_OFFSET)
+                dst_root.setPos(new_x, new_y)
+                # Copy rotation
+                angle = self.get_puppet_rotation(puppet_name)
+                self.set_puppet_rotation(new_name, angle)
+                # Propagate to children
+                for child in dst_root.children:
+                    child.update_transform_from_parent()
+        except Exception:  # pylint: disable=broad-except
+            logging.exception("Failed to copy transform for duplicated puppet %s", new_name)
+
+        # Copy active variants (visuals + persist in current frame)
+        try:
+            src_puppet = self.win.scene_model.puppets.get(puppet_name)
+            if src_puppet and getattr(src_puppet, "variants", None):
+                for slot, _cands in src_puppet.variants.items():
+                    active = self.get_active_variant(puppet_name, slot)
+                    if active:
+                        # Update visuals
+                        self.set_member_variant(new_name, slot, active)
+                        # Persist in model at current frame
+                        self.scene_service.set_member_variant(new_name, slot, active)
+        except Exception:  # pylint: disable=broad-except
+            logging.exception("Failed to copy variants for duplicated puppet %s", new_name)
 
     def _puppet_root_piece(self, puppet_name: str) -> Optional[PuppetPiece]:
         """Returns the root piece of a puppet."""
@@ -260,12 +305,7 @@ class PuppetOps:
 
     def unique_puppet_name(self, base: str) -> str:
         """Generates a unique name for a puppet."""
-        name: str = base
-        i: int = 1
-        while name in self.win.scene_model.puppets:
-            name = f"{base}_{i}"
-            i += 1
-        return name
+        return unique_name(base, self.win.scene_model.puppets.keys())
 
     def set_rotation_handles_visible(self, visible: bool) -> None:
         """Show or hide rotation handles of all puppet pieces."""

@@ -21,6 +21,7 @@ from core.logging_config import log_with_context
 if TYPE_CHECKING:
     from ..object_view_adapter import ObjectViewAdapter
     from ..zoomable_view import ZoomableView
+    from controllers.object_controller import ObjectController
 
 
 class InspectorWidgetProtocol(Protocol):
@@ -36,6 +37,8 @@ class MainWindowProtocol(Protocol):
     scene: QGraphicsScene
     scene_model: SceneModel
     object_manager: ObjectViewAdapter
+    object_view_adapter: ObjectViewAdapter
+    object_controller: "ObjectController"
     view: ZoomableView
     zoom_factor: float
     _suspend_item_updates: bool

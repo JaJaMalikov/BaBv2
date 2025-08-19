@@ -15,6 +15,9 @@ from core.scene_validation import (
     validate_keyframes,
 )
 
+# Scene JSON schema version. Increment when breaking the serialized format.
+SCENE_SCHEMA_VERSION = 1
+
 
 @dataclass
 class SceneObject:
@@ -85,7 +88,18 @@ class Keyframe:
 
 
 class SceneModel:
-    """Central store for puppets, objects and timeline keyframes."""
+    """Central store for puppets, objects and timeline keyframes.
+
+    Invariants enforced/normalized by this model:
+    - Keyframe indices are unique and maintained in strictly increasing order.
+    - Object dictionary keys match the ``SceneObject.name`` attribute.
+    - Object attachments are either ``None`` or a tuple of two strings
+      ``(puppet_name, member_name)``.
+
+    JSON serialization includes a top-level "version" key. Import paths will
+    attempt migrations via :meth:`_migrate_data` if the saved version differs
+    from the current :data:`SCENE_SCHEMA_VERSION`.
+    """
 
     def __init__(self) -> None:
         """Initialize an empty scene with default settings."""
@@ -99,6 +113,9 @@ class SceneModel:
         self.scene_width = 1920
         self.scene_height = 1080
         self.background_path = None
+        # Accumulates non-fatal issues found during the last import operation
+        # Each entry is a dict with context keys like {"type": "object|keyframe", "name"/"index": ..., "issue": str}
+        self.import_warnings = []
 
     # -----------------------------
     # PUPPETS ET OBJETS
@@ -202,9 +219,82 @@ class SceneModel:
             return False
         return True
 
+    def _validate_invariants(self, log_only: bool = False) -> bool:
+        """Validate and optionally normalize core invariants.
+
+        - Keyframe indices are unique and stored in ascending order.
+        - Object dict keys match each object's ``name``.
+        - Attachments are None or a tuple[str, str].
+
+        If ``log_only`` is False, performs normalization in-place; otherwise only logs.
+        Returns True if invariants are satisfied after potential normalization.
+        """
+        ok = True
+        # Keyframes uniqueness and ordering
+        indices = list(self.keyframes.keys())
+        if indices != sorted(indices):
+            logging.warning("keyframes not sorted; normalizing order")
+            ok = False
+            if not log_only:
+                self.keyframes = dict(sorted(self.keyframes.items()))
+        if len(indices) != len(set(indices)):
+            logging.error("duplicate keyframe indices detected")
+            ok = False
+            # duplicates cannot exist as dict keys; this is a safeguard
+        # Object keys vs names, and attachment normalization
+        new_objects = {}
+        for key, obj in list(self.objects.items()):
+            # normalize attachment
+            att = obj.attached_to
+            if att is not None:
+                if isinstance(att, (list, tuple)) and len(att) == 2:
+                    a0, a1 = att[0], att[1]
+                    if not isinstance(a0, str) or not isinstance(a1, str):
+                        logging.warning("attachment contains non-strings for object %s; clearing", key)
+                        ok = False
+                        if not log_only:
+                            obj.attached_to = None
+                    else:
+                        # ensure tuple type
+                        if not isinstance(att, tuple) and not log_only:
+                            obj.attached_to = (a0, a1)
+                else:
+                    logging.warning("invalid attachment shape for object %s; clearing", key)
+                    ok = False
+                    if not log_only:
+                        obj.attached_to = None
+            # ensure object key matches name
+            if obj.name != key:
+                logging.warning("object key '%s' mismatches name '%s'; normalizing name to key", key, obj.name)
+                ok = False
+                if not log_only:
+                    obj.name = key
+            new_objects[key] = obj
+        if not log_only:
+            self.objects = new_objects
+        return ok
+
+    def _migrate_data(self, data: Dict[str, Any], from_version: int) -> Dict[str, Any]:
+        """Migrate loaded JSON data to the current schema version.
+
+        Currently a no-op for version 1. Future versions may transform field names
+        or structures. Unknown higher versions will be used as-is after validation.
+        """
+        if from_version == 1:
+            return data
+        # Add future migrations here, e.g., if from_version == 0: ...
+        return data
+
     def to_dict(self) -> Dict[str, Any]:
-        """Serialize the whole scene into a JSON-friendly dictionary."""
+        """Serialize the whole scene into a JSON-friendly dictionary.
+
+        Includes a top-level schema version to enable future migrations.
+        See docs/plan.md Task 4.
+        """
+        # Log-only invariant check before exporting
+        self._validate_invariants(log_only=True)
         return {
+            "version": SCENE_SCHEMA_VERSION,
             "settings": {
                 "start_frame": self.start_frame,
                 "end_frame": self.end_frame,
@@ -237,36 +327,98 @@ class SceneModel:
 
         self.objects.clear()
         for name, obj_data in data.get("objects", {}).items():
+            if not isinstance(obj_data, dict):
+                logging.warning("objects[%s]: expected dict, got %s; skipping", name, type(obj_data).__name__)
+                self.import_warnings.append({"type": "object", "name": name, "issue": "not a dict"})
+                continue
+            # Basic required fields checks
+            obj_type = obj_data.get("obj_type")
+            file_path = obj_data.get("file_path")
+            if not isinstance(obj_type, str) or not isinstance(file_path, str):
+                logging.warning(
+                    "object '%s': missing/invalid 'obj_type' or 'file_path'; skipping", name
+                )
+                self.import_warnings.append(
+                    {"type": "object", "name": name, "issue": "missing or invalid obj_type/file_path"}
+                )
+                continue
             obj_data["name"] = name
-            self.objects[name] = SceneObject.from_dict(obj_data)
+            try:
+                self.objects[name] = SceneObject.from_dict(obj_data)
+            except Exception as e:  # defensive: ensure partial load continues
+                logging.warning("object '%s': error during construction: %s; skipping", name, e)
+                self.import_warnings.append(
+                    {"type": "object", "name": name, "issue": f"exception: {e}"}
+                )
+                continue
 
         self.keyframes.clear()
         for kf_data in data.get("keyframes", []):
+            if not isinstance(kf_data, dict):
+                logging.warning("keyframes: item is not a dict; skipping: %r", kf_data)
+                self.import_warnings.append({"type": "keyframe", "issue": "item not a dict"})
+                continue
             index = kf_data.get("index")
             if index is None:
+                logging.warning("keyframe without 'index' found; skipping")
+                self.import_warnings.append({"type": "keyframe", "issue": "missing index"})
                 continue
+            if index in self.keyframes:
+                logging.warning("duplicate keyframe index %s; last one wins", index)
+                self.import_warnings.append({"type": "keyframe", "index": index, "issue": "duplicate index"})
             new_kf = Keyframe(index)
             new_kf.objects = kf_data.get("objects", {})
             new_kf.puppets = kf_data.get("puppets", {})
             self.keyframes[index] = new_kf
 
         self.keyframes = dict(sorted(self.keyframes.items()))
+        # Normalize/enforce invariants for direct from_dict usage as well
+        self._validate_invariants(log_only=False)
 
     def export_json(self, file_path: str) -> None:
         """Export the scene to a JSON file at ``file_path``."""
+        data = self.to_dict()
+        # Validate JSON structure prior to writing for early detection (docs/tasks.md Task 4.25)
+        if not self._validate_data(data):
+            logging.error("Export JSON invalid: structure non conforme")
         with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(self.to_dict(), f, indent=2)
+            json.dump(data, f, indent=2)
 
     def import_json(self, file_path: str) -> bool:
-        """Load scene data from a JSON file, returning success."""
+        """Load scene data from a JSON file, returning success.
+
+        On success, partially invalid entries are skipped and recorded in
+        ``self.import_warnings`` along with log messages for developer context.
+        """
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            # Valider avant d'appliquer pour éviter tout état partiel
+            # reset non-fatal issues log for this import operation
+            self.import_warnings = []
+
+            # Determine version and migrate if needed before validation
+            from_version = data.get("version", 1)
+            if not isinstance(from_version, int):
+                logging.warning("scene version is not an int (%r); assuming v1", from_version)
+                from_version = 1
+            if from_version > SCENE_SCHEMA_VERSION:
+                logging.warning(
+                    "Loading scene with newer schema version %s (current %s). Attempting best-effort load.",
+                    from_version,
+                    SCENE_SCHEMA_VERSION,
+                )
+            elif from_version < SCENE_SCHEMA_VERSION:
+                logging.info("Migrating scene from version %s to %s", from_version, SCENE_SCHEMA_VERSION)
+                data = self._migrate_data(data, from_version)
+
+            # Validate before applying to avoid partial state
             if not self._validate_data(data):
                 logging.error("Import JSON invalide: structure non conforme")
                 return False
+
             self.from_dict(data)
+            # Normalize/enforce invariants post-load
+            self._validate_invariants(log_only=False)
             return True
         except (IOError, json.JSONDecodeError) as e:
             logging.error("Erreur lors du chargement du fichier : %s", e)

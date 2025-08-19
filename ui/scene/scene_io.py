@@ -11,20 +11,55 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QTimer, QSettings
 from PySide6.QtWidgets import QFileDialog
 
 if TYPE_CHECKING:
     from ui.main_window import MainWindow
+
+# File dialog helpers (docs/tasks.md 11.66)
+_JSON_FILTER: str = "JSON Files (*.json);;All Files (*)"
+_SETTINGS_GROUP: str = "SceneIO"
+_LAST_DIR_KEY: str = "last_dir"
+
+
+def _get_last_dir() -> str:
+    try:
+        s = QSettings()
+        s.beginGroup(_SETTINGS_GROUP)
+        val = s.value(_LAST_DIR_KEY, type=str)
+        s.endGroup()
+        if isinstance(val, str) and val:
+            return val
+    except Exception:
+        pass
+    try:
+        return str(Path.home())
+    except Exception:
+        return ""
+
+
+def _set_last_dir(path: str) -> None:
+    try:
+        s = QSettings()
+        s.beginGroup(_SETTINGS_GROUP)
+        s.setValue(_LAST_DIR_KEY, path)
+        s.endGroup()
+    except Exception:
+        pass
 
 
 def save_scene(win: "MainWindow") -> None:
     """Opens a dialog to save the current scene to a JSON file."""
     file_path: str
     file_path, _ = QFileDialog.getSaveFileName(
-        win, "Sauvegarder la scène", "", "JSON Files (*.json)"
+        win, "Sauvegarder la scène", _get_last_dir(), _JSON_FILTER
     )
     if file_path:
+        try:
+            _set_last_dir(str(Path(file_path).resolve().parent))
+        except Exception:
+            pass
         export_scene(win, file_path)
 
 
@@ -32,9 +67,13 @@ def load_scene(win: "MainWindow") -> None:
     """Opens a dialog to load a scene from a JSON file."""
     file_path: str
     file_path, _ = QFileDialog.getOpenFileName(
-        win, "Charger une scène", "", "JSON Files (*.json)"
+        win, "Charger une scène", _get_last_dir(), _JSON_FILTER
     )
     if file_path:
+        try:
+            _set_last_dir(str(Path(file_path).resolve().parent))
+        except Exception:
+            pass
         import_scene(win, file_path)
 
 
@@ -80,17 +119,42 @@ def export_scene(win: "MainWindow", file_path: str) -> None:
 
 def import_scene(win: MainWindow, file_path: str) -> None:
     """Imports a scene from a JSON file, rebuilding the entire scene state."""
+    def _resolve_path(path_str: Optional[str], scene_file: Path) -> Optional[str]:
+        if not path_str:
+            return None
+        try:
+            p = Path(path_str).expanduser()
+        except Exception:
+            return None
+        # 1) Absolute path as-is
+        if p.is_absolute() and p.exists():
+            return str(p)
+        # 2) Relative to scene file directory
+        base_dir = scene_file.parent
+        candidate = (base_dir / p).resolve()
+        if candidate.exists():
+            return str(candidate)
+        # 3) Relative to repository root
+        repo_root = Path(__file__).resolve().parents[2]
+        candidate2 = (repo_root / p).resolve()
+        if candidate2.exists():
+            return str(candidate2)
+        logging.warning("Scene import: path not found after resolution: %s", path_str)
+        return None
+
     try:
         # Chargement du fichier JSON (exceptions ciblées)
         with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
+        scene_file = Path(file_path).resolve()
         create_blank_scene(win, add_default_puppet=False)
         win.scene_model.from_dict(data)
         puppets_data = data.get("puppets_data", {})
         for name, p_data in puppets_data.items():
             puppet_path = p_data.get("path")
-            if puppet_path and Path(puppet_path).exists():
-                win.scene_controller.add_puppet(puppet_path, name)
+            resolved_path = _resolve_path(puppet_path, scene_file)
+            if resolved_path:
+                win.scene_controller.add_puppet(resolved_path, name)
                 scale = p_data.get("scale", 1.0)
                 if scale != 1.0:
                     win.scene_controller.scale_puppet(name, scale)
@@ -116,6 +180,8 @@ def import_scene(win: MainWindow, file_path: str) -> None:
                         win.scene_controller.set_puppet_z_offset(name, zoff)
                 except (TypeError, ValueError):
                     logging.exception("Invalid z_offset value in puppets_data")
+            else:
+                logging.warning("Puppet asset for '%s' could not be resolved: %s", name, puppet_path)
 
         for obj in win.scene_model.objects.values():
             try:

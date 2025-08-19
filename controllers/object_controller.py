@@ -7,10 +7,14 @@ s'appuie sur un ``ObjectViewAdapter`` pour toutes les interactions Qt.
 """
 
 from typing import Dict, Any, Optional
+from core.naming import unique_name
 
 from core.scene_model import SceneModel, SceneObject, Keyframe
 from core.types import SceneSnapshot
 from ui.protocols import ObjectViewAdapterProtocol
+
+
+DUPLICATE_OFFSET = 10
 
 
 class ObjectController:
@@ -48,28 +52,33 @@ class ObjectController:
         self.model.remove_object(name)
 
     def duplicate_object(self, name: str) -> None:
-        """Duplique un objet existant avec un nom unique."""
+        """Duplique un objet existant avec un nom unique et copie profonde de l'état.
+
+        - Conserve le type, le chemin, la rotation, l'échelle et le z-order.
+        - Décale la position de DUPLICATE_OFFSET pour éviter le recouvrement.
+        - Si l'objet est attaché à un membre de pantin, attache la copie au même parent.
+        """
         src = self.model.objects.get(name)
         if not src:
             return
-        base = name
-        i = 1
-        new_name = f"{base}_{i}"
-        while new_name in self.model.objects:
-            i += 1
-            new_name = f"{base}_{i}"
+        new_name = unique_name(name, self.model.objects.keys())
         dup = SceneObject(
             new_name,
             src.obj_type,
             src.file_path,
-            x=src.x + 10,
-            y=src.y + 10,
+            x=src.x + float(DUPLICATE_OFFSET),
+            y=src.y + float(DUPLICATE_OFFSET),
             rotation=src.rotation,
             scale=src.scale,
             z=getattr(src, "z", 0),
         )
         self.add_object(dup)
-        self._ensure_keyframe(new_name)
+        # Si l'objet source était attaché, attacher la copie au même parent et persister l'état
+        if src.attached_to is not None:
+            puppet_name, member_name = src.attached_to
+            self.attach_object_to_member(new_name, puppet_name, member_name)
+        else:
+            self._ensure_keyframe(new_name)
 
     def attach_object_to_member(
         self, obj_name: str, puppet_name: str, member_name: str

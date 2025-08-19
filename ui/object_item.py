@@ -92,10 +92,16 @@ class ObjectSvgItem(_ObjectItemMixin, QGraphicsSvgItem):
         super().__init__(file_path)
 
 
+# Default light properties
+DEFAULT_LIGHT_COLOR = "#FFFFE0"
+DEFAULT_LIGHT_CONE_ANGLE = 45.0
+DEFAULT_LIGHT_CONE_REACH = 500.0
+
+
 class LightItem(QGraphicsPolygonItem, _ObjectItemMixin):
     """A QGraphicsPolygonItem that simulates a light source by setting the painter's composition mode."""
 
-    def __init__(self, color_str: str = "#FFFFE0", angle: float = 45.0, reach: float = 500.0):
+    def __init__(self, color_str: str = DEFAULT_LIGHT_COLOR, angle: float = DEFAULT_LIGHT_CONE_ANGLE, reach: float = DEFAULT_LIGHT_CONE_REACH):
         QGraphicsPolygonItem.__init__(self)
 
         self.color = QColor(color_str)

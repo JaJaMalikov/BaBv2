@@ -13,27 +13,27 @@ A logically ordered, actionable checklist covering architectural and code-level 
    - [x] Ensure user-facing error reporting paths (dialogs/toasts) are distinct from developer logs
    - [x] Add structured log context for frame index, object/puppet names, and operation type
 
-3. [ ] Strengthen typing and protocol boundaries
+3. [x] Strengthen typing and protocol boundaries
    - [x] Expand typing.Protocol usage for all UI collaborators (TimelineWidgetProtocol, ObjectViewAdapterProtocol, InspectorWidgetProtocol)
-   - [ ] Add missing type annotations across controllers/ and ui/scene/
+   - [x] Add missing type annotations across controllers/ and ui/scene/
    - [x] Enable mypy for core/ as strict; fix revealed issues (Dict[str, Any] → TypedDict/dataclasses where appropriate)
    - [x] Add type-safe aliases for scene state maps (e.g., PuppetState, ObjectState)
 
-4. [ ] Core model invariants, validation, and serialization
-   - [ ] Document and enforce invariants in SceneModel (frame indices monotonic, unique object names, consistent attachments)
-   - [ ] Introduce schema/versioning for exported JSON (SceneModel.export_json/import_json) with a version field and migration hook
-   - [ ] Harden validate_* in core/scene_validation.py and ensure they are called at persistence boundaries
-   - [ ] Improve error messages and recovery when loading invalid scenes (partial load with warnings)
+4. [x] Core model invariants, validation, and serialization
+   - [x] Document and enforce invariants in SceneModel (frame indices monotonic, unique object names, consistent attachments)
+   - [x] Introduce schema/versioning for exported JSON (SceneModel.export_json/import_json) with a version field and migration hook
+   - [x] Harden validate_* in core/scene_validation.py and ensure they are called at persistence boundaries
+   - [x] Improve error messages and recovery when loading invalid scenes (partial load with warnings)
 
-5. [ ] SvgLoader robustness and test coverage
-   - [ ] Normalize namespace handling and unit parsing (px, %, etc.) with clear fallbacks
-   - [ ] Cache QSvgRenderer instances and consider lazy initialization for performance
-   - [ ] Add guards and explicit exceptions for missing/invalid groups and viewBox anomalies
-   - [ ] Create unit tests with malformed SVGs and edge cases (missing id, nested groups, non-numeric dimensions)
+5. [x] SvgLoader robustness and test coverage
+   - [x] Normalize namespace handling and unit parsing (px, %, etc.) with clear fallbacks
+   - [x] Cache QSvgRenderer instances and consider lazy initialization for performance
+   - [x] Add guards and explicit exceptions for missing/invalid groups and viewBox anomalies
+   - [x] Create unit tests with malformed SVGs and edge cases (missing id, nested groups, non-numeric dimensions)
 
 6. [ ] Puppet model API clarity and validation
-   - [ ] Add docstrings and examples for Puppet.build_from_svg, normalize_variants, and validate_svg_structure
-   - [ ] Validate parent/child relations and pivot references with actionable error messages
+   - [x] Add docstrings and examples for Puppet.build_from_svg, normalize_variants, and validate_svg_structure
+   - [x] Validate parent/child relations and pivot references with actionable error messages
    - [ ] Replace ad-hoc maps with typed dataclasses for member/variant structures where feasible
    - [ ] Unit tests for hierarchy construction, child map computation, and variant normalization
 
@@ -56,15 +56,15 @@ A logically ordered, actionable checklist covering architectural and code-level 
    - [ ] Profile and add a micro-benchmark for update_onion_skins across N keyframes and M items
 
 10. [ ] Object and puppet operations consistency
-    - [ ] Centralize name uniquifying logic (unique_puppet_name, object duplicates) in a shared utility
-    - [ ] Ensure deep-copy semantics for duplication (state, z-order, variants) are consistent
-    - [ ] Replace magic numbers/strings (z offsets, handle sizes) with named constants or settings
-    - [ ] Add tests for duplicate/delete/attach/detach flows across frames
+    - [x] Centralize name uniquifying logic (unique_puppet_name, object duplicates) in a shared utility
+    - [x] Ensure deep-copy semantics for duplication (state, z-order, variants) are consistent
+    - [x] Replace magic numbers/strings (z offsets, handle sizes) with named constants or settings
+    - [x] Add tests for duplicate/delete/attach/detach flows across frames
 
-11. [ ] Scene IO and path handling
-    - [ ] Standardize path resolution (project-relative vs absolute) and validate existence on load
-    - [ ] Add file dialog helpers with last-used directory persistence and filters
-    - [ ] Ensure export/import embed version and gracefully ignore unknown future fields
+11. [x] Scene IO and path handling
+    - [x] Standardize path resolution (project-relative vs absolute) and validate existence on load
+    - [x] Add file dialog helpers with last-used directory persistence and filters
+    - [x] Ensure export/import embed version and gracefully ignore unknown future fields
 
 12. [ ] Testing improvements and coverage expansion
     - [ ] Increase unit test coverage for core and controllers; add regression tests for known bugs
@@ -72,16 +72,16 @@ A logically ordered, actionable checklist covering architectural and code-level 
     - [ ] Parameterize tests for multiple assets (SVGs, JSON scenes) and edge conditions
     - [ ] Introduce smoke tests for startup_sequence and basic user flows
 
-13. [ ] Documentation upgrades
-    - [ ] Enrich ARCHITECTURE.md with sequence diagrams for key flows (keyframe add, onion update, attach object)
-    - [ ] Add CONTRIBUTING.md with coding style, commit message conventions, and PR checklist
-    - [ ] Document settings schema and keys in docs/settings.md
-    - [ ] Add troubleshooting guide for common runtime issues (Qt platform plugin, SVG rendering)
+13. [x] Documentation upgrades
+    - [x] Enrich ARCHITECTURE.md with sequence diagrams for key flows (keyframe add, onion update, attach object)
+    - [x] Add CONTRIBUTING.md with coding style, commit message conventions, and PR checklist
+    - [x] Document settings schema and keys in docs/settings.md
+    - [x] Add troubleshooting guide for common runtime issues (Qt platform plugin, SVG rendering)
 
-14. [ ] Packaging and environment
-    - [ ] Define a project entry point in pyproject.toml (console/script entry)
-    - [ ] Pin minimal versions in requirements.txt; add dev-requirements (ruff, black, mypy, pytest-cov)
-    - [ ] Provide a Makefile or tasks.py for common tasks (lint, test, run, package)
+14. [x] Packaging and environment
+    - [x] Define a project entry point in pyproject.toml (console/script entry)
+    - [x] Pin minimal versions in requirements.txt; add dev-requirements (ruff, black, mypy, pytest-cov)
+    - [x] Provide a Makefile or tasks.py for common tasks (lint, test, run, package)
 
 15. [ ] UX and accessibility
     - [ ] Ensure keyboard navigation and focus visibility in key widgets (timeline, scene)

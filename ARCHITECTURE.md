@@ -19,3 +19,26 @@ Pour découpler les modules, certains contrôleurs déclarent des interfaces sou
 - Les widgets Qt exposant des signaux compatibles avec l'écosystème Qt peuvent conserver une forme camelCase (`frameChanged`).
 - Les contrôleurs se connectent aux signaux via `.connect()` et implémentent les slots comme de simples méthodes Python.
 - Les vues n'accèdent jamais directement au modèle : toute modification passe par un contrôleur.
+
+
+---
+
+## Sequence diagrams (textual) for key flows
+
+### Add keyframe flow
+- UI (TimelineWidget) emits: add_keyframe_requested(frame_index)
+- Controller (SceneController) receives signal and calls: SceneService.add_keyframe(frame_index)
+- Service updates SceneModel.add_keyframe(frame_index) and validates invariants (core/scene_validation.py)
+- Service notifies Controller of model change -> Controller triggers UI refresh via adapters
+
+### Onion skin update flow
+- UI (TimelineWidget) changes current frame -> signal current_frame_changed(frame_index)
+- Playback/SceneController computes neighbor frames to show as onion skins
+- UI adapter (scene_view adapter) requests onion clones; caching layer reused if topology unchanged
+- Scene visuals update opacity/span according to settings (SettingsManager / future SettingsService)
+
+### Attach object flow
+- UI (Inspector) emits attach_requested(child_object, parent_object)
+- ObjectController validates that attachment is allowed (no cycles, consistent frames)
+- SceneService applies attachment in SceneModel and records state for involved frames
+- Controller triggers view adapter to reparent corresponding QGraphicsItems and refresh handles

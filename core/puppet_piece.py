@@ -18,6 +18,10 @@ from PySide6.QtSvg import QSvgRenderer  # Added for type hinting
 PIVOT_KEYWORDS = ["coude", "genou", "hanche", "epaule", "cheville", "poignet", "cou"]
 HANDLE_Z_VALUE = 1000
 PIVOT_Z_VALUE = 999
+# Handle geometry and layout constants
+ROTATION_HANDLE_RADIUS = 10.0
+PIVOT_HANDLE_RADIUS = 5.0
+TORSO_HANDLE_OFFSET_Y = 40.0
 
 
 class RotationHandle(QGraphicsEllipseItem):
@@ -25,7 +29,12 @@ class RotationHandle(QGraphicsEllipseItem):
 
     def __init__(self, piece: "PuppetPiece") -> None:
         """Create a rotation handle bound to ``piece``."""
-        super().__init__(-10, -10, 20, 20)
+        super().__init__(
+            -ROTATION_HANDLE_RADIUS,
+            -ROTATION_HANDLE_RADIUS,
+            ROTATION_HANDLE_RADIUS * 2,
+            ROTATION_HANDLE_RADIUS * 2,
+        )
         self.piece: "PuppetPiece" = piece
         self.setBrush(QBrush(Qt.transparent))
         self.setPen(QPen(Qt.transparent))
@@ -72,7 +81,12 @@ class PivotHandle(QGraphicsEllipseItem):
 
     def __init__(self) -> None:
         """Construct a pivot handle with transparent styling."""
-        super().__init__(-5, -5, 10, 10)
+        super().__init__(
+            -PIVOT_HANDLE_RADIUS,
+            -PIVOT_HANDLE_RADIUS,
+            PIVOT_HANDLE_RADIUS * 2,
+            PIVOT_HANDLE_RADIUS * 2,
+        )
         self.setBrush(QBrush(Qt.transparent))
         self.setPen(QPen(Qt.transparent))
         self.setZValue(PIVOT_Z_VALUE)
@@ -131,7 +145,7 @@ class PuppetPiece(QGraphicsSvgItem):
             if self.name == "torse":
                 self.handle_local_pos = QPointF(
                     brect.center().x(),
-                    brect.center().y() - 40,
+                    brect.center().y() - TORSO_HANDLE_OFFSET_Y,
                 )
             else:
                 self.handle_local_pos = brect.center()

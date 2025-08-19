@@ -3,19 +3,21 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict, Optional, Any, List, Tuple
+from typing import Dict, Optional, Any, List, Tuple, TYPE_CHECKING
 
 from PySide6.QtWidgets import QGraphicsItem
 
 from core.scene_model import SceneObject, Keyframe
 from core.puppet_piece import PuppetPiece
 from .visibility_utils import update_piece_visibility
+if TYPE_CHECKING:
+    from .scene_controller import MainWindowProtocol
 
 
 class StateApplier:
     """Apply model keyframe states to the current graphics items (puppets and objects)."""
 
-    def __init__(self, win: "Any") -> None:
+    def __init__(self, win: "MainWindowProtocol") -> None:
         """Store reference to main window-like object for scene access."""
         self.win = win
 

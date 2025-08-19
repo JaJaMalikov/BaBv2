@@ -2,18 +2,20 @@ from __future__ import annotations
 
 """Regroupe les interactions directes avec la ``QGraphicsScene``."""
 
-from typing import Any
+from typing import Any, TYPE_CHECKING
 import logging
 
 from PySide6.QtCore import QObject
 
 from .scene_visuals import SceneVisuals
+if TYPE_CHECKING:
+    from .scene_controller import MainWindowProtocol
 
 
 class SceneView(QObject):
     """Encapsule la logique liée à l'affichage de la scène."""
 
-    def __init__(self, win: Any, visuals: SceneVisuals | None = None) -> None:
+    def __init__(self, win: "MainWindowProtocol", visuals: SceneVisuals | None = None) -> None:
         super().__init__()
         self.win = win
         self.visuals: SceneVisuals = visuals if visuals is not None else SceneVisuals(win)
