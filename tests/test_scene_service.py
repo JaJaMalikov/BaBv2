@@ -1,4 +1,5 @@
 """Tests unitaires pour ``SceneService``."""
+
 from __future__ import annotations
 
 
@@ -19,6 +20,7 @@ def app():
 def _provider(state: Dict[str, Dict] | None = None):
     def _inner() -> Dict[str, Dict]:
         return state or {"puppets": {}, "objects": {}}
+
     return _inner
 
 

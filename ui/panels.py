@@ -64,16 +64,8 @@ def _get_overlay_geometry(s: QSettings, name: str) -> Optional[QRect]:
     w, h = 290, 550
     if size_val:
         try:
-            w = (
-                int(size_val.width())
-                if hasattr(size_val, "width")
-                else int(size_val[0])
-            )
-            h = (
-                int(size_val.height())
-                if hasattr(size_val, "height")
-                else int(size_val[1])
-            )
+            w = int(size_val.width()) if hasattr(size_val, "width") else int(size_val[0])
+            h = int(size_val.height()) if hasattr(size_val, "height") else int(size_val[1])
         except (TypeError, ValueError, AttributeError):
             pass
 
@@ -105,9 +97,7 @@ def position_overlays(win) -> None:
         if insp_geom:
             win.inspector_overlay.setGeometry(insp_geom)
         else:
-            win.inspector_overlay.setGeometry(
-                win.width() - 290 - margin, margin, 290, 550
-            )
+            win.inspector_overlay.setGeometry(win.width() - 290 - margin, margin, 290, 550)
 
         left_bound = win.library_overlay.geometry().right() + margin
         right_bound = win.inspector_overlay.geometry().left() - margin

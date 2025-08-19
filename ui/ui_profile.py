@@ -74,13 +74,9 @@ class UIProfile:
     custom_overlay_visible: bool = False
     menu_main_order: List[str] = field(default_factory=lambda: list(MAIN_DEFAULT_ORDER))
     menu_main_vis: Dict[str, bool] = field(default_factory=dict)
-    menu_quick_order: List[str] = field(
-        default_factory=lambda: list(QUICK_DEFAULT_ORDER)
-    )
+    menu_quick_order: List[str] = field(default_factory=lambda: list(QUICK_DEFAULT_ORDER))
     menu_quick_vis: Dict[str, bool] = field(default_factory=dict)
-    menu_custom_order: List[str] = field(
-        default_factory=lambda: list(CUSTOM_DEFAULT_ORDER)
-    )
+    menu_custom_order: List[str] = field(default_factory=lambda: list(CUSTOM_DEFAULT_ORDER))
     menu_custom_vis: Dict[str, bool] = field(default_factory=dict)
 
     # Icon overrides: key -> filepath
@@ -115,29 +111,21 @@ class UIProfile:
             p.icon_size = int(s.value("ui/icon_size", p.icon_size))
         except (TypeError, ValueError):
             pass
-        p.icon_color_normal = str(
-            s.value("ui/icon_color_normal") or p.icon_color_normal
-        )
+        p.icon_color_normal = str(s.value("ui/icon_color_normal") or p.icon_color_normal)
         p.icon_color_hover = str(s.value("ui/icon_color_hover") or p.icon_color_hover)
-        p.icon_color_active = str(
-            s.value("ui/icon_color_active") or p.icon_color_active
-        )
+        p.icon_color_active = str(s.value("ui/icon_color_active") or p.icon_color_active)
 
         # Timeline
         p.timeline_bg = str(s.value("timeline/bg") or p.timeline_bg)
         p.timeline_ruler_bg = str(s.value("timeline/ruler_bg") or p.timeline_ruler_bg)
         p.timeline_track_bg = str(s.value("timeline/track_bg") or p.timeline_track_bg)
         p.timeline_tick = str(s.value("timeline/tick") or p.timeline_tick)
-        p.timeline_tick_major = str(
-            s.value("timeline/tick_major") or p.timeline_tick_major
-        )
+        p.timeline_tick_major = str(s.value("timeline/tick_major") or p.timeline_tick_major)
         p.timeline_playhead = str(s.value("timeline/playhead") or p.timeline_playhead)
         p.timeline_kf = str(s.value("timeline/kf") or p.timeline_kf)
         p.timeline_kf_hover = str(s.value("timeline/kf_hover") or p.timeline_kf_hover)
         try:
-            p.timeline_inout_alpha = int(
-                s.value("timeline/inout_alpha", p.timeline_inout_alpha)
-            )
+            p.timeline_inout_alpha = int(s.value("timeline/inout_alpha", p.timeline_inout_alpha))
         except Exception:
             pass
 
@@ -159,12 +147,8 @@ class UIProfile:
             return list(order), vis
 
         p.menu_main_order, p.menu_main_vis = get_order_vis("main", p.menu_main_order)
-        p.menu_quick_order, p.menu_quick_vis = get_order_vis(
-            "quick", p.menu_quick_order
-        )
-        p.menu_custom_order, p.menu_custom_vis = get_order_vis(
-            "custom", p.menu_custom_order
-        )
+        p.menu_quick_order, p.menu_quick_vis = get_order_vis("quick", p.menu_quick_order)
+        p.menu_custom_order, p.menu_custom_vis = get_order_vis("custom", p.menu_custom_order)
 
         # Icon overrides (shallow scan of known keys)
         # Persist what we find in the overlay specs keys to keep JSON small.
@@ -178,9 +162,7 @@ class UIProfile:
 
         # Geometries
         p.geom_library = _rect_to_tuple(s.value("geometry/library")) or p.geom_library
-        p.geom_inspector = (
-            _rect_to_tuple(s.value("geometry/inspector")) or p.geom_inspector
-        )
+        p.geom_inspector = _rect_to_tuple(s.value("geometry/inspector")) or p.geom_inspector
         p.geom_view_toolbar = (
             _rect_to_tuple(s.value("geometry/view_toolbar")) or p.geom_view_toolbar
         )

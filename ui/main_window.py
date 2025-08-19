@@ -43,7 +43,7 @@ class MainWindow(QMainWindow):
     def __init__(self) -> None:
         """Initialize the main window, scene, and all UI components."""
         super().__init__()
-        self.setWindowTitle("Borne and the Bayrou - Disco MIX")
+        self.setWindowTitle(self.tr("Borne and the Bayrou - Disco MIX"))
 
         # Core components (model, scene, object manager) must exist before
         # any other setup step.  They are grouped into a dedicated function so
@@ -75,9 +75,7 @@ class MainWindow(QMainWindow):
         """Create the scene model, Qt scene and object manager."""
         self.scene_model: SceneModel = SceneModel()
         self.scene: QGraphicsScene = QGraphicsScene()
-        self.scene.setSceneRect(
-            0, 0, self.scene_model.scene_width, self.scene_model.scene_height
-        )
+        self.scene.setSceneRect(0, 0, self.scene_model.scene_width, self.scene_model.scene_height)
         self.object_view_adapter: ObjectViewAdapter = ObjectViewAdapter(self)
         self.object_controller: ObjectController = ObjectController(
             self.scene_model, self.object_view_adapter
@@ -126,7 +124,10 @@ class MainWindow(QMainWindow):
             self._kf_copy_sc.setContext(Qt.ApplicationShortcut)
             self._kf_paste_sc = QShortcut(QKeySequence("Ctrl+V"), self)
             self._kf_paste_sc.setContext(Qt.ApplicationShortcut)
-        except (RuntimeError, AttributeError) as e:  # Safety: do not fail setup if shortcuts cannot be created
+        except (
+            RuntimeError,
+            AttributeError,
+        ) as e:  # Safety: do not fail setup if shortcuts cannot be created
             logging.warning("Failed to install global keyframe copy/paste shortcuts: %s", e)
 
     def _setup_tool_overlays(self) -> None:
@@ -140,9 +141,7 @@ class MainWindow(QMainWindow):
     def _setup_scene_controller(self) -> None:
         """Creates the scene controller facade."""
         view = SceneView(self, self.visuals)
-        self.scene_controller: SceneController = SceneController(
-            self, view=view, onion=self.onion
-        )
+        self.scene_controller: SceneController = SceneController(self, view=view, onion=self.onion)
 
     def _connect_actions(self) -> None:
         """Connects application actions to their slots."""
@@ -169,6 +168,17 @@ class MainWindow(QMainWindow):
             self.onion.opacity_next = float(
                 cast(float, s.value("onion/opacity_next", self.onion.opacity_next))
             )
+            # Onion performance options
+            try:
+                self.onion.pixmap_mode = bool(
+                    cast(bool, s.value("onion/pixmap_mode", self.onion.pixmap_mode))
+                )
+                self.onion.pixmap_scale = float(
+                    cast(float, s.value("onion/pixmap_scale", self.onion.pixmap_scale))
+                )
+            except Exception as e:
+                logging.debug("Failed to read pixmap onion options: %s", e)
+
             self.overlays.apply_menu_settings()
         except (RuntimeError, ValueError, ImportError):
             logging.exception("Failed to apply startup preferences")
@@ -206,8 +216,8 @@ class MainWindow(QMainWindow):
 
         QMessageBox.information(
             self,
-            "Interface réinitialisée",
-            "La disposition de l'interface a été réinitialisée.",
+            self.tr("Interface réinitialisée"),
+            self.tr("La disposition de l'interface a été réinitialisée."),
         )
 
     def _setup_scene_visuals(self) -> None:
@@ -300,4 +310,3 @@ class MainWindow(QMainWindow):
         """Open the settings dialog."""
         # Délègue entièrement au SettingsManager
         self.settings.open_dialog()
-

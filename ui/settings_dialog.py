@@ -62,9 +62,7 @@ class IconStrip(QListWidget):
         self._fixed_rows: int = max(0, min(2, rows))
         self.setViewMode(QListView.IconMode)
         # For fixed two rows, build columns vertically to guarantee 2 rows regardless of width.
-        self.setFlow(
-            QListView.LeftToRight if self._fixed_rows == 1 else QListView.TopToBottom
-        )
+        self.setFlow(QListView.LeftToRight if self._fixed_rows == 1 else QListView.TopToBottom)
         self.setWrapping(False)
         self.setMovement(QListView.Snap)
         self.setDragDropMode(QAbstractItemView.InternalMove)
@@ -74,9 +72,7 @@ class IconStrip(QListWidget):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setFrameShape(QListWidget.NoFrame)
         self.setSelectionMode(QAbstractItemView.NoSelection)
-        self.setStyleSheet(
-            "QListWidget{background:transparent;} QListWidget::item{margin:2px;}"
-        )
+        self.setStyleSheet("QListWidget{background:transparent;} QListWidget::item{margin:2px;}")
         # Initialize grid size for accurate layout
         self.setGridSize(self._cell_size())
 
@@ -119,9 +115,7 @@ class IconStrip(QListWidget):
             rows = 2
         else:
             viewport_w = max(1, self.viewport().width())
-            per_row = max(
-                1, (viewport_w + self.spacing()) // (cell.width() + self.spacing())
-            )
+            per_row = max(1, (viewport_w + self.spacing()) // (cell.width() + self.spacing()))
             count = max(1, self.count())
             rows = (count + per_row - 1) // per_row
         total_h = rows * cell.height() + max(0, rows - 1) * self.spacing() + 8
@@ -398,28 +392,18 @@ class SettingsDialog(QDialog):
 
         self.bg_edit, self.bg_btn, wrap_bg = mk_color_row("Fond application:")
         self.text_edit, self.text_btn, wrap_text = mk_color_row("Texte (global):")
-        self.accent_edit, self.accent_btn, wrap_accent = mk_color_row(
-            "Couleur d'accent:"
-        )
+        self.accent_edit, self.accent_btn, wrap_accent = mk_color_row("Couleur d'accent:")
         self.hover_edit, self.hover_btn, wrap_hover = mk_color_row("Couleur de survol:")
         self.panel_edit, self.panel_btn, wrap_panel = mk_color_row("Fond des panneaux:")
-        self.border_edit, self.border_btn, wrap_border = mk_color_row(
-            "Bordure des panneaux:"
-        )
+        self.border_edit, self.border_btn, wrap_border = mk_color_row("Bordure des panneaux:")
         # Header (overlays) colors
-        self.header_bg_edit, self.header_bg_btn, wrap_hbg = mk_color_row(
-            "Fond des en-têtes:"
-        )
-        self.header_text_edit, self.header_text_btn, wrap_htxt = mk_color_row(
-            "Texte des en-têtes:"
-        )
+        self.header_bg_edit, self.header_bg_btn, wrap_hbg = mk_color_row("Fond des en-têtes:")
+        self.header_text_edit, self.header_text_btn, wrap_htxt = mk_color_row("Texte des en-têtes:")
         self.header_border_edit, self.header_border_btn, wrap_hb = mk_color_row(
             "Bordure des en-têtes:"
         )
         # Scene background color (no image)
-        self.scene_bg_edit, self.scene_bg_btn, wrap_scene = mk_color_row(
-            "Fond de la scène:"
-        )
+        self.scene_bg_edit, self.scene_bg_btn, wrap_scene = mk_color_row("Fond de la scène:")
         # Tooltips colors
         self.tooltip_bg_edit, self.tooltip_bg_btn, wrap_tipbg = mk_color_row(
             "Fond des info‑bulles:"
@@ -430,42 +414,30 @@ class SettingsDialog(QDialog):
         self.group_edit, self.group_btn, wrap_group = mk_color_row("Titres de groupe:")
         # Inputs & lists & checkboxes (exposés du stylesheet)
         self.input_bg_edit, self.input_bg_btn, wrap_inbg = mk_color_row("Champ: fond:")
-        self.input_border_edit, self.input_border_btn, wrap_inb = mk_color_row(
-            "Champ: bordure:"
-        )
-        self.input_text_edit, self.input_text_btn, wrap_int = mk_color_row(
-            "Champ: texte:"
-        )
+        self.input_border_edit, self.input_border_btn, wrap_inb = mk_color_row("Champ: bordure:")
+        self.input_text_edit, self.input_text_btn, wrap_int = mk_color_row("Champ: texte:")
         self.input_focus_bg_edit, self.input_focus_bg_btn, wrap_infbg = mk_color_row(
             "Champ focus: fond:"
         )
-        self.input_focus_border_edit, self.input_focus_border_btn, wrap_infb = (
-            mk_color_row("Champ focus: bordure:")
+        self.input_focus_border_edit, self.input_focus_border_btn, wrap_infb = mk_color_row(
+            "Champ focus: bordure:"
         )
-        self.list_hover_edit, self.list_hover_btn, wrap_lh = mk_color_row(
-            "Liste: survol:"
-        )
+        self.list_hover_edit, self.list_hover_btn, wrap_lh = mk_color_row("Liste: survol:")
         self.list_sel_bg_edit, self.list_sel_bg_btn, wrap_lsb = mk_color_row(
             "Liste: sélection fond:"
         )
         self.list_sel_text_edit, self.list_sel_text_btn, wrap_lst = mk_color_row(
             "Liste: sélection texte:"
         )
-        self.cb_un_bg_edit, self.cb_un_bg_btn, wrap_cub = mk_color_row(
-            "Case non cochée: fond:"
-        )
+        self.cb_un_bg_edit, self.cb_un_bg_btn, wrap_cub = mk_color_row("Case non cochée: fond:")
         self.cb_un_border_edit, self.cb_un_border_btn, wrap_cubd = mk_color_row(
             "Case non cochée: bordure:"
         )
-        self.cb_ch_bg_edit, self.cb_ch_bg_btn, wrap_ccb = mk_color_row(
-            "Case cochée: fond:"
-        )
+        self.cb_ch_bg_edit, self.cb_ch_bg_btn, wrap_ccb = mk_color_row("Case cochée: fond:")
         self.cb_ch_border_edit, self.cb_ch_border_btn, wrap_ccbd = mk_color_row(
             "Case cochée: bordure:"
         )
-        self.cb_ch_hover_edit, self.cb_ch_hover_btn, wrap_cch = mk_color_row(
-            "Case cochée: survol:"
-        )
+        self.cb_ch_hover_edit, self.cb_ch_hover_btn, wrap_cch = mk_color_row("Case cochée: survol:")
         # Numeric controls
         self.opacity_spin = QSpinBox()
         self.opacity_spin.setRange(0, 100)
@@ -795,19 +767,11 @@ class SettingsDialog(QDialog):
             "panel_opacity": (self.opacity_spin.value() / 100.0),
             "panel_border": self.border_edit.text() or "#D0D5DD",
             "header_bg": self.header_bg_edit.text() or "",
-            "header_text": self.header_text_edit.text()
-            or self.text_edit.text()
-            or "#1A202C",
-            "header_border": self.header_border_edit.text()
-            or self.border_edit.text()
-            or "#D0D5DD",
+            "header_text": self.header_text_edit.text() or self.text_edit.text() or "#1A202C",
+            "header_border": self.header_border_edit.text() or self.border_edit.text() or "#D0D5DD",
             "group_title_color": self.group_edit.text() or "#2D3748",
-            "tooltip_bg": self.tooltip_bg_edit.text()
-            or self.panel_edit.text()
-            or "#F7F8FC",
-            "tooltip_text": self.tooltip_text_edit.text()
-            or self.text_edit.text()
-            or "#1A202C",
+            "tooltip_bg": self.tooltip_bg_edit.text() or self.panel_edit.text() or "#F7F8FC",
+            "tooltip_text": self.tooltip_text_edit.text() or self.text_edit.text() or "#1A202C",
             "radius": self.radius_spin.value(),
             "font_size": self.font_spin.value(),
             "font_family": self.font_family_edit.text() or "Poppins",
@@ -903,9 +867,7 @@ class SettingsDialog(QDialog):
                 c2 = QColor("#C7CBD1")
                 for y in range(0, h, s):
                     for x in range(0, w, s):
-                        p.fillRect(
-                            x, y, s, s, c1 if ((x // s + y // s) % 2 == 0) else c2
-                        )
+                        p.fillRect(x, y, s, s, c1 if ((x // s + y // s) % 2 == 0) else c2)
                 # Overlay panel color with opacity from spin
                 color = QColor(edit.text().strip() or "#FFFFFF")
                 if not color.isValid():
@@ -998,9 +960,7 @@ class SettingsDialog(QDialog):
             lw.setDragDropMode(QAbstractItemView.InternalMove)
             lw.setResizeMode(QListView.Adjust)
             lw.setSpacing(8)
-            lw.setIconSize(
-                QSize(self.icon_size_spin.value(), self.icon_size_spin.value())
-            )
+            lw.setIconSize(QSize(self.icon_size_spin.value(), self.icon_size_spin.value()))
 
         self._main_specs = [
             ("save", "Sauver", icon_save()),
@@ -1043,8 +1003,7 @@ class SettingsDialog(QDialog):
         """
         lw.clear()
         spec_map = {
-            k: (label, icon)
-            for (k, label, icon) in [(k, lbl, ic) for (k, lbl, ic) in specs]
+            k: (label, icon) for (k, label, icon) in [(k, lbl, ic) for (k, lbl, ic) in specs]
         }
         for key in order_keys:
             if key not in spec_map:
@@ -1060,9 +1019,7 @@ class SettingsDialog(QDialog):
                 | Qt.ItemIsDragEnabled
                 | Qt.ItemIsSelectable
             )
-            item.setCheckState(
-                Qt.Checked if visibility_map.get(key, True) else Qt.Unchecked
-            )
+            item.setCheckState(Qt.Checked if visibility_map.get(key, True) else Qt.Unchecked)
             lw.addItem(item)
         # No special height handling
 
@@ -1137,9 +1094,7 @@ class SettingsDialog(QDialog):
 
         self.list_icons.clear()
         # Uniform grid for cleaner alignment
-        icon_h = max(
-            16, int(QSettings("JaJa", "Macronotron").value("ui/icon_size", 32))
-        )
+        icon_h = max(16, int(QSettings("JaJa", "Macronotron").value("ui/icon_size", 32)))
         cell_w = max(64, icon_h + 48)
         cell_h = max(64, icon_h + 32)
         self.list_icons.setIconSize(QSize(icon_h, icon_h))

@@ -53,21 +53,30 @@ def save_scene(win: "MainWindow") -> None:
     """Opens a dialog to save the current scene to a JSON file."""
     file_path: str
     file_path, _ = QFileDialog.getSaveFileName(
-        win, "Sauvegarder la scène", _get_last_dir(), _JSON_FILTER
+        win, win.tr("Sauvegarder la scène"), _get_last_dir(), _JSON_FILTER
     )
     if file_path:
         try:
             _set_last_dir(str(Path(file_path).resolve().parent))
         except Exception:
             pass
-        export_scene(win, file_path)
+        # Optional async export (docs/tasks.md 16.92). Default is synchronous to keep tests deterministic.
+        try:
+            s = QSettings("JaJa", "Macronotron")
+            use_async = bool(s.value("performance/async_export", False))
+        except Exception:
+            use_async = False
+        if use_async:
+            export_scene_async(win, file_path)
+        else:
+            export_scene(win, file_path)
 
 
 def load_scene(win: "MainWindow") -> None:
     """Opens a dialog to load a scene from a JSON file."""
     file_path: str
     file_path, _ = QFileDialog.getOpenFileName(
-        win, "Charger une scène", _get_last_dir(), _JSON_FILTER
+        win, win.tr("Charger une scène"), _get_last_dir(), _JSON_FILTER
     )
     if file_path:
         try:
@@ -117,8 +126,64 @@ def export_scene(win: "MainWindow", file_path: str) -> None:
         logging.error("Error saving scene '%s': %s", file_path, e)
 
 
+def export_scene_async(win: "MainWindow", file_path: str) -> None:
+    """Exports the scene off the UI thread for the file write step (docs/tasks.md 16.92).
+
+    Data collection (reading model/UI state) occurs on the UI thread before dispatching
+    a background task to serialize and write the JSON to disk.
+    """
+    # Build data synchronously (UI thread)
+    if not win.scene_model.keyframes:
+        win.controller.add_keyframe(0)
+    cur = win.scene_model.current_frame
+    if cur in win.scene_model.keyframes:
+        try:
+            win.object_controller.snapshot_current_frame()
+        except RuntimeError as e:
+            logging.debug("Snapshot on export failed (async path): %s", e)
+
+    puppets_data: Dict[str, Dict[str, Any]] = {}
+    for name, puppet in win.scene_model.puppets.items():
+        root_members: List[Any] = puppet.get_root_members()
+        if not root_members:
+            continue
+        root_piece: Optional[Any] = win.object_manager.graphics_items.get(
+            f"{name}:{root_members[0].name}"
+        )
+        if root_piece:
+            puppets_data[name] = {
+                "path": win.object_manager.puppet_paths.get(name),
+                "scale": win.object_manager.puppet_scales.get(name, 1.0),
+                "position": [root_piece.x(), root_piece.y()],
+                "rotation": win.scene_controller.get_puppet_rotation(name),
+                "z_offset": win.object_manager.puppet_z_offsets.get(name, 0),
+            }
+
+    data: Dict[str, Any] = win.scene_model.to_dict()
+    data["puppets_data"] = puppets_data
+
+    def _write(payload: Dict[str, Any], path: str) -> None:
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(payload, f, indent=2)
+            logging.info("Scene saved to %s (async)", path)
+        except (OSError, TypeError) as err:
+            logging.error("Error saving scene '%s' (async): %s", path, err)
+
+    try:
+        from PySide6.QtConcurrent import run as _qt_run  # type: ignore
+
+        _qt_run(_write, data, file_path)
+    except Exception:
+        # Fallback to a Python thread if QtConcurrent is unavailable
+        import threading
+
+        threading.Thread(target=_write, args=(data, file_path), daemon=True).start()
+
+
 def import_scene(win: MainWindow, file_path: str) -> None:
     """Imports a scene from a JSON file, rebuilding the entire scene state."""
+
     def _resolve_path(path_str: Optional[str], scene_file: Path) -> Optional[str]:
         if not path_str:
             return None
@@ -181,7 +246,9 @@ def import_scene(win: MainWindow, file_path: str) -> None:
                 except (TypeError, ValueError):
                     logging.exception("Invalid z_offset value in puppets_data")
             else:
-                logging.warning("Puppet asset for '%s' could not be resolved: %s", name, puppet_path)
+                logging.warning(
+                    "Puppet asset for '%s' could not be resolved: %s", name, puppet_path
+                )
 
         for obj in win.scene_model.objects.values():
             try:
@@ -198,15 +265,11 @@ def import_scene(win: MainWindow, file_path: str) -> None:
             win.timeline_widget.add_keyframe_marker(kf_index)
 
         win.playback_handler.update_timeline_ui_from_model()
-        win.scene.setSceneRect(
-            0, 0, win.scene_model.scene_width, win.scene_model.scene_height
-        )
+        win.scene.setSceneRect(0, 0, win.scene_model.scene_width, win.scene_model.scene_height)
         try:
             win.scene_controller.update_background()
         except RuntimeError:
-            logging.exception(
-                "Scene controller background update failed, using fallback"
-            )
+            logging.exception("Scene controller background update failed, using fallback")
             win._update_background()
         win.timeline_widget.set_current_frame(win.scene_model.start_frame)
         win.inspector_widget.refresh()

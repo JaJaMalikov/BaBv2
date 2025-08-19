@@ -61,9 +61,7 @@ class ObjectViewAdapter:
         for name, puppet in self.scene_model.puppets.items():
             puppet_state: Dict[str, Dict[str, Any]] = {}
             for member_name in puppet.members:
-                piece: Optional[PuppetPiece] = self.graphics_items.get(
-                    f"{name}:{member_name}"
-                )
+                piece: Optional[PuppetPiece] = self.graphics_items.get(f"{name}:{member_name}")
                 if piece:
                     puppet_state[member_name] = {
                         "rotation": piece.local_rotation,
@@ -119,9 +117,7 @@ class ObjectViewAdapter:
                     data["scale"] = float(gi.scale())
                     data["z"] = int(gi.zValue())
                 except RuntimeError as e:
-                    logging.debug(
-                        "Reading graphics item state for '%s' failed: %s", name, e
-                    )
+                    logging.debug("Reading graphics item state for '%s' failed: %s", name, e)
                 data["attached_to"] = attached_to
                 states[name] = data
         return states

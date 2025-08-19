@@ -10,6 +10,7 @@ from PySide6.QtWidgets import QGraphicsItem
 from core.scene_model import SceneObject, Keyframe
 from core.puppet_piece import PuppetPiece
 from .visibility_utils import update_piece_visibility
+
 if TYPE_CHECKING:
     from .scene_controller import MainWindowProtocol
 
@@ -42,9 +43,7 @@ class StateApplier:
         """Ensure the graphics item's parent matches the attachment info."""
         if attachment:
             puppet_name, member_name = attachment
-            parent_piece: Optional[PuppetPiece] = graphics_items.get(
-                f"{puppet_name}:{member_name}"
-            )
+            parent_piece: Optional[PuppetPiece] = graphics_items.get(f"{puppet_name}:{member_name}")
             if parent_piece is not None and gi.parentItem() is not parent_piece:
                 gi.setParentItem(parent_piece)
         else:
@@ -112,9 +111,7 @@ class StateApplier:
         def _active_variants_for_puppet(puppet_name: str) -> Dict[str, str]:
             sel: Dict[str, str] = {}
             si: List[int] = sorted(keyframes.keys())
-            last_kf_any: Optional[int] = next(
-                (i for i in reversed(si) if i <= index), None
-            )
+            last_kf_any: Optional[int] = next((i for i in reversed(si) if i <= index), None)
             if last_kf_any is not None:
                 kf = keyframes[last_kf_any]
                 data = kf.puppets.get(puppet_name, {})
@@ -143,16 +140,10 @@ class StateApplier:
                     update_piece_visibility(self.win, piece, is_on)
 
         sorted_indices: List[int] = sorted(keyframes.keys())
-        prev_kf_index: int = next(
-            (i for i in reversed(sorted_indices) if i <= index), -1
-        )
+        prev_kf_index: int = next((i for i in reversed(sorted_indices) if i <= index), -1)
         next_kf_index: int = next((i for i in sorted(sorted_indices) if i > index), -1)
 
-        if (
-            prev_kf_index != -1
-            and next_kf_index != -1
-            and prev_kf_index != next_kf_index
-        ):
+        if prev_kf_index != -1 and next_kf_index != -1 and prev_kf_index != next_kf_index:
             prev_kf: Keyframe = keyframes[prev_kf_index]
             next_kf: Keyframe = keyframes[next_kf_index]
             ratio: float = (index - prev_kf_index) / (next_kf_index - prev_kf_index)
@@ -174,17 +165,11 @@ class StateApplier:
                     if not piece.parent_piece:
                         prev_pos: Tuple[float, float] = prev_state["pos"]
                         next_pos: Tuple[float, float] = next_state["pos"]
-                        interp_x: float = (
-                            prev_pos[0] + (next_pos[0] - prev_pos[0]) * ratio
-                        )
-                        interp_y: float = (
-                            prev_pos[1] + (next_pos[1] - prev_pos[1]) * ratio
-                        )
+                        interp_x: float = prev_pos[0] + (next_pos[0] - prev_pos[0]) * ratio
+                        interp_y: float = prev_pos[1] + (next_pos[1] - prev_pos[1]) * ratio
                         piece.setPos(interp_x, interp_y)
         else:
-            target_kf_index: int = (
-                prev_kf_index if prev_kf_index != -1 else next_kf_index
-            )
+            target_kf_index: int = prev_kf_index if prev_kf_index != -1 else next_kf_index
             if target_kf_index == -1:
                 return
             kf: Keyframe = keyframes[target_kf_index]
@@ -198,9 +183,7 @@ class StateApplier:
                     piece = graphics_items.get(f"{name}:{member_name}")
                     if not isinstance(piece, PuppetPiece):
                         continue
-                    piece.local_rotation = float(
-                        member_state.get("rotation", piece.local_rotation)
-                    )
+                    piece.local_rotation = float(member_state.get("rotation", piece.local_rotation))
                     if not piece.parent_piece:
                         pos = member_state.get("pos")
                         if isinstance(pos, (list, tuple)) and len(pos) == 2:
@@ -237,34 +220,21 @@ class StateApplier:
             (temporal deletion rule). In that case, other values may be None.
             """
             si: List[int] = sorted(keyframes.keys())
-            last_kf_any: Optional[int] = next(
-                (i for i in reversed(si) if i <= index), None
-            )
-            if (
-                last_kf_any is not None
-                and obj_name not in keyframes[last_kf_any].objects
-            ):
+            last_kf_any: Optional[int] = next((i for i in reversed(si) if i <= index), None)
+            if last_kf_any is not None and obj_name not in keyframes[last_kf_any].objects:
                 return None, None, None, None, False
             prev_idx: Optional[int] = next(
-                (
-                    i
-                    for i in reversed(si)
-                    if i <= index and obj_name in keyframes[i].objects
-                ),
+                (i for i in reversed(si) if i <= index and obj_name in keyframes[i].objects),
                 None,
             )
             next_idx: Optional[int] = next(
                 (i for i in si if i > index and obj_name in keyframes[i].objects), None
             )
             prev_state: Optional[Dict[str, Any]] = (
-                keyframes[prev_idx].objects.get(obj_name)
-                if prev_idx is not None
-                else None
+                keyframes[prev_idx].objects.get(obj_name) if prev_idx is not None else None
             )
             next_state: Optional[Dict[str, Any]] = (
-                keyframes[next_idx].objects.get(obj_name)
-                if next_idx is not None
-                else None
+                keyframes[next_idx].objects.get(obj_name) if next_idx is not None else None
             )
             return prev_idx, prev_state, next_idx, next_state, True
 
@@ -272,9 +242,7 @@ class StateApplier:
         self.win._suspend_item_updates = True
         try:
             for name, base_obj in self.win.scene_model.objects.items():
-                prev_idx, prev_st, next_idx, next_st, visible = prev_and_next_state(
-                    name
-                )
+                prev_idx, prev_st, next_idx, next_st, visible = prev_and_next_state(name)
                 gi: Optional[QGraphicsItem] = graphics_items.get(name)
 
                 if not visible or prev_st is None:
@@ -318,9 +286,7 @@ class StateApplier:
 
                 if do_interp and same_space and next_st is not None:
                     t: float = (index - float(prev_idx)) / float(next_idx - prev_idx)
-                    self._interpolate_object(
-                        gi, prev_st, next_st, t, prev_att, graphics_items
-                    )
+                    self._interpolate_object(gi, prev_st, next_st, t, prev_att, graphics_items)
                 else:
                     self._apply_object_step(gi, prev_st, prev_att, graphics_items)
 

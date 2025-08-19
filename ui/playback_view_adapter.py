@@ -55,4 +55,3 @@ class PlaybackViewAdapter(QObject):
     def _on_paste_keyframe(self, frame_index: int) -> None:
         self.service.paste_keyframe(frame_index)
         self.timeline_widget.add_keyframe_marker(frame_index)
-

@@ -20,9 +20,7 @@ def app():
 def test_capture_visible_object_states(_app):
     """Test that the visible object states are captured correctly."""
     win = MainWindow()
-    win.scene_controller.add_puppet(
-        str(Path("assets/pantins/manu.svg").resolve()), "manu"
-    )
+    win.scene_controller.add_puppet(str(Path("assets/pantins/manu.svg").resolve()), "manu")
 
     free_path = str(Path("assets/objets/Faucille.svg").resolve())
     # pylint: disable=protected-access

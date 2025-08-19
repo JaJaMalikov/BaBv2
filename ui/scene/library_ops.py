@@ -47,9 +47,7 @@ class LibraryOps:
         scene_pt: QPointF = self.win.view.mapToScene(pos.toPoint())
         self._add_library_payload(payload, scene_pos=scene_pt)
 
-    def _add_library_payload(
-        self, payload: LibraryPayload, scene_pos: QPointF | None
-    ) -> None:
+    def _add_library_payload(self, payload: LibraryPayload, scene_pos: QPointF | None) -> None:
         """Internal helper adding a payload to the scene."""
         kind: Optional[str] = payload.get("kind")
         path: Optional[str] = payload.get("path")
@@ -71,9 +69,7 @@ class LibraryOps:
             if scene_pos is not None:
                 try:
                     root_member_name: str = (
-                        self.scene_service.model.puppets[name]
-                        .get_root_members()[0]
-                        .name
+                        self.scene_service.model.puppets[name].get_root_members()[0].name
                     )
                     root_piece = self.win.object_manager.graphics_items.get(
                         f"{name}:{root_member_name}"

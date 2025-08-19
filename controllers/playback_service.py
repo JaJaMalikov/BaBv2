@@ -129,4 +129,3 @@ class PlaybackService(QObject):
         self.scene_model.add_keyframe(frame_index, state)
         self.go_to_frame(frame_index)
         self.snapshot_requested.emit(int(frame_index))
-

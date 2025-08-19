@@ -80,4 +80,3 @@ class PlaybackController(QObject):
             self._service.scene_model.start_frame,
             self._service.scene_model.end_frame,
         )
-

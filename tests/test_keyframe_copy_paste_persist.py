@@ -164,9 +164,7 @@ def test_paste_on_current_frame_overwrites_correctly(app):  # noqa: ARG001
     pup10_pasted, obj10_pasted = _state_at(win, 10)
 
     # Use semantic compare for puppets
-    assert _semantic_puppet_state(win, pup10_pasted) == _semantic_puppet_state(
-        win, pup5
-    )
+    assert _semantic_puppet_state(win, pup10_pasted) == _semantic_puppet_state(win, pup5)
     # Objects should be identical
     assert obj10_pasted == obj5
     # And specifically check the rotation that we set

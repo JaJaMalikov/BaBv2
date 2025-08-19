@@ -8,6 +8,7 @@ import logging
 from PySide6.QtCore import QObject
 
 from .scene_visuals import SceneVisuals
+
 if TYPE_CHECKING:
     from .scene_controller import MainWindowProtocol
 

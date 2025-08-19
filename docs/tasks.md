@@ -1,99 +1,89 @@
 # Improvement Tasks Checklist
 
-A logically ordered, actionable checklist covering architectural and code-level improvements.
+Note: Each item starts with a checkbox placeholder for tracking. Items are numbered for logical order; use sub-numbering for related subtasks.
 
-1. [x] Establish baseline developer tooling and quality gates
-   - [x] Add ruff/black configuration in pyproject.toml (consistent style, imports, and lint rules)
-   - [x] Introduce mypy with a permissive baseline (incrementally tighten, enable strict in core/ first)
-   - [x] Create a pre-commit config (black, ruff, mypy, pytest -q on changed paths)
+[ ] 1. Define and enforce architectural boundaries across layers (core, controllers, ui).
+[ ] 1.1 Add an import-linter (or similar) configuration to prevent forbidden imports (e.g., ui -> core, controllers -> core only, ui -> controllers only).
+[ ] 1.2 Add a lightweight pytest check that runs import-linter with the repo to fail on boundary violations.
+[ ] 1.3 Document allowed dependencies and examples in ARCHITECTURE.md (update the “Layers” and “Data flow” sections).
 
-2. [x] Define logging and error-handling standards
-   - [x] Centralize logging configuration (formatter, levels, module filters) in a single bootstrap module
-   - [x] Replace broad exception handlers (except Exception) with narrower, contextual handling in controllers and UI
-   - [x] Ensure user-facing error reporting paths (dialogs/toasts) are distinct from developer logs
-   - [x] Add structured log context for frame index, object/puppet names, and operation type
+[ ] 2. Centralize settings keys/namespacing and usage across the codebase.
+[ ] 2.1 Adopt controllers.settings_service.SettingsService.key(...) for QSettings key construction in all UI modules.
+[ ] 2.2 Replace ad-hoc string literals for settings keys in ui/* with centralized helpers; add a test to assert key stability.
 
-3. [x] Strengthen typing and protocol boundaries
-   - [x] Expand typing.Protocol usage for all UI collaborators (TimelineWidgetProtocol, ObjectViewAdapterProtocol, InspectorWidgetProtocol)
-   - [x] Add missing type annotations across controllers/ and ui/scene/
-   - [x] Enable mypy for core/ as strict; fix revealed issues (Dict[str, Any] → TypedDict/dataclasses where appropriate)
-   - [x] Add type-safe aliases for scene state maps (e.g., PuppetState, ObjectState)
+[ ] 3. Refactor ui/settings_manager.py into smaller, testable units.
+[ ] 3.1 Extract dialog data binding to a presenter/adapter (see §7.2) and remove nested functions from open_dialog.
+[ ] 3.2 Move import/export logic to a pure service (see §7.1/§7.3) and keep the manager focused on orchestration and QSettings bridge.
+[ ] 3.3 Add unit tests that cover: load/save geometry, timeline visibility, toolbar overlay geometry, and shortcut persistence.
+[ ] 3.4 Add error handling paths for malformed QSettings values (e.g., invalid QByteArray) with logged warnings (consistent logger usage).
 
-4. [x] Core model invariants, validation, and serialization
-   - [x] Document and enforce invariants in SceneModel (frame indices monotonic, unique object names, consistent attachments)
-   - [x] Introduce schema/versioning for exported JSON (SceneModel.export_json/import_json) with a version field and migration hook
-   - [x] Harden validate_* in core/scene_validation.py and ensure they are called at persistence boundaries
-   - [x] Improve error messages and recovery when loading invalid scenes (partial load with warnings)
+[ ] 4. Strengthen SceneModel invariants and serialization.
+[ ] 4.1 After import_json/from_dict, run _validate_invariants with clear error reporting; return False with messages collected for UI display.
+[ ] 4.2 Add scene schema versioning constants and explicit migration steps in _migrate_data; unit-test a migration scenario.
+[ ] 4.3 Improve typing of SceneSnapshot/ObjectStateMap/PuppetStateMap usages; add mypy-friendly annotations where missing.
+[ ] 4.4 Add a round-trip property test: to_dict -> json -> from_dict maintains equality of keyframes and object attachments.
 
-5. [x] SvgLoader robustness and test coverage
-   - [x] Normalize namespace handling and unit parsing (px, %, etc.) with clear fallbacks
-   - [x] Cache QSvgRenderer instances and consider lazy initialization for performance
-   - [x] Add guards and explicit exceptions for missing/invalid groups and viewBox anomalies
-   - [x] Create unit tests with malformed SVGs and edge cases (missing id, nested groups, non-numeric dimensions)
+[ ] 5. Isolate Puppet SVG validation and enhance performance.
+[ ] 5.1 Move validate_svg_structure out of core/puppet_model.py into a new core/svg_validation.py to separate concerns.
+[ ] 5.2 Introduce caching of computed parent/child maps and pivots keyed by SVG path + mtime to avoid recomputation.
+[ ] 5.3 Add tests for cycle detection, missing pivots, and invalid parent references (positive/negative tests).
 
-6. [ ] Puppet model API clarity and validation
-   - [x] Add docstrings and examples for Puppet.build_from_svg, normalize_variants, and validate_svg_structure
-   - [x] Validate parent/child relations and pivot references with actionable error messages
-   - [ ] Replace ad-hoc maps with typed dataclasses for member/variant structures where feasible
-   - [ ] Unit tests for hierarchy construction, child map computation, and variant normalization
+[ ] 6. Improve SvgLoader robustness and caching.
+[ ] 6.1 Key the renderer cache by (path, mtime, size) to avoid stale caches when the file changes in place.
+[ ] 6.2 Provide XML parsing errors with element line/column when available; include group/pivot id context in messages.
+[ ] 6.3 Add a fast-path for group bbox using viewBox + transform-free elements; unit-test deterministic bounding boxes.
+[ ] 6.4 Expand malformed SVG tests (tests/test_svg_loader_malformed.py) with additional cases (missing viewBox, nested groups, invalid href).
 
-7. [ ] Refactor SettingsManager (ui/settings_manager.py ~850+ lines)
-   - [ ] Extract a pure SettingsService (load/save/keys/schema) decoupled from Qt widgets
-   - [ ] Extract a dialog presenter/adapter responsible for binding settings to UI controls
-   - [ ] Define a settings schema (dataclass + defaults) and centralize QSettings key namespacing
-   - [ ] Add import/export validation and error reporting (profile format version)
-   - [ ] Add unit tests for default loading, round-trips, and migration of keys
+[ ] 7. Settings system modernization and portability.
+[ ] 7.1 Extract a pure SettingsService (no Qt) with dataclass schema and defaults for portable JSON profiles. (Present in controllers/settings_service.py; integrate across UI.)
+[ ] 7.2 Extract a presenter/adapter for dialog bindings to onion-skin controls (and future tabs), mapping to/from schema. (Present in controllers/settings_presenter.py; wire into SettingsManager.)
+[ ] 7.3 Implement JSON import/export via SettingsService (load_json/save_json) with version/namespace validation and issue reporting in the UI.
+[ ] 7.4 Replace duplicate onion key handling by reusing presenter helpers; add tests verifying backward compatibility of legacy QSettings keys.
+[ ] 7.5 Add a migration command in the UI: "Export current QSettings to JSON profile" and "Import JSON profile to QSettings" using the service.
 
-8. [ ] SceneController and services boundaries
-   - [ ] Ensure SceneService remains Qt-agnostic and has a narrow, cohesive API
-   - [ ] Move any direct graphics item assumptions out of controllers into adapters
-   - [ ] Add docstrings and diagrams showing data flow: UI → Controller → Service → Model → View update
+[ ] 8. Decompose ui/views/timeline_widget.py for maintainability.
+[ ] 8.1 Extract a TimelinePainter responsible only for drawing (no state/QSettings/etc.).
+[ ] 8.2 Extract a small interaction/model class for selection, hover, drag, and keyframe sets; keep QWidget thin.
+[ ] 8.3 Centralize timeline-related settings (colors, zoom, keyframe size) and load via SettingsService/keys.
+[ ] 8.4 Add focused unit tests for coordinate transforms (_frame_to_x/_x_to_frame) and keyboard/mouse actions without a QPA server (tests use _app fixture).
 
-9. [ ] Onion skin performance and configurability
-   - [ ] Introduce a cache layer for per-frame onion clones (reuse between updates when topology unchanged)
-   - [ ] Option to render onion skins as pixmaps at reduced resolution for performance
-   - [ ] Make opacity and frame-span configurable via settings with sane defaults
-   - [ ] Profile and add a micro-benchmark for update_onion_skins across N keyframes and M items
+[ ] 9. Unify logging and contextual diagnostics.
+[ ] 9.1 Ensure all controllers use core.logging_config.log_with_context for structured logs on warning/error paths.
+[ ] 9.2 Replace bare prints/logging calls in UI with module-level loggers and consistent messages (include op= and identifiers).
+[ ] 9.3 Add a test that exercises a few error paths and asserts logs contain expected context keys.
 
-10. [ ] Object and puppet operations consistency
-    - [x] Centralize name uniquifying logic (unique_puppet_name, object duplicates) in a shared utility
-    - [x] Ensure deep-copy semantics for duplication (state, z-order, variants) are consistent
-    - [x] Replace magic numbers/strings (z offsets, handle sizes) with named constants or settings
-    - [x] Add tests for duplicate/delete/attach/detach flows across frames
+[ ] 10. Strengthen type hints and protocols.
+[ ] 10.1 Add Protocols for window/controller interfaces passed around (win has: scene_model, timeline_widget, playback_handler, etc.).
+[ ] 10.2 Add type hints to public methods lacking annotations; run mypy optionally in dev (not enforced in CI yet).
 
-11. [x] Scene IO and path handling
-    - [x] Standardize path resolution (project-relative vs absolute) and validate existence on load
-    - [x] Add file dialog helpers with last-used directory persistence and filters
-    - [x] Ensure export/import embed version and gracefully ignore unknown future fields
+[ ] 11. Expand and harden the test suite.
+[ ] 11.1 Add tests for SettingsManager integration using the _app fixture: verify apply/import/export flows without touching real user directories.
+[ ] 11.2 Add property-based tests (hypothesis) for SceneModel keyframe operations (insert/remove/go_to_frame monotonic behaviors).
+[ ] 11.3 Add fuzz-like tests for SvgLoader group/pivot lookup using small synthetic SVG snippets.
 
-12. [ ] Testing improvements and coverage expansion
-    - [ ] Increase unit test coverage for core and controllers; add regression tests for known bugs
-    - [ ] Add headless UI tests using Qt’s offscreen platform + xvfb in CI
-    - [ ] Parameterize tests for multiple assets (SVGs, JSON scenes) and edge conditions
-    - [ ] Introduce smoke tests for startup_sequence and basic user flows
+[ ] 12. Performance improvements (measurable wins).
+[ ] 12.1 Implement optional onion skin pixmap mode in OnionSkinManager with downscaling (see schema onion_pixmap_mode/onion_pixmap_scale); add toggles in settings dialog.
+[ ] 12.2 Cache per-frame composite onion layers when camera/zoom unchanged; invalidate on scene change.
+[ ] 12.3 Add a simple micro-benchmark script (under tests/perf/) to compare frame render times with/without pixmap mode.
 
-13. [x] Documentation upgrades
-    - [x] Enrich ARCHITECTURE.md with sequence diagrams for key flows (keyframe add, onion update, attach object)
-    - [x] Add CONTRIBUTING.md with coding style, commit message conventions, and PR checklist
-    - [x] Document settings schema and keys in docs/settings.md
-    - [x] Add troubleshooting guide for common runtime issues (Qt platform plugin, SVG rendering)
+[ ] 13. Improve UI startup and layout persistence.
+[ ] 13.1 Ensure timeline dock visibility and floating state changes persist reliably across sessions; add regression tests.
+[ ] 13.2 Make overlay toolbars raise_ calls resilient when overlays are absent; avoid attribute errors (defensive hasattr checks).
 
-14. [x] Packaging and environment
-    - [x] Define a project entry point in pyproject.toml (console/script entry)
-    - [x] Pin minimal versions in requirements.txt; add dev-requirements (ruff, black, mypy, pytest-cov)
-    - [x] Provide a Makefile or tasks.py for common tasks (lint, test, run, package)
+[ ] 14. Developer experience and tooling.
+[ ] 14.1 Extend .pre-commit-config.yaml with black, isort, flake8/pylint hooks; document usage in README.
+[ ] 14.2 Add a Makefile target: `make lint` and `make test` to streamline local dev flows.
+[ ] 14.3 Optionally add GitHub Actions workflow to run tests and lint on pushes/PRs (if/when repo is hosted with CI).
 
-15. [ ] UX and accessibility
-    - [ ] Ensure keyboard navigation and focus visibility in key widgets (timeline, scene)
-    - [ ] Externalize user-facing strings and prepare for i18n (Qt tr())
-    - [ ] Persist window layouts, dock states, and last-used options reliably with schema validation
+[ ] 15. Documentation improvements.
+[ ] 15.1 Update ARCHITECTURE.md with a diagram of settings flow: QSettings <-> Presenter <-> Dialog Widgets and JSON import/export via SettingsService.
+[ ] 15.2 Add a small docs/settings.md explaining profile format (namespace, version, data) with examples and migration policy.
+[ ] 15.3 Document testing tips for Qt in tests/README or ARCHITECTURE.md appendices (reuse conftest _app fixture, headless offscreen).
 
-16. [ ] Performance and responsiveness
-    - [ ] Audit main-thread long operations; move heavy work (SVG parsing, export) off the UI thread with QtConcurrent/QThread
-    - [ ] Add progress feedback for long-running tasks (exports/imports)
-    - [ ] Add lightweight profiling hooks and a developer flag to print frame timing
+[ ] 16. Safety and error handling.
+[ ] 16.1 Ensure file operations in import/export catch and surface errors to the UI with actionable messages; test file-not-found and invalid JSON cases.
+[ ] 16.2 Standardize try/except patterns: catch specific exceptions where possible; log and continue gracefully.
 
-17. [ ] Code hygiene and dead code removal
-    - [ ] Remove unused imports, dead code paths, and redundant logging
-    - [ ] Normalize file/module naming (snake_case) and signal naming conventions per ARCHITECTURE.md
-    - [ ] Add missing docstrings for public functions and classes
+[ ] 17. Code cleanup and consistency.
+[ ] 17.1 Remove dead code and unused imports (run pylint hints); keep UI thin and move logic into controllers/core where feasible.
+[ ] 17.2 Normalize naming conventions (English identifiers, consistent acronyms: kf/keyframe, bbox, etc.).

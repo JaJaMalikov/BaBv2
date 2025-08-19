@@ -19,6 +19,7 @@ from PySide6.QtGui import (
     QDropEvent,
     QMouseEvent,
     QWheelEvent,
+    QKeyEvent,
 )
 from PySide6.QtWidgets import (
     QGraphicsScene,
@@ -66,6 +67,17 @@ class ZoomableView(QGraphicsView):
         self._build_overlay()
         self.setAcceptDrops(True)
         self.viewport().setAcceptDrops(True)
+        # Accessibility: ensure keyboard focus and navigation can reach the scene view (docs/tasks.md 15.87)
+        self.setFocusPolicy(Qt.StrongFocus)
+        self.setAccessibleName("Scene View")
+        self.setAccessibleDescription(
+            "Graphics view; use arrow keys to pan, PageUp/PageDown for faster panning; Ctrl+Wheel to zoom; Middle mouse to pan."
+        )
+        # Visible focus ring for accessibility
+        try:
+            self.setStyleSheet("QGraphicsView:focus { outline: none; border: 1px dashed #65B0FF; }")
+        except Exception:
+            pass
 
     def _build_overlay(self) -> None:
         """Builds the overlay widget with tool buttons."""
@@ -270,9 +282,7 @@ class ZoomableView(QGraphicsView):
             "toggle_timeline": timeline_toggle_btn,
             "toggle_custom": custom_toggle_btn,
         }
-        self.main_tool_buttons: List[QToolButton] = list(
-            self.main_tool_buttons_map.values()
-        )
+        self.main_tool_buttons: List[QToolButton] = list(self.main_tool_buttons_map.values())
 
         self.main_tools_layout.addStretch()
         for w in self.main_tool_buttons:
@@ -316,12 +326,8 @@ class ZoomableView(QGraphicsView):
             "settings": make_btn(main_window.settings_action),
             "reset_scene": make_btn(main_window.reset_scene_action),
             "reset_ui": make_btn(main_window.reset_ui_action),
-            "toggle_library": make_btn(
-                main_window.toggle_library_action, checkable=True
-            ),
-            "toggle_inspector": make_btn(
-                main_window.toggle_inspector_action, checkable=True
-            ),
+            "toggle_library": make_btn(main_window.toggle_library_action, checkable=True),
+            "toggle_inspector": make_btn(main_window.toggle_inspector_action, checkable=True),
             "toggle_timeline": make_btn(
                 main_window.timeline_dock.toggleViewAction(), checkable=True
             ),
@@ -406,9 +412,7 @@ class ZoomableView(QGraphicsView):
         Args:
             checked: The checked state of the collapse button.
         """
-        self._set_overlay_collapsed(
-            self._overlay, self.tool_widgets, self.collapse_btn, checked
-        )
+        self._set_overlay_collapsed(self._overlay, self.tool_widgets, self.collapse_btn, checked)
 
     def toggle_main_tools_collapse(self, checked: bool) -> None:
         """
@@ -480,10 +484,7 @@ class ZoomableView(QGraphicsView):
             btn.setFixedSize(button_size, button_size)
         # Custom overlay
         try:
-            if (
-                hasattr(self, "_custom_tools_overlay")
-                and self._custom_tools_overlay is not None
-            ):
+            if hasattr(self, "_custom_tools_overlay") and self._custom_tools_overlay is not None:
                 for btn in self._custom_tools_overlay.findChildren(QToolButton):
                     btn.setIconSize(QSize(icon_size, icon_size))
                     btn.setFixedSize(button_size, button_size)
@@ -532,10 +533,7 @@ class ZoomableView(QGraphicsView):
                 self.main_tool_buttons.append(btn)
             self.main_tools_layout.addWidget(self.main_collapse_btn)
             # Adjust overlay size after relayout
-            if (
-                hasattr(self, "_main_tools_overlay")
-                and self._main_tools_overlay is not None
-            ):
+            if hasattr(self, "_main_tools_overlay") and self._main_tools_overlay is not None:
                 self._main_tools_overlay.adjustSize()
         except (RuntimeError, AttributeError):
             logging.exception("Failed to apply main menu settings")
@@ -687,3 +685,56 @@ class ZoomableView(QGraphicsView):
             event.acceptProposedAction()
         else:
             super().dropEvent(event)
+
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        """Keyboard accessibility: pan the view with arrow keys and page keys.
+
+        - Arrow keys: small pan increments.
+        - PageUp/PageDown: large vertical pans using the scrollbar page step.
+        - Home/End: jump to top-left / bottom-right extents.
+        """
+        try:
+            h = self.horizontalScrollBar()
+            v = self.verticalScrollBar()
+        except Exception:
+            # Fallback to default behavior if scrollbars are not available
+            super().keyPressEvent(event)
+            return
+
+        small_step = max(10, self.viewport().width() // 20)
+        if event.key() == Qt.Key_Left:
+            h.setValue(h.value() - small_step)
+            event.accept()
+            return
+        elif event.key() == Qt.Key_Right:
+            h.setValue(h.value() + small_step)
+            event.accept()
+            return
+        elif event.key() == Qt.Key_Up:
+            v.setValue(v.value() - small_step)
+            event.accept()
+            return
+        elif event.key() == Qt.Key_Down:
+            v.setValue(v.value() + small_step)
+            event.accept()
+            return
+        elif event.key() == Qt.Key_PageUp:
+            v.setValue(max(v.minimum(), v.value() - v.pageStep()))
+            event.accept()
+            return
+        elif event.key() == Qt.Key_PageDown:
+            v.setValue(min(v.maximum(), v.value() + v.pageStep()))
+            event.accept()
+            return
+        elif event.key() == Qt.Key_Home:
+            h.setValue(h.minimum())
+            v.setValue(v.minimum())
+            event.accept()
+            return
+        elif event.key() == Qt.Key_End:
+            h.setValue(h.maximum())
+            v.setValue(v.maximum())
+            event.accept()
+            return
+        else:
+            super().keyPressEvent(event)

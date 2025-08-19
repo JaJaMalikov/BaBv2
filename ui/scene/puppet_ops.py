@@ -30,9 +30,99 @@ class PuppetOps:
         """Initialize helper with a reference to la fenêtre et au service."""
         self.win = win
         self.scene_service = scene_service
+        # Keep references to async watchers to avoid GC before completion
+        self._async_watchers: list[object] = []
 
     def add_puppet(self, file_path: str, puppet_name: str) -> None:
-        """Adds a puppet to the scene."""
+        """Adds a puppet to the scene.
+
+        Optionally offloads SVG XML parsing to a background thread when the
+        setting ``performance/async_svg_load`` is enabled in QSettings. The
+        rest of the work (Qt renderer creation and graphics items) stays on the UI thread.
+        """
+        # Check async setting (default False to keep tests deterministic)
+        try:
+            from PySide6.QtCore import QSettings
+
+            s = QSettings("JaJa", "Macronotron")
+            use_async = bool(s.value("performance/async_svg_load", False))
+        except Exception:
+            use_async = False
+
+        if use_async:
+            try:
+                # Use QtConcurrent to parse XML off the UI thread and signal completion
+                from PySide6.QtConcurrent import run as _qt_run  # type: ignore
+                from PySide6.QtCore import QFutureWatcher
+                import xml.etree.ElementTree as ET
+                from pathlib import Path
+                import json
+
+                def _worker_parse(path: str):
+                    tree = ET.parse(path)
+                    # Sidecar variants (optional)
+                    raw_variants = None
+                    svg_path = Path(path)
+                    for sidecar in (
+                        svg_path.with_suffix(".json"),
+                        svg_path.with_name(f"conf_{svg_path.stem}.json"),
+                    ):
+                        try:
+                            if sidecar.exists():
+                                with sidecar.open("r", encoding="utf-8") as fh:
+                                    data = json.load(fh)
+                                if isinstance(data, dict):
+                                    raw_variants = data.get("variants", {})
+                                break
+                        except (OSError, ValueError):
+                            # Swallow here; will be logged on UI thread if needed
+                            raw_variants = None
+                    return tree, raw_variants
+
+                future = _qt_run(_worker_parse, file_path)
+                watcher: QFutureWatcher = QFutureWatcher()
+                watcher.setFuture(future)
+                # keep a reference until finished
+                self._async_watchers.append(watcher)
+
+                def _finish():
+                    try:
+                        tree, raw_variants = future.result()
+                    except Exception:
+                        logging.exception("Async SVG parse failed for %s", file_path)
+                        return
+                    # Continue on UI thread
+                    puppet: Puppet = Puppet()
+                    try:
+                        if isinstance(raw_variants, dict):
+                            vmap, vz = normalize_variants(raw_variants)
+                            puppet.variants = vmap
+                            puppet.variant_z = vz
+                    except Exception:
+                        logging.exception("Applying sidecar variants failed for %s", file_path)
+                    try:
+                        loader: SvgLoader = SvgLoader.from_parsed(file_path, tree)
+                        renderer: QSvgRenderer = loader.renderer
+                        self.win.object_manager.renderers[puppet_name] = renderer
+                        puppet.build_from_svg(loader)
+                        self.scene_service.add_puppet(puppet_name, puppet)
+                        self.win.object_manager.puppet_scales[puppet_name] = 1.0
+                        self.win.object_manager.puppet_paths[puppet_name] = file_path
+                        self.win.object_manager.puppet_z_offsets[puppet_name] = (
+                            DEFAULT_PUPPET_Z_OFFSET
+                        )
+                        self._add_puppet_graphics(puppet_name, puppet, file_path, renderer, loader)
+                        self.win.inspector_widget.refresh()
+                    except Exception:
+                        logging.exception("Failed to finalize puppet load for %s", file_path)
+
+                watcher.finished.connect(_finish)
+                return
+            except Exception:
+                # Fallback to synchronous path if QtConcurrent or watcher unavailable
+                logging.debug("QtConcurrent unavailable; falling back to sync SVG load")
+
+        # Synchronous path (default)
         puppet: Puppet = Puppet()
         loader: SvgLoader = SvgLoader(file_path)
         renderer: QSvgRenderer = loader.renderer
@@ -81,9 +171,7 @@ class PuppetOps:
         for name, member in puppet.members.items():
             offset_x, offset_y = loader.get_group_offset(name) or (0.0, 0.0)
             pivot_x, pivot_y = member.pivot[0] - offset_x, member.pivot[1] - offset_y
-            piece: PuppetPiece = PuppetPiece(
-                file_path, name, pivot_x, pivot_y, renderer
-            )
+            piece: PuppetPiece = PuppetPiece(file_path, name, pivot_x, pivot_y, renderer)
             piece.setZValue(member.z_order)
             pieces[name] = piece
             self.win.object_manager.graphics_items[f"{puppet_name}:{name}"] = piece
@@ -93,9 +181,7 @@ class PuppetOps:
             member: PuppetMember = puppet.members[name]
             if member.parent:
                 parent_piece: PuppetPiece = pieces[member.parent.name]
-                piece.set_parent_piece(
-                    parent_piece, member.rel_pos[0], member.rel_pos[1]
-                )
+                piece.set_parent_piece(parent_piece, member.rel_pos[0], member.rel_pos[1])
             else:  # Root piece
                 offset_x, offset_y = loader.get_group_offset(name) or (0.0, 0.0)
                 final_x: float = scene_center.x() - (member.pivot[0] - offset_x)
@@ -318,9 +404,7 @@ class PuppetOps:
             logging.exception("Failed to sync handles button state")
 
     # --- Variants ---------------------------------------------------------
-    def set_member_variant(
-        self, puppet_name: str, slot: str, variant_name: str
-    ) -> None:
+    def set_member_variant(self, puppet_name: str, slot: str, variant_name: str) -> None:
         """Set the active variant for a logical slot on a puppet and update visibility."""
         puppet: Optional[Puppet] = self.win.scene_model.puppets.get(puppet_name)
         if not puppet:
@@ -360,9 +444,7 @@ class PuppetOps:
         return candidates[0] if candidates else None
 
     # --- Helpers ---------------------------------------------------------
-    def _align_puppet_bottom(
-        self, puppet_name: str, pieces: dict[str, PuppetPiece]
-    ) -> None:
+    def _align_puppet_bottom(self, puppet_name: str, pieces: dict[str, PuppetPiece]) -> None:
         """Align the union bbox of visible puppet pieces to scene bottom, keep X center.
 
         Computes the union of sceneBoundingRect for all visible pieces of the puppet

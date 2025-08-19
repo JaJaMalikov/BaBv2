@@ -22,6 +22,13 @@ QMainWindow, QDialog {
 QGraphicsView {
     border: none;
 }
+QGraphicsView:focus {
+    border: 2px solid #E53E3E; /* Accent border for focus visibility */
+}
+
+TimelineWidget:focus {
+    border: 2px solid #E53E3E; /* Focus outline for timeline */
+}
 
 /* PANELS & DOCKS (Library, Inspector, Timeline) */
 DraggableOverlay, PanelOverlay {
@@ -180,6 +187,8 @@ TimelineWidget { background-color: #111827; color: #D1D5DB; }
 TimelineWidget QToolButton { background: transparent; color: #D1D5DB; }
 TimelineWidget QToolButton:hover { background-color: #1F2937; }
 TimelineWidget QToolButton:checked { background-color: #EF4444; color: white; }
+QGraphicsView:focus { border: 2px solid #EF4444; }
+TimelineWidget:focus { border: 2px solid #EF4444; }
 QToolTip { background-color: #111827; color: #E5E7EB; border: 1px solid #374151; border-radius: 6px; padding: 4px 8px; }
 """
 

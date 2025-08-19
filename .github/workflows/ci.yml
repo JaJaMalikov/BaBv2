@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt', 'dev-requirements.txt', 'pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          if [ -f dev-requirements.txt ]; then pip install -r dev-requirements.txt; fi
+
+      - name: Ruff (lint)
+        run: |
+          if python -c "import importlib.util as u; import sys; sys.exit(0 if u.find_spec('ruff') else 1)"; then ruff check .; else echo "ruff not installed"; fi
+
+      - name: Black (format check)
+        run: |
+          if python -c "import importlib.util as u; import sys; sys.exit(0 if u.find_spec('black') else 1)"; then black --check .; else echo "black not installed"; fi
+
+      - name: Mypy (type check)
+        run: |
+          if python -c "import importlib.util as u; import sys; sys.exit(0 if u.find_spec('mypy') else 1)"; then mypy . || true; else echo "mypy not installed"; fi
+
+      - name: Run tests (headless Qt offscreen under Xvfb)
+        env:
+          PYTHONPATH: .
+        run: |
+          xvfb-run -s "-screen 0 1024x768x24" pytest -q

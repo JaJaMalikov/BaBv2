@@ -80,9 +80,7 @@ class ObjectController:
         else:
             self._ensure_keyframe(new_name)
 
-    def attach_object_to_member(
-        self, obj_name: str, puppet_name: str, member_name: str
-    ) -> None:
+    def attach_object_to_member(self, obj_name: str, puppet_name: str, member_name: str) -> None:
         """Attache un objet à un membre de pantin et enregistre son état."""
         state = self.view.attach_object_to_member(obj_name, puppet_name, member_name)
         obj = self.model.objects.get(obj_name)

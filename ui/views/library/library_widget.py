@@ -95,7 +95,9 @@ class _DraggableGrid(QListWidget):
 class LibraryWidget(QWidget):  # pylint: disable=too-few-public-methods
     """Widget listing available assets for drag and drop."""
 
+    # Backward-compat camelCase signal (kept) and normalized snake_case alias (docs/tasks.md 17.98)
     addRequested = Signal(dict)
+    add_requested = Signal(dict)
 
     def __init__(self, root_dir: Optional[str] = None, parent=None):
         """Initialise the library widget."""
@@ -117,6 +119,8 @@ class LibraryWidget(QWidget):  # pylint: disable=too-few-public-methods
         self.background_grid.addRequested.connect(self.addRequested)
         self.objects_grid.addRequested.connect(self.addRequested)
         self.puppets_grid.addRequested.connect(self.addRequested)
+        # Normalized alias also emits when legacy camelCase does
+        self.addRequested.connect(self.add_requested)
 
         # Add grids as tabs
         self.tabs.addTab(self.background_grid, get_icon("background"), "")
@@ -157,15 +161,11 @@ class LibraryWidget(QWidget):  # pylint: disable=too-few-public-methods
             if not path.exists():
                 continue
 
-            files = sorted(
-                [p for p in path.iterdir() if p.is_file() and p.suffix.lower() in exts]
-            )
+            files = sorted([p for p in path.iterdir() if p.is_file() and p.suffix.lower() in exts])
             for f in files:
                 item = QListWidgetItem(f.name)
                 item.setTextAlignment(Qt.AlignCenter)
-                item.setFlags(
-                    Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled
-                )
+                item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled)
 
                 payload = {"kind": kind, "path": str(f)}
                 item.setData(Qt.UserRole, payload)

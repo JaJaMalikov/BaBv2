@@ -9,6 +9,7 @@ Design goals (docs/plan.md, docs/tasks.md Task 2):
 - Minimal, predictable formatting suitable for both developer console and CI logs.
 - Avoid duplicate handlers if setup is called multiple times.
 """
+
 from __future__ import annotations
 
 from typing import Optional, Union
@@ -32,7 +33,9 @@ def _coerce_level(level: Union[int, str, None]) -> int:
     return logging.INFO
 
 
-def setup_logging(level: Union[int, str, None] = None, *, fmt: Optional[str] = None, datefmt: Optional[str] = None) -> None:
+def setup_logging(
+    level: Union[int, str, None] = None, *, fmt: Optional[str] = None, datefmt: Optional[str] = None
+) -> None:
     """Initialize root logging configuration for the app.
 
     - Sets a StreamHandler on the root logger if none present.
@@ -68,7 +71,6 @@ def setup_logging(level: Union[int, str, None] = None, *, fmt: Optional[str] = N
 
 
 __all__ = ["setup_logging"]
-
 
 
 def format_context(**ctx: object) -> str:

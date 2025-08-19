@@ -36,28 +36,28 @@ def build_actions(win: Any) -> None:
     Args:
         win: The MainWindow instance.
     """
-    win.save_action = QAction(icon_save(), "Sauvegarder", win)
+    win.save_action = QAction(icon_save(), win.tr("Sauvegarder"), win)
     win.save_action.setShortcut("Ctrl+S")
-    win.load_action = QAction(icon_open(), "Charger", win)
+    win.load_action = QAction(icon_open(), win.tr("Charger"), win)
     win.load_action.setShortcut("Ctrl+O")
-    win.scene_size_action = QAction(icon_scene_size(), "Taille Scène", win)
-    win.background_action = QAction(icon_background(), "Image de fond", win)
-    win.add_light_action = QAction(get_icon("plus"), "Ajouter Projecteur", win)
+    win.scene_size_action = QAction(icon_scene_size(), win.tr("Taille Scène"), win)
+    win.background_action = QAction(icon_background(), win.tr("Image de fond"), win)
+    win.add_light_action = QAction(get_icon("plus"), win.tr("Ajouter Projecteur"), win)
     # Settings icon: configurable via key 'settings'
-    win.settings_action = QAction(get_icon("settings"), "Paramètres", win)
+    win.settings_action = QAction(get_icon("settings"), win.tr("Paramètres"), win)
 
-    win.reset_scene_action = QAction(icon_reset_scene(), "Réinitialiser la scène", win)
-    win.reset_ui_action = QAction(icon_reset_ui(), "Réinitialiser l'interface", win)
+    win.reset_scene_action = QAction(icon_reset_scene(), win.tr("Réinitialiser la scène"), win)
+    win.reset_ui_action = QAction(icon_reset_ui(), win.tr("Réinitialiser l'interface"), win)
 
     # Overlay toggles
-    win.toggle_library_action = QAction(icon_library(), "Bibliothèque", win)
+    win.toggle_library_action = QAction(icon_library(), win.tr("Bibliothèque"), win)
     win.toggle_library_action.setCheckable(True)
     win.toggle_library_action.setChecked(win.library_overlay.isVisible())
     win.toggle_library_action.toggled.connect(
         lambda v: library_actions.set_library_overlay_visible(win, v)
     )
 
-    win.toggle_inspector_action = QAction(icon_inspector(), "Inspecteur", win)
+    win.toggle_inspector_action = QAction(icon_inspector(), win.tr("Inspecteur"), win)
     win.toggle_inspector_action.setCheckable(True)
     win.toggle_inspector_action.setChecked(win.inspector_overlay.isVisible())
     win.toggle_inspector_action.toggled.connect(
@@ -68,7 +68,7 @@ def build_actions(win: Any) -> None:
     win.timeline_dock.toggleViewAction().setIcon(icon_timeline())
 
     # Custom overlay toggle: configurable via key 'custom' (falls back to 'layers' if missing)
-    win.toggle_custom_action = QAction(get_icon("custom"), "Custom", win)
+    win.toggle_custom_action = QAction(get_icon("custom"), win.tr("Custom"), win)
     win.toggle_custom_action.setCheckable(True)
 
     # Map action keys for shortcut management
@@ -116,9 +116,7 @@ def connect_signals(win: Any) -> None:
     # Scene settings
     win.scene_size_action.triggered.connect(lambda: scene_actions.set_scene_size(win))
     win.background_action.triggered.connect(lambda: scene_actions.set_background(win))
-    win.add_light_action.triggered.connect(
-        lambda: win.scene_controller.create_light_object()
-    )
+    win.add_light_action.triggered.connect(lambda: win.scene_controller.create_light_object())
 
     # ZoomableView signals
     win.view.zoom_requested.connect(win.scene_controller.zoom)
@@ -129,15 +127,9 @@ def connect_signals(win: Any) -> None:
     win.toggle_custom_action.toggled.connect(win.set_custom_overlay_visible)
 
     # PlaybackHandler signals
-    win.playback_handler.snapshot_requested.connect(
-        win.object_controller.snapshot_current_frame
-    )
-    win.playback_handler.frame_update_requested.connect(
-        win.controller.on_frame_update
-    )
+    win.playback_handler.snapshot_requested.connect(win.object_controller.snapshot_current_frame)
+    win.playback_handler.frame_update_requested.connect(win.controller.on_frame_update)
     win.playback_handler.keyframe_add_requested.connect(win.controller.add_keyframe)
 
-    # Library signals
-    win.library_widget.addRequested.connect(
-        win.scene_controller._add_library_item_to_scene
-    )
+    # Library signals (use normalized snake_case; legacy is bridged inside the widget)
+    win.library_widget.add_requested.connect(win.scene_controller._add_library_item_to_scene)

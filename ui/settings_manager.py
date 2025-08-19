@@ -1,16 +1,25 @@
-"""Module for managing application settings, including UI layout and theme."""
+"""Settings dialog bindings and UI profile management (Qt-bound).
+
+This module manages application settings related to UI layout, theme, icons, and
+shortcuts. It predates the SettingsService refactor and remains responsible for
+Qt widget wiring and live application of style/theme/icon settings. Persistence
+logic (schema, defaults, import/export) is handled by controllers/settings_service.py.
+See docs/plan.md §4 and docs/tasks.md §7 for the separation of concerns.
+"""
 
 from __future__ import annotations
 
 import logging
 from typing import Any
 
-from PySide6.QtCore import QSettings
+from PySide6.QtCore import QSettings, QByteArray
 from PySide6.QtWidgets import QApplication
 
 import ui.icons as app_icons
 from ui.styles import apply_stylesheet, build_stylesheet
 from ui.ui_profile import UIProfile
+
+LAYOUT_SCHEMA_VERSION = 1
 
 
 class SettingsManager:
@@ -30,26 +39,33 @@ class SettingsManager:
     def save(self) -> None:
         """Saves the current UI settings."""
         s = QSettings(self.org, self.app)
+        s.setValue("layout/version", LAYOUT_SCHEMA_VERSION)
         s.setValue("geometry/mainwindow", self.win.saveGeometry())
         s.setValue("geometry/library", self.win.library_overlay.geometry())
         s.setValue("geometry/inspector", self.win.inspector_overlay.geometry())
         s.setValue("layout/timeline_visible", self.win.timeline_dock.isVisible())
         if hasattr(self.win.view, "_overlay") and self.win.view._overlay:
             s.setValue("geometry/view_toolbar", self.win.view._overlay.geometry())
-        if (
-            hasattr(self.win.view, "_main_tools_overlay")
-            and self.win.view._main_tools_overlay
-        ):
-            s.setValue(
-                "geometry/main_toolbar", self.win.view._main_tools_overlay.geometry()
-            )
+        if hasattr(self.win.view, "_main_tools_overlay") and self.win.view._main_tools_overlay:
+            s.setValue("geometry/main_toolbar", self.win.view._main_tools_overlay.geometry())
 
     def load(self) -> None:
         """Loads the UI settings."""
         s = QSettings(self.org, self.app)
-        if s.contains("geometry/mainwindow"):
-            self.win.restoreGeometry(s.value("geometry/mainwindow"))
-            self.win._settings_loaded = True
+        version = s.value("layout/version")
+        ok_layout = True
+        try:
+            ok_layout = int(version) == LAYOUT_SCHEMA_VERSION
+        except Exception:
+            ok_layout = False
+        if ok_layout and s.contains("geometry/mainwindow"):
+            val = s.value("geometry/mainwindow")
+            try:
+                if isinstance(val, QByteArray):
+                    self.win.restoreGeometry(val)
+                    self.win._settings_loaded = True
+            except Exception:
+                logging.debug("Invalid mainwindow geometry; skipping restore")
         if s.contains("geometry/library"):
             self.win.library_overlay.setGeometry(s.value("geometry/library"))
         self.win.set_library_overlay_visible(True)
@@ -72,17 +88,12 @@ class SettingsManager:
             and self.win.view._main_tools_overlay
             and s.contains("geometry/main_toolbar")
         ):
-            self.win.view._main_tools_overlay.setGeometry(
-                s.value("geometry/main_toolbar")
-            )
+            self.win.view._main_tools_overlay.setGeometry(s.value("geometry/main_toolbar"))
 
         # Ensure toolbars are always on top
         if hasattr(self.win.view, "_overlay") and self.win.view._overlay:
             self.win.view._overlay.raise_()
-        if (
-            hasattr(self.win.view, "_main_tools_overlay")
-            and self.win.view._main_tools_overlay
-        ):
+        if hasattr(self.win.view, "_main_tools_overlay") and self.win.view._main_tools_overlay:
             self.win.view._main_tools_overlay.raise_()
 
         self._load_shortcuts()
@@ -174,12 +185,8 @@ class SettingsManager:
                     dlg.panel_edit.setText(_gv("panel_bg", "#F7F8FC"))
                     dlg.border_edit.setText(_gv("panel_border", "#D0D5DD"))
                     dlg.group_edit.setText(_gv("group_title_color", "#2D3748"))
-                    dlg.tooltip_bg_edit.setText(
-                        _gv("tooltip_bg", dlg.panel_edit.text())
-                    )
-                    dlg.tooltip_text_edit.setText(
-                        _gv("tooltip_text", dlg.text_edit.text())
-                    )
+                    dlg.tooltip_bg_edit.setText(_gv("tooltip_bg", dlg.panel_edit.text()))
+                    dlg.tooltip_text_edit.setText(_gv("tooltip_text", dlg.text_edit.text()))
                     # Nouveaux champs exposés
                     dlg.input_bg_edit.setText(_gv("input_bg", "#EDF2F7"))
                     dlg.input_border_edit.setText(_gv("input_border", "#CBD5E0"))
@@ -189,28 +196,16 @@ class SettingsManager:
                         _gv("input_focus_border", dlg.accent_edit.text())
                     )
                     dlg.list_hover_edit.setText(_gv("list_hover_bg", "#E2E8F0"))
-                    dlg.list_sel_bg_edit.setText(
-                        _gv("list_selected_bg", dlg.accent_edit.text())
-                    )
+                    dlg.list_sel_bg_edit.setText(_gv("list_selected_bg", dlg.accent_edit.text()))
                     dlg.list_sel_text_edit.setText(_gv("list_selected_text", "#FFFFFF"))
                     dlg.cb_un_bg_edit.setText(_gv("checkbox_unchecked_bg", "#EDF2F7"))
-                    dlg.cb_un_border_edit.setText(
-                        _gv("checkbox_unchecked_border", "#A0AEC0")
-                    )
-                    dlg.cb_ch_bg_edit.setText(
-                        _gv("checkbox_checked_bg", dlg.accent_edit.text())
-                    )
-                    dlg.cb_ch_border_edit.setText(
-                        _gv("checkbox_checked_border", "#C53030")
-                    )
-                    dlg.cb_ch_hover_edit.setText(
-                        _gv("checkbox_checked_hover", "#F56565")
-                    )
+                    dlg.cb_un_border_edit.setText(_gv("checkbox_unchecked_border", "#A0AEC0"))
+                    dlg.cb_ch_bg_edit.setText(_gv("checkbox_checked_bg", dlg.accent_edit.text()))
+                    dlg.cb_ch_border_edit.setText(_gv("checkbox_checked_border", "#C53030"))
+                    dlg.cb_ch_hover_edit.setText(_gv("checkbox_checked_hover", "#F56565"))
                     # Numeric params
                     try:
-                        dlg.opacity_spin.setValue(
-                            int(float(s.value("panel_opacity", 0.9)) * 100)
-                        )
+                        dlg.opacity_spin.setValue(int(float(s.value("panel_opacity", 0.9)) * 100))
                     except Exception:
                         dlg.opacity_spin.setValue(90)
                     dlg.radius_spin.setValue(int(s.value("radius", 12) or 12))
@@ -291,12 +286,8 @@ class SettingsManager:
         quick_order, quick_vis = get_order_and_vis("quick", quick_default)
         custom_order, custom_vis = get_order_and_vis("custom", custom_default)
         try:
-            dlg.populate_icon_list(
-                dlg.list_main_order, main_order, main_vis, dlg._main_specs
-            )
-            dlg.populate_icon_list(
-                dlg.list_quick_order, quick_order, quick_vis, dlg._quick_specs
-            )
+            dlg.populate_icon_list(dlg.list_main_order, main_order, main_vis, dlg._main_specs)
+            dlg.populate_icon_list(dlg.list_quick_order, quick_order, quick_vis, dlg._quick_specs)
             dlg.populate_icon_list(
                 dlg.list_custom_order, custom_order, custom_vis, dlg._custom_specs
             )
@@ -307,15 +298,9 @@ class SettingsManager:
         try:
             if hasattr(dlg, "icon_norm_edit"):
                 s_ic = QSettings(self.org, self.app)
-                dlg.icon_norm_edit.setText(
-                    str(s_ic.value("ui/icon_color_normal") or "#4A5568")
-                )
-                dlg.icon_hover_edit.setText(
-                    str(s_ic.value("ui/icon_color_hover") or "#E53E3E")
-                )
-                dlg.icon_active_edit.setText(
-                    str(s_ic.value("ui/icon_color_active") or "#FFFFFF")
-                )
+                dlg.icon_norm_edit.setText(str(s_ic.value("ui/icon_color_normal") or "#4A5568"))
+                dlg.icon_hover_edit.setText(str(s_ic.value("ui/icon_color_hover") or "#E53E3E"))
+                dlg.icon_active_edit.setText(str(s_ic.value("ui/icon_color_active") or "#FFFFFF"))
         except Exception:
             logging.exception("Failed to preload icon colors")
 
@@ -342,13 +327,12 @@ class SettingsManager:
         except Exception:
             logging.exception("Failed to preload scene background color")
 
-        # Onion values
+        # Onion values (via presenter)
         try:
-            dlg.prev_count.setValue(int(s.value("onion/prev_count", 2)))
-            dlg.next_count.setValue(int(s.value("onion/next_count", 1)))
-            dlg.opacity_prev.setValue(float(s.value("onion/opacity_prev", 0.25)))
-            dlg.opacity_next.setValue(float(s.value("onion/opacity_next", 0.18)))
-        except (ValueError, TypeError):
+            from controllers.settings_presenter import qsettings_to_dialog_onion
+
+            qsettings_to_dialog_onion(dlg, s)
+        except Exception:
             logging.exception("Failed to load onion settings")
 
         # Apply button: apply without closing
@@ -359,9 +343,7 @@ class SettingsManager:
                 s.setValue("ui/icon_dir", icon_dir if icon_dir else "")
                 s.setValue("ui/icon_size", int(dlg.icon_size_spin.value()))
                 # font family
-                s.setValue(
-                    "ui/font_family", dlg.font_family_edit.text().strip() or "Poppins"
-                )
+                s.setValue("ui/font_family", dlg.font_family_edit.text().strip() or "Poppins")
                 # theme
                 theme = dlg.preset_combo.currentText().strip().lower() or "light"
                 s.setValue("ui/theme", theme)
@@ -399,17 +381,13 @@ class SettingsManager:
                         "list_hover_bg": dlg.list_hover_edit.text() or "#E2E8F0",
                         "list_selected_bg": dlg.list_sel_bg_edit.text()
                         or (dlg.accent_edit.text() or "#E53E3E"),
-                        "list_selected_text": dlg.list_sel_text_edit.text()
-                        or "#FFFFFF",
+                        "list_selected_text": dlg.list_sel_text_edit.text() or "#FFFFFF",
                         "checkbox_unchecked_bg": dlg.cb_un_bg_edit.text() or "#EDF2F7",
-                        "checkbox_unchecked_border": dlg.cb_un_border_edit.text()
-                        or "#A0AEC0",
+                        "checkbox_unchecked_border": dlg.cb_un_border_edit.text() or "#A0AEC0",
                         "checkbox_checked_bg": dlg.cb_ch_bg_edit.text()
                         or (dlg.accent_edit.text() or "#E53E3E"),
-                        "checkbox_checked_border": dlg.cb_ch_border_edit.text()
-                        or "#C53030",
-                        "checkbox_checked_hover": dlg.cb_ch_hover_edit.text()
-                        or "#F56565",
+                        "checkbox_checked_border": dlg.cb_ch_border_edit.text() or "#C53030",
+                        "checkbox_checked_hover": dlg.cb_ch_hover_edit.text() or "#F56565",
                     }
                     css = build_stylesheet(params)
                     s.setValue("ui/custom_stylesheet", css)
@@ -457,24 +435,21 @@ class SettingsManager:
                     )
                 # timeline colors
                 s.setValue("timeline/bg", dlg.tl_bg.text().strip() or "#1E1E1E")
-                s.setValue(
-                    "timeline/ruler_bg", dlg.tl_ruler_bg.text().strip() or "#2C2C2C"
-                )
-                s.setValue(
-                    "timeline/track_bg", dlg.tl_track_bg.text().strip() or "#242424"
-                )
+                s.setValue("timeline/ruler_bg", dlg.tl_ruler_bg.text().strip() or "#2C2C2C")
+                s.setValue("timeline/track_bg", dlg.tl_track_bg.text().strip() or "#242424")
                 s.setValue("timeline/tick", dlg.tl_tick.text().strip() or "#8A8A8A")
-                s.setValue(
-                    "timeline/tick_major", dlg.tl_tick_major.text().strip() or "#E0E0E0"
-                )
-                s.setValue(
-                    "timeline/playhead", dlg.tl_playhead.text().strip() or "#65B0FF"
-                )
+                s.setValue("timeline/tick_major", dlg.tl_tick_major.text().strip() or "#E0E0E0")
+                s.setValue("timeline/playhead", dlg.tl_playhead.text().strip() or "#65B0FF")
                 s.setValue("timeline/kf", dlg.tl_kf.text().strip() or "#FFC107")
-                s.setValue(
-                    "timeline/kf_hover", dlg.tl_kf_hover.text().strip() or "#FFE082"
-                )
+                s.setValue("timeline/kf_hover", dlg.tl_kf_hover.text().strip() or "#FFE082")
                 s.setValue("timeline/inout_alpha", int(dlg.tl_inout_alpha.value()))
+                # Onion: persist via presenter (legacy keys)
+                try:
+                    from controllers.settings_presenter import dialog_onion_to_qsettings
+
+                    dialog_onion_to_qsettings(dlg, s)
+                except Exception:
+                    logging.exception("Failed to save onion settings")
                 # Refresh
                 from ui import icons as app_icons
                 from ui.icons import (
@@ -515,9 +490,7 @@ class SettingsManager:
                 prof = UIProfile()
                 # Récupère les champs du dialog
                 prof.theme.preset = dlg.preset_combo.currentText().strip().lower()
-                prof.theme.font_family = (
-                    dlg.font_family_edit.text().strip() or "Poppins"
-                )
+                prof.theme.font_family = dlg.font_family_edit.text().strip() or "Poppins"
                 if prof.theme.preset == "custom":
                     prof.theme.custom_params.update(
                         {
@@ -557,23 +530,15 @@ class SettingsManager:
                         dlg.icon_active_edit.text().strip() or prof.icon_color_active
                     )
                 prof.timeline_bg = dlg.tl_bg.text().strip() or prof.timeline_bg
-                prof.timeline_ruler_bg = (
-                    dlg.tl_ruler_bg.text().strip() or prof.timeline_ruler_bg
-                )
-                prof.timeline_track_bg = (
-                    dlg.tl_track_bg.text().strip() or prof.timeline_track_bg
-                )
+                prof.timeline_ruler_bg = dlg.tl_ruler_bg.text().strip() or prof.timeline_ruler_bg
+                prof.timeline_track_bg = dlg.tl_track_bg.text().strip() or prof.timeline_track_bg
                 prof.timeline_tick = dlg.tl_tick.text().strip() or prof.timeline_tick
                 prof.timeline_tick_major = (
                     dlg.tl_tick_major.text().strip() or prof.timeline_tick_major
                 )
-                prof.timeline_playhead = (
-                    dlg.tl_playhead.text().strip() or prof.timeline_playhead
-                )
+                prof.timeline_playhead = dlg.tl_playhead.text().strip() or prof.timeline_playhead
                 prof.timeline_kf = dlg.tl_kf.text().strip() or prof.timeline_kf
-                prof.timeline_kf_hover = (
-                    dlg.tl_kf_hover.text().strip() or prof.timeline_kf_hover
-                )
+                prof.timeline_kf_hover = dlg.tl_kf_hover.text().strip() or prof.timeline_kf_hover
                 prof.timeline_inout_alpha = int(dlg.tl_inout_alpha.value())
                 prof.scene_bg = dlg.scene_bg_edit.text().strip() or None
                 m_order, m_vis = dlg.extract_icon_list(dlg.list_main_order)
@@ -607,9 +572,7 @@ class SettingsManager:
                     "high contrast": "High Contrast",
                     "custom": "Custom",
                 }
-                dlg.preset_combo.setCurrentText(
-                    presets_map.get(prof.theme.preset, "Dark")
-                )
+                dlg.preset_combo.setCurrentText(presets_map.get(prof.theme.preset, "Dark"))
                 dlg.font_family_edit.setText(prof.theme.font_family or "Poppins")
                 if prof.theme.preset == "custom":
                     cp = prof.theme.custom_params
@@ -620,23 +583,15 @@ class SettingsManager:
                     dlg.panel_edit.setText(str(cp.get("panel_bg", "#F7F8FC")))
                     dlg.border_edit.setText(str(cp.get("panel_border", "#D0D5DD")))
                     dlg.header_bg_edit.setText(str(cp.get("header_bg", "")))
-                    dlg.header_text_edit.setText(
-                        str(cp.get("header_text", dlg.text_edit.text()))
-                    )
+                    dlg.header_text_edit.setText(str(cp.get("header_text", dlg.text_edit.text())))
                     dlg.header_border_edit.setText(
                         str(cp.get("header_border", dlg.border_edit.text()))
                     )
                     dlg.group_edit.setText(str(cp.get("group_title_color", "#2D3748")))
-                    dlg.tooltip_bg_edit.setText(
-                        str(cp.get("tooltip_bg", dlg.panel_edit.text()))
-                    )
-                    dlg.tooltip_text_edit.setText(
-                        str(cp.get("tooltip_text", dlg.text_edit.text()))
-                    )
+                    dlg.tooltip_bg_edit.setText(str(cp.get("tooltip_bg", dlg.panel_edit.text())))
+                    dlg.tooltip_text_edit.setText(str(cp.get("tooltip_text", dlg.text_edit.text())))
                     try:
-                        dlg.opacity_spin.setValue(
-                            int(float(cp.get("panel_opacity", 0.9)) * 100)
-                        )
+                        dlg.opacity_spin.setValue(int(float(cp.get("panel_opacity", 0.9)) * 100))
                     except Exception:
                         dlg.opacity_spin.setValue(90)
                     dlg.radius_spin.setValue(int(cp.get("radius", 12)))
@@ -720,12 +675,8 @@ class SettingsManager:
             # Construire un profil complet à partir des champs et l'appliquer
             try:
                 prof = UIProfile()
-                prof.theme.preset = (
-                    dlg.preset_combo.currentText().strip().lower() or "dark"
-                )
-                prof.theme.font_family = (
-                    dlg.font_family_edit.text().strip() or "Poppins"
-                )
+                prof.theme.preset = dlg.preset_combo.currentText().strip().lower() or "dark"
+                prof.theme.font_family = dlg.font_family_edit.text().strip() or "Poppins"
                 if prof.theme.preset == "custom":
                     prof.theme.custom_params.update(
                         {
@@ -755,25 +706,19 @@ class SettingsManager:
                             "input_border": dlg.input_border_edit.text() or "#CBD5E0",
                             "input_text": dlg.input_text_edit.text()
                             or (dlg.text_edit.text() or "#1A202C"),
-                            "input_focus_bg": dlg.input_focus_bg_edit.text()
-                            or "#FFFFFF",
+                            "input_focus_bg": dlg.input_focus_bg_edit.text() or "#FFFFFF",
                             "input_focus_border": dlg.input_focus_border_edit.text()
                             or (dlg.accent_edit.text() or "#E53E3E"),
                             "list_hover_bg": dlg.list_hover_edit.text() or "#E2E8F0",
                             "list_selected_bg": dlg.list_sel_bg_edit.text()
                             or (dlg.accent_edit.text() or "#E53E3E"),
-                            "list_selected_text": dlg.list_sel_text_edit.text()
-                            or "#FFFFFF",
-                            "checkbox_unchecked_bg": dlg.cb_un_bg_edit.text()
-                            or "#EDF2F7",
-                            "checkbox_unchecked_border": dlg.cb_un_border_edit.text()
-                            or "#A0AEC0",
+                            "list_selected_text": dlg.list_sel_text_edit.text() or "#FFFFFF",
+                            "checkbox_unchecked_bg": dlg.cb_un_bg_edit.text() or "#EDF2F7",
+                            "checkbox_unchecked_border": dlg.cb_un_border_edit.text() or "#A0AEC0",
                             "checkbox_checked_bg": dlg.cb_ch_bg_edit.text()
                             or (dlg.accent_edit.text() or "#E53E3E"),
-                            "checkbox_checked_border": dlg.cb_ch_border_edit.text()
-                            or "#C53030",
-                            "checkbox_checked_hover": dlg.cb_ch_hover_edit.text()
-                            or "#F56565",
+                            "checkbox_checked_border": dlg.cb_ch_border_edit.text() or "#C53030",
+                            "checkbox_checked_hover": dlg.cb_ch_hover_edit.text() or "#F56565",
                         }
                     )
                 # Icônes/timeline/menus/scène
@@ -790,23 +735,15 @@ class SettingsManager:
                         dlg.icon_active_edit.text().strip() or prof.icon_color_active
                     )
                 prof.timeline_bg = dlg.tl_bg.text().strip() or prof.timeline_bg
-                prof.timeline_ruler_bg = (
-                    dlg.tl_ruler_bg.text().strip() or prof.timeline_ruler_bg
-                )
-                prof.timeline_track_bg = (
-                    dlg.tl_track_bg.text().strip() or prof.timeline_track_bg
-                )
+                prof.timeline_ruler_bg = dlg.tl_ruler_bg.text().strip() or prof.timeline_ruler_bg
+                prof.timeline_track_bg = dlg.tl_track_bg.text().strip() or prof.timeline_track_bg
                 prof.timeline_tick = dlg.tl_tick.text().strip() or prof.timeline_tick
                 prof.timeline_tick_major = (
                     dlg.tl_tick_major.text().strip() or prof.timeline_tick_major
                 )
-                prof.timeline_playhead = (
-                    dlg.tl_playhead.text().strip() or prof.timeline_playhead
-                )
+                prof.timeline_playhead = dlg.tl_playhead.text().strip() or prof.timeline_playhead
                 prof.timeline_kf = dlg.tl_kf.text().strip() or prof.timeline_kf
-                prof.timeline_kf_hover = (
-                    dlg.tl_kf_hover.text().strip() or prof.timeline_kf_hover
-                )
+                prof.timeline_kf_hover = dlg.tl_kf_hover.text().strip() or prof.timeline_kf_hover
                 prof.timeline_inout_alpha = int(dlg.tl_inout_alpha.value())
                 prof.scene_bg = dlg.scene_bg_edit.text().strip() or None
                 m_order, m_vis = dlg.extract_icon_list(dlg.list_main_order)

@@ -154,9 +154,7 @@ class SceneModel:
     # -----------------------------
     # KEYFRAMES ET TIMELINE
     # -----------------------------
-    def add_keyframe(
-        self, index: int, state: Optional[SceneSnapshot] = None
-    ) -> Keyframe:
+    def add_keyframe(self, index: int, state: Optional[SceneSnapshot] = None) -> Keyframe:
         """Create or overwrite a keyframe at ``index`` with captured puppet and object states.
 
         ``state`` is expected to contain two keys:
@@ -250,7 +248,9 @@ class SceneModel:
                 if isinstance(att, (list, tuple)) and len(att) == 2:
                     a0, a1 = att[0], att[1]
                     if not isinstance(a0, str) or not isinstance(a1, str):
-                        logging.warning("attachment contains non-strings for object %s; clearing", key)
+                        logging.warning(
+                            "attachment contains non-strings for object %s; clearing", key
+                        )
                         ok = False
                         if not log_only:
                             obj.attached_to = None
@@ -265,7 +265,9 @@ class SceneModel:
                         obj.attached_to = None
             # ensure object key matches name
             if obj.name != key:
-                logging.warning("object key '%s' mismatches name '%s'; normalizing name to key", key, obj.name)
+                logging.warning(
+                    "object key '%s' mismatches name '%s'; normalizing name to key", key, obj.name
+                )
                 ok = False
                 if not log_only:
                     obj.name = key
@@ -328,7 +330,9 @@ class SceneModel:
         self.objects.clear()
         for name, obj_data in data.get("objects", {}).items():
             if not isinstance(obj_data, dict):
-                logging.warning("objects[%s]: expected dict, got %s; skipping", name, type(obj_data).__name__)
+                logging.warning(
+                    "objects[%s]: expected dict, got %s; skipping", name, type(obj_data).__name__
+                )
                 self.import_warnings.append({"type": "object", "name": name, "issue": "not a dict"})
                 continue
             # Basic required fields checks
@@ -339,7 +343,11 @@ class SceneModel:
                     "object '%s': missing/invalid 'obj_type' or 'file_path'; skipping", name
                 )
                 self.import_warnings.append(
-                    {"type": "object", "name": name, "issue": "missing or invalid obj_type/file_path"}
+                    {
+                        "type": "object",
+                        "name": name,
+                        "issue": "missing or invalid obj_type/file_path",
+                    }
                 )
                 continue
             obj_data["name"] = name
@@ -365,7 +373,9 @@ class SceneModel:
                 continue
             if index in self.keyframes:
                 logging.warning("duplicate keyframe index %s; last one wins", index)
-                self.import_warnings.append({"type": "keyframe", "index": index, "issue": "duplicate index"})
+                self.import_warnings.append(
+                    {"type": "keyframe", "index": index, "issue": "duplicate index"}
+                )
             new_kf = Keyframe(index)
             new_kf.objects = kf_data.get("objects", {})
             new_kf.puppets = kf_data.get("puppets", {})
@@ -376,21 +386,38 @@ class SceneModel:
         self._validate_invariants(log_only=False)
 
     def export_json(self, file_path: str) -> None:
-        """Export the scene to a JSON file at ``file_path``."""
+        """Export the scene to a JSON file at ``file_path``.
+
+        Progress feedback: logs start/end with counts to help diagnose long runs
+        (docs/tasks.md 16.2). Behavior is unchanged.
+        """
         data = self.to_dict()
         # Validate JSON structure prior to writing for early detection (docs/tasks.md Task 4.25)
         if not self._validate_data(data):
             logging.error("Export JSON invalid: structure non conforme")
+        total_objects = len(self.objects)
+        total_kf = len(self.keyframes)
+        logging.info(
+            "Exporting scene JSON → %s (objects=%d, keyframes=%d)",
+            file_path,
+            total_objects,
+            total_kf,
+        )
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
+        logging.info("Export complete ← %s", file_path)
 
     def import_json(self, file_path: str) -> bool:
         """Load scene data from a JSON file, returning success.
 
         On success, partially invalid entries are skipped and recorded in
         ``self.import_warnings`` along with log messages for developer context.
+
+        Progress feedback: logs start/end with counts to help diagnose long runs
+        (docs/tasks.md 16.2). Behavior is unchanged.
         """
         try:
+            logging.info("Importing scene JSON ← %s", file_path)
             with open(file_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             # reset non-fatal issues log for this import operation
@@ -408,7 +435,9 @@ class SceneModel:
                     SCENE_SCHEMA_VERSION,
                 )
             elif from_version < SCENE_SCHEMA_VERSION:
-                logging.info("Migrating scene from version %s to %s", from_version, SCENE_SCHEMA_VERSION)
+                logging.info(
+                    "Migrating scene from version %s to %s", from_version, SCENE_SCHEMA_VERSION
+                )
                 data = self._migrate_data(data, from_version)
 
             # Validate before applying to avoid partial state
@@ -419,6 +448,13 @@ class SceneModel:
             self.from_dict(data)
             # Normalize/enforce invariants post-load
             self._validate_invariants(log_only=False)
+            logging.info(
+                "Import complete ← %s (objects=%d, keyframes=%d, warnings=%d)",
+                file_path,
+                len(self.objects),
+                len(self.keyframes),
+                len(self.import_warnings),
+            )
             return True
         except (IOError, json.JSONDecodeError) as e:
             logging.error("Erreur lors du chargement du fichier : %s", e)

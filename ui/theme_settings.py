@@ -55,9 +55,7 @@ class ThemeSettings:
 
     preset: str = "dark"  # "light" | "dark" | "high contrast" | "custom"
     font_family: str = "Poppins"
-    custom_params: Dict[str, Any] = field(
-        default_factory=lambda: dict(DEFAULT_CUSTOM_PARAMS)
-    )
+    custom_params: Dict[str, Any] = field(default_factory=lambda: dict(DEFAULT_CUSTOM_PARAMS))
     theme_file: Optional[str] = None
 
     ORG: str = "JaJa"
@@ -149,9 +147,7 @@ class ThemeSettings:
                 data = raw
         # Assume custom when loading from file
         ts = cls(preset="custom")
-        ts.custom_params.update(
-            {k: v for k, v in data.items() if k in DEFAULT_CUSTOM_PARAMS}
-        )
+        ts.custom_params.update({k: v for k, v in data.items() if k in DEFAULT_CUSTOM_PARAMS})
         ts.theme_file = str(p)
         ts.font_family = str(data.get("font_family", ts.font_family))
         return ts
@@ -159,9 +155,7 @@ class ThemeSettings:
     def to_json(self, path: Optional[str] = None) -> str:
         """Write current custom params to JSON; return path used."""
         if path is None:
-            path = self.theme_file or str(
-                Path.home() / ".config/JaJa/Macronotron/theme.json"
-            )
+            path = self.theme_file or str(Path.home() / ".config/JaJa/Macronotron/theme.json")
         p = Path(path)
         p.parent.mkdir(parents=True, exist_ok=True)
         from json import dumps

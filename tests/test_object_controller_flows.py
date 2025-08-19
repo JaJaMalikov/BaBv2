@@ -3,6 +3,7 @@
 Covers duplicate, delete from current frame, and attach/detach across frames
 without relying on Qt widgets.
 """
+
 from __future__ import annotations
 
 from controllers.object_controller import ObjectController, DUPLICATE_OFFSET

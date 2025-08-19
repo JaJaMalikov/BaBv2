@@ -40,7 +40,11 @@ def validate_settings(data: Any) -> bool:
     if "start_frame" in data and "end_frame" in data and data["start_frame"] > data["end_frame"]:
         logging.error("settings: start_frame must be <= end_frame")
         return False
-    if "background_path" in data and data["background_path"] is not None and not isinstance(data["background_path"], str):
+    if (
+        "background_path" in data
+        and data["background_path"] is not None
+        and not isinstance(data["background_path"], str)
+    ):
         logging.error("settings: background_path must be a string or null")
         return False
     return True
@@ -55,9 +59,7 @@ def validate_objects(data: Any) -> bool:
     if data is None:
         return True
     if not isinstance(data, dict):
-        logging.error(
-            "objects: expected dict mapping str -> dict, got %s", type(data).__name__
-        )
+        logging.error("objects: expected dict mapping str -> dict, got %s", type(data).__name__)
         return False
     for name, obj in data.items():
         if not isinstance(name, str) or not isinstance(obj, dict):

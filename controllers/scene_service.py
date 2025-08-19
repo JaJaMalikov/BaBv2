@@ -2,9 +2,12 @@ from __future__ import annotations
 
 """Service centralisant les opérations sur le ``SceneModel``.
 
-Ce module encapsule la manipulation du modèle de scène : gestion des pantins,
-variants et keyframes. Il reste agnostique de toute interaction Qt; les vues
-s'abonnent à ses signaux pour réagir aux changements.
+Rôle et flux de données:
+- Fournit une API cohésive et Qt‑agnostique pour modifier le modèle (keyframes,
+  pantins, variantes, dimensions, arrière‑plan).
+- S'insère dans le flux: UI → Controller → Service → Model → Signaux → View update.
+- Aucune référence aux widgets/`QGraphicsItem` ici; les vues s'abonnent aux
+  signaux émis pour réagir aux changements (voir ARCHITECTURE.md / Sequence diagrams).
 """
 
 from typing import Callable, Dict, Any, Optional
@@ -46,9 +49,7 @@ class SceneService(QObject):
         """Retire un pantin du modèle."""
         self.model.remove_puppet(name)
 
-    def set_member_variant(
-        self, puppet_name: str, slot: str, variant_name: str
-    ) -> None:
+    def set_member_variant(self, puppet_name: str, slot: str, variant_name: str) -> None:
         """Enregistre la variante choisie pour un slot de pantin."""
         cur = int(self.model.current_frame)
         if cur not in self.model.keyframes:

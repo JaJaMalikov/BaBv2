@@ -58,6 +58,21 @@ class PuppetMember:
         return f"<{self.name} pivot={self.pivot} z={self.z_order}>"
 
 
+@dataclass
+class VariantMaps:
+    """Typed container for variant specifications.
+
+    - names: per-slot candidate member names (slot -> [candidates])
+    - z: absolute z-order override per variant name
+
+    This dataclass provides structure while keeping backward compatibility via
+    Puppet.variants and Puppet.variant_z properties.
+    """
+
+    names: Dict[str, List[str]] = field(default_factory=dict)
+    z: Dict[str, int] = field(default_factory=dict)
+
+
 class Puppet:
     """In-memory puppet composed of PuppetMember nodes built from an SVG file."""
 
@@ -68,11 +83,8 @@ class Puppet:
         self.pivot_map: Dict[str, str] = {}
         self.z_order_map: Dict[str, int] = {}
         self.child_map: Dict[str, List[str]] = {}
-        # Optional mapping of logical slots to variant member names
-        # Example: {"main_gauche": ["main_gauche", "main_gauche_rev"]}
-        self.variants: Dict[str, List[str]] = {}
-        # Optional absolute z-order override per variant name
-        self.variant_z: Dict[str, int] = {}
+        # Typed variants container; expose backward-compatible dict properties below
+        self._variant_maps: VariantMaps = VariantMaps()
 
         if config_path:
             cfg_path = Path(config_path)
@@ -92,8 +104,29 @@ class Puppet:
         self.pivot_map = data.get("pivot", {})
         self.z_order_map = data.get("z_order", {})
         raw_variants = data.get("variants", {})
-        self.variants, self.variant_z = normalize_variants(raw_variants)
+        vmap, vz = normalize_variants(raw_variants)
+        self._variant_maps.names = vmap
+        self._variant_maps.z = vz
         self.child_map = dict(compute_child_map(self.parent_map))
+
+    # Backward-compatible accessors for variants maps
+    @property
+    def variants(self) -> Dict[str, List[str]]:
+        """Per-slot candidate member names (slot -> [candidates])."""
+        return self._variant_maps.names
+
+    @variants.setter
+    def variants(self, value: Dict[str, List[str]]) -> None:
+        self._variant_maps.names = dict(value) if value is not None else {}
+
+    @property
+    def variant_z(self) -> Dict[str, int]:
+        """Absolute z-order overrides per variant name."""
+        return self._variant_maps.z
+
+    @variant_z.setter
+    def variant_z(self, value: Dict[str, int]) -> None:
+        self._variant_maps.z = dict(value) if value is not None else {}
 
     def build_from_svg(self, svg_loader: "SvgLoader") -> None:
         """Build the in-memory Puppet from an SVG using the loaded configuration.
@@ -164,9 +197,7 @@ class Puppet:
                         0.0,
                     )
                     pivot = svg_loader.get_pivot(base_pivot_group)
-                    self.members[cand] = PuppetMember(
-                        cand, None, pivot, bbox, int(base_z)
-                    )
+                    self.members[cand] = PuppetMember(cand, None, pivot, bbox, int(base_z))
                     # Lier au même parent que la base si possible
                     if base_parent_name:
                         parent_member = self.members.get(base_parent_name)
@@ -268,9 +299,7 @@ def normalize_variants(
         return {}, {}
 
 
-def print_hierarchy(
-    self, member: Optional[PuppetMember] = None, indent: str = ""
-) -> None:
+def print_hierarchy(self, member: Optional[PuppetMember] = None, indent: str = "") -> None:
     """Print the puppet hierarchy starting from ``member`` (or roots)."""
     if member is None:
         for root in self.get_root_members():
@@ -321,12 +350,8 @@ def validate_svg_structure(
     # Log audit info
     logger.info("\n--- Audit Structure SVG ---")
     if missing_children:
-        logger.warning(
-            "❌ Groupes définis dans parent_map absents du SVG : %s", missing_children
-        )
-        issues.append(
-            "Missing puppet members in SVG: " + ", ".join(sorted(missing_children))
-        )
+        logger.warning("❌ Groupes définis dans parent_map absents du SVG : %s", missing_children)
+        issues.append("Missing puppet members in SVG: " + ", ".join(sorted(missing_children)))
     else:
         logger.info("✅ Tous les groupes du parent_map existent dans le SVG.")
 
@@ -338,20 +363,12 @@ def validate_svg_structure(
         )
 
     if missing_parents:
-        logger.warning(
-            "❌ Parents référencés absents du SVG : %s", missing_parents
-        )
-        issues.append(
-            "Missing referenced parents in SVG: " + ", ".join(sorted(missing_parents))
-        )
+        logger.warning("❌ Parents référencés absents du SVG : %s", missing_parents)
+        issues.append("Missing referenced parents in SVG: " + ", ".join(sorted(missing_parents)))
 
     if pivots_missing:
-        logger.warning(
-            "❌ Pivots définis dans pivot_map absents du SVG : %s", pivots_missing
-        )
-        issues.append(
-            "Missing pivot target groups in SVG: " + ", ".join(sorted(pivots_missing))
-        )
+        logger.warning("❌ Pivots définis dans pivot_map absents du SVG : %s", pivots_missing)
+        issues.append("Missing pivot target groups in SVG: " + ", ".join(sorted(pivots_missing)))
     else:
         logger.info("✅ Tous les pivots du pivot_map existent dans le SVG.")
 
@@ -379,19 +396,14 @@ def validate_svg_structure(
     for node in groups_in_map:
         cycle = _detect_cycle(node)
         if cycle:
-            issues.append(
-                "Cycle detected in parent chain: " + " -> ".join(cycle)
-            )
+            issues.append("Cycle detected in parent chain: " + " -> ".join(cycle))
             break
 
     logger.info("-----------------------------\n")
 
     if issues:
         # Combine issues into an actionable message
-        raise ValueError(
-            "Invalid puppet configuration / SVG structure:\n- "
-            + "\n- ".join(issues)
-        )
+        raise ValueError("Invalid puppet configuration / SVG structure:\n- " + "\n- ".join(issues))
 
 
 def main() -> None:

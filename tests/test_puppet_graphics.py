@@ -22,9 +22,7 @@ def test_hierarchy_and_pivot(_app):
     """Test that the puppet hierarchy and pivots are correctly set up."""
     window = MainWindow()
 
-    window.scene_controller.add_puppet(
-        str(Path("assets/pantins/manu.svg").resolve()), "manu"
-    )
+    window.scene_controller.add_puppet(str(Path("assets/pantins/manu.svg").resolve()), "manu")
 
     gis = window.object_manager.graphics_items
     upper = gis["manu:haut_bras_droite"]
@@ -58,9 +56,7 @@ def test_hierarchy_and_pivot(_app):
 def test_puppet_translation(_app):
     """Test that translating the root of a puppet moves the whole puppet."""
     window = MainWindow()
-    window.scene_controller.add_puppet(
-        str(Path("assets/pantins/manu.svg").resolve()), "manu"
-    )
+    window.scene_controller.add_puppet(str(Path("assets/pantins/manu.svg").resolve()), "manu")
     gis = window.object_manager.graphics_items
     torso = gis["manu:torse"]
     hand = gis["manu:main_droite"]
@@ -79,9 +75,7 @@ def test_puppet_translation(_app):
 def test_handle_target_pivot_exception(_app, monkeypatch):
     """Ensure HANDLE_EXCEPTION mapping returns the overridden pivot."""
     window = MainWindow()
-    window.scene_controller.add_puppet(
-        str(Path("assets/pantins/manu.svg").resolve()), "manu"
-    )
+    window.scene_controller.add_puppet(str(Path("assets/pantins/manu.svg").resolve()), "manu")
     puppet = window.scene_model.puppets["manu"]
 
     monkeypatch.setitem(puppet_model.HANDLE_EXCEPTION, "torse", "tete")

@@ -4,6 +4,7 @@ This module provides helpers to generate unique names from a base label by
 appending an incrementing numeric suffix. It is pure and independent of Qt,
 so it can be used from core/, controllers/, and ui/ layers.
 """
+
 from __future__ import annotations
 
 from typing import Collection

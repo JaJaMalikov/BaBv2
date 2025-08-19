@@ -47,20 +47,45 @@ class SvgLoader:
         self.tree: ET.ElementTree = ET.parse(svg_path)
         self.root: ET.Element = self.tree.getroot()
         # Basic root guard: ElementTree encodes namespaced tag as '{ns}svg'
-        root_tag = self.root.tag.split('}')[-1] if '}' in self.root.tag else self.root.tag
+        root_tag = self.root.tag.split("}")[-1] if "}" in self.root.tag else self.root.tag
         if root_tag.lower() != "svg":
             raise ValueError(f"Invalid SVG root element: '{self.root.tag}'")
         # Normalize namespace handling (docs/tasks.md Task 5.29):
         # - If the root is namespaced, register that namespace under the 'svg' prefix
         # - If not, we keep an empty mapping and fallback to non-namespaced queries
-        if '}' in self.root.tag:
-            ns_uri = self.root.tag.split('}')[0][1:]
+        if "}" in self.root.tag:
+            ns_uri = self.root.tag.split("}")[0][1:]
             self.namespaces: Dict[str, str] = {"svg": ns_uri}
             self._has_namespace = True
         else:
             self.namespaces = {}
             self._has_namespace = False
         # Lazy renderer initialization; see renderer property for cache (Task 5.30)
+
+    @classmethod
+    def from_parsed(cls, svg_path: str, tree: ET.ElementTree) -> "SvgLoader":
+        """Create a loader from a pre-parsed ElementTree.
+
+        This helper allows parsing XML off the UI thread and constructing the loader
+        in the main thread without re-parsing. The QSvgRenderer will still be created
+        lazily on first access to ``renderer`` (on the calling thread).
+        """
+        self = cls.__new__(cls)  # type: ignore[misc]
+        self.svg_path = svg_path
+        self.tree = tree
+        self.root = tree.getroot()
+        # Basic root guard
+        root_tag = self.root.tag.split("}")[-1] if "}" in self.root.tag else self.root.tag
+        if root_tag.lower() != "svg":
+            raise ValueError(f"Invalid SVG root element: '{self.root.tag}'")
+        if "}" in self.root.tag:
+            ns_uri = self.root.tag.split("}")[0][1:]
+            self.namespaces = {"svg": ns_uri}
+            self._has_namespace = True
+        else:
+            self.namespaces = {}
+            self._has_namespace = False
+        return self
 
     @property
     def renderer(self) -> QSvgRenderer:
@@ -183,9 +208,7 @@ class SvgLoader:
         # Bounding box
         bounding_box: Optional[BoundingBox] = self.get_group_bounding_box(group_id)
         if bounding_box is None:
-            logging.warning(
-                "Impossible de calculer la bounding box du groupe SVG: %s", group_id
-            )
+            logging.warning("Impossible de calculer la bounding box du groupe SVG: %s", group_id)
             return None
 
         x_min, y_min, x_max, y_max = bounding_box
@@ -227,9 +250,15 @@ class SvgLoader:
                 try:
                     return [float(x) for x in parts]
                 except ValueError:
-                    logging.warning("[SvgLoader] Invalid viewBox values: %s; falling back to width/height", viewbox)
+                    logging.warning(
+                        "[SvgLoader] Invalid viewBox values: %s; falling back to width/height",
+                        viewbox,
+                    )
             else:
-                logging.warning("[SvgLoader] Malformed viewBox '%s' (expected 4 values); falling back to width/height", viewbox)
+                logging.warning(
+                    "[SvgLoader] Malformed viewBox '%s' (expected 4 values); falling back to width/height",
+                    viewbox,
+                )
 
         # Fallback : width/height with unit handling (docs/tasks.md Task 5.29)
         def _parse_length(val: Optional[str], default: float = 0.0) -> float:
@@ -239,7 +268,11 @@ class SvgLoader:
             if not s:
                 return default
             if s.endswith("%"):
-                logging.warning("[SvgLoader] Percentage length '%s' without viewBox context; using %.1f as fallback", s, default)
+                logging.warning(
+                    "[SvgLoader] Percentage length '%s' without viewBox context; using %.1f as fallback",
+                    s,
+                    default,
+                )
                 return default
             if s.endswith("px"):
                 s = s[:-2]
@@ -251,7 +284,9 @@ class SvgLoader:
                 try:
                     return float(num)
                 except ValueError:
-                    logging.debug("[SvgLoader] Could not parse length '%s'; using default %.1f", s, default)
+                    logging.debug(
+                        "[SvgLoader] Could not parse length '%s'; using default %.1f", s, default
+                    )
                     return default
 
         width: float = _parse_length(self.root.attrib.get("width"), 0.0)

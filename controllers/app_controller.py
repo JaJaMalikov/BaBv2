@@ -1,4 +1,14 @@
-"""Application controller orchestrating the MainWindow and SceneModel."""
+"""Application controller orchestrating the MainWindow and SceneModel.
+
+Data flow context (see ARCHITECTURE.md §Sequence diagrams):
+- UI widgets/adapters (MainWindow, Timeline, Inspector) → call controller methods
+- AppController coordinates: delegates scene changes to SceneController/SceneService
+- SceneService updates SceneModel and emits signals consumed by views/adapters
+- Controllers/adapters update QGraphicsItems accordingly
+
+This module contains orchestration only; it avoids direct model mutations outside
+of controllers/services and keeps UI concerns separated from core logic.
+"""
 
 from __future__ import annotations
 

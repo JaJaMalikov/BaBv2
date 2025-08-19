@@ -95,7 +95,7 @@ class InspectorWidget(QWidget):
 
         self.scale_row = QWidget()
         scale_layout = QHBoxLayout(self.scale_row)
-        scale_layout.setContentsMargins(0,0,0,0)
+        scale_layout.setContentsMargins(0, 0, 0, 0)
         scale_layout.addWidget(QLabel("Échelle:"))
         scale_layout.addWidget(self.scale_spin)
         form_layout.addRow(self.scale_row)
@@ -150,9 +150,7 @@ class InspectorWidget(QWidget):
         self.duplicate_btn.clicked.connect(self._on_duplicate_clicked)
         self.rot_spin.valueChanged.connect(self._on_rotation_changed)
         self.z_spin.valueChanged.connect(self._on_z_changed)
-        self.attach_puppet_combo.currentTextChanged.connect(
-            self._on_attach_puppet_changed
-        )
+        self.attach_puppet_combo.currentTextChanged.connect(self._on_attach_puppet_changed)
         self.attach_btn.clicked.connect(self._on_attach_clicked)
         self.detach_btn.clicked.connect(self._on_detach_clicked)
 
@@ -173,14 +171,16 @@ class InspectorWidget(QWidget):
             return
 
         initial_color = QColor(obj.color or "#FFFFE0")
-        new_color = QColorDialog.getColor(initial_color, self, "Choisir une couleur pour la lumière")
+        new_color = QColorDialog.getColor(
+            initial_color, self, "Choisir une couleur pour la lumière"
+        )
 
         if new_color.isValid():
             # Preserve alpha from intensity spin
             alpha = self.light_intensity_spin.value()
             new_color.setAlpha(alpha)
             obj.color = new_color.name(QColor.HexArgb)
-            self._on_light_props_changed() # Trigger update
+            self._on_light_props_changed()  # Trigger update
 
     def _on_light_props_changed(self):
         typ, name = self._current_info()
@@ -194,7 +194,7 @@ class InspectorWidget(QWidget):
         # Update model from UI
         obj.cone_angle = self.light_angle_spin.value()
         obj.cone_reach = self.light_reach_spin.value()
-        
+
         new_color = QColor(obj.color or "#FFFFE0")
         new_color.setAlpha(self.light_intensity_spin.value())
         obj.color = new_color.name(QColor.HexArgb)
@@ -216,9 +216,7 @@ class InspectorWidget(QWidget):
         last_kf = next((i for i in reversed(si) if i <= idx), None)
         if last_kf is not None:
             vmap = (
-                mw.scene_model.keyframes[last_kf]
-                .puppets.get(puppet_name, {})
-                .get("_variants", {})
+                mw.scene_model.keyframes[last_kf].puppets.get(puppet_name, {}).get("_variants", {})
             )
             if isinstance(vmap, dict):
                 val = vmap.get(slot)
@@ -319,7 +317,7 @@ class InspectorWidget(QWidget):
                 self.light_intensity_spin.setValue(color.alpha())
             else:
                 self.scale_spin.setValue(obj.scale if obj else 1.0)
-            
+
             self.rot_spin.setValue(obj.rotation if obj else 0.0)
             self.z_spin.setValue(getattr(obj, "z", 0))
 
@@ -342,7 +340,7 @@ class InspectorWidget(QWidget):
             else:
                 self.attach_puppet_combo.setCurrentIndex(0)
                 self._refresh_attach_member_combo()
-        else: # Puppet
+        else:  # Puppet
             self.scale_spin.setValue(self.main_window.object_manager.puppet_scales.get(name, 1.0))
             self.rot_spin.setValue(self.main_window.scene_controller.get_puppet_rotation(name))
             self.z_spin.setValue(self.main_window.object_manager.puppet_z_offsets.get(name, 0))
@@ -439,9 +437,7 @@ class InspectorWidget(QWidget):
         puppet = self.attach_puppet_combo.currentText()
         self.attach_member_combo.clear()
         if puppet and puppet in self.main_window.scene_model.puppets:
-            members = sorted(
-                self.main_window.scene_model.puppets[puppet].members.keys()
-            )
+            members = sorted(self.main_window.scene_model.puppets[puppet].members.keys())
             self.attach_member_combo.addItems(members)
 
     def _on_attach_puppet_changed(self, _):
@@ -456,9 +452,7 @@ class InspectorWidget(QWidget):
         puppet = self.attach_puppet_combo.currentText()
         member = self.attach_member_combo.currentText()
         if puppet and member:
-            self.main_window.scene_controller.attach_object_to_member(
-                name, puppet, member
-            )
+            self.main_window.scene_controller.attach_object_to_member(name, puppet, member)
             self._on_item_changed(self.list_widget.currentItem(), None)
             self._update_list_attachment_icons()
 
@@ -482,10 +476,7 @@ class InspectorWidget(QWidget):
         idx = mw.scene_model.current_frame
         si = sorted(mw.scene_model.keyframes.keys())
         last_kf = next((i for i in reversed(si) if i <= idx), None)
-        if (
-            last_kf is not None
-            and obj_name not in mw.scene_model.keyframes[last_kf].objects
-        ):
+        if last_kf is not None and obj_name not in mw.scene_model.keyframes[last_kf].objects:
             return (None, None)
         prev = next(
             (

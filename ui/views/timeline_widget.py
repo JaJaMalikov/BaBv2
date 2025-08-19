@@ -67,6 +67,7 @@ class TimelineWidget(QWidget):
     mutate the scene model; MainWindow/PlaybackHandler should handle logic.
     """
 
+    # Legacy camelCase signals (kept for backward-compat)
     frameChanged = Signal(int)
     addKeyframeClicked = Signal(int)
     deleteKeyframeClicked = Signal(int)
@@ -79,6 +80,19 @@ class TimelineWidget(QWidget):
     fpsChanged = Signal(int)
     rangeChanged = Signal(int, int)
 
+    # Normalized snake_case aliases (docs/tasks.md 17.98)
+    frame_changed = Signal(int)
+    add_keyframe_clicked = Signal(int)
+    delete_keyframe_clicked = Signal(int)
+    copy_keyframe_clicked = Signal(int)
+    paste_keyframe_clicked = Signal(int)
+    play_clicked = Signal()
+    pause_clicked = Signal()
+    stop_clicked = Signal()
+    loop_toggled = Signal(bool)
+    fps_changed = Signal(int)
+    range_changed = Signal(int, int)
+
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         """
         Initializes the TimelineWidget.
@@ -87,6 +101,25 @@ class TimelineWidget(QWidget):
             parent: The parent widget.
         """
         super().__init__(parent)
+
+        # Bridge legacy camelCase signals to snake_case aliases
+        self.frameChanged.connect(self.frame_changed)
+        self.addKeyframeClicked.connect(self.add_keyframe_clicked)
+        self.deleteKeyframeClicked.connect(self.delete_keyframe_clicked)
+        self.copyKeyframeClicked.connect(self.copy_keyframe_clicked)
+        self.pasteKeyframeClicked.connect(self.paste_keyframe_clicked)
+        self.playClicked.connect(self.play_clicked)
+        self.pauseClicked.connect(self.pause_clicked)
+        self.stopClicked.connect(self.stop_clicked)
+        self.loopToggled.connect(self.loop_toggled)
+        self.fpsChanged.connect(self.fps_changed)
+        self.rangeChanged.connect(self.range_changed)
+
+        # Accessibility metadata
+        self.setAccessibleName("Timeline")
+        self.setAccessibleDescription(
+            "Animation timeline with keyframes and playhead; use Left/Right/Home/End/PageUp/PageDown for navigation."
+        )
 
         self._kfs: Set[int] = set()
         self._start: int = 0
@@ -137,16 +170,12 @@ class TimelineWidget(QWidget):
         self.add_kf_btn: QToolButton = QToolButton()
         self.add_kf_btn.setText("＋◆")
         self.add_kf_btn.setToolTip("Add keyframe (A)")
-        self.add_kf_btn.clicked.connect(
-            lambda: self.addKeyframeClicked.emit(self._current)
-        )
+        self.add_kf_btn.clicked.connect(lambda: self.addKeyframeClicked.emit(self._current))
 
         self.del_kf_btn: QToolButton = QToolButton()
         self.del_kf_btn.setText("－◆")
         self.del_kf_btn.setToolTip("Delete keyframe (D)")
-        self.del_kf_btn.clicked.connect(
-            lambda: self.deleteKeyframeClicked.emit(self._current)
-        )
+        self.del_kf_btn.clicked.connect(lambda: self.deleteKeyframeClicked.emit(self._current))
 
         for btn in [
             self.play_btn,
@@ -159,9 +188,7 @@ class TimelineWidget(QWidget):
         ]:
             bar.addWidget(btn)
 
-        bar.addSpacerItem(
-            QSpacerItem(10, 10, QSizePolicy.Expanding, QSizePolicy.Minimum)
-        )
+        bar.addSpacerItem(QSpacerItem(10, 10, QSizePolicy.Expanding, QSizePolicy.Minimum))
 
         self.time_label: QLabel = QLabel("00:00")
         self.time_label.setToolTip("Time (mm:ss)")
@@ -421,11 +448,18 @@ class TimelineWidget(QWidget):
             p.setPen(QPen(PLAYHEAD, PLAYHEAD_W))
             p.drawLine(int(px), 0, int(px), self.height() - TOOLBAR_H)
 
+            # Accessibility: draw a visible focus indicator
+            if self.hasFocus():
+                focus_pen = QPen(QColor("#65B0FF"))
+                focus_pen.setStyle(Qt.DashLine)
+                p.setPen(focus_pen)
+                p.setBrush(Qt.NoBrush)
+                rr = self.rect().adjusted(1, 1, -1, -TOOLBAR_H - 1)
+                p.drawRect(rr)
+
             if self.underMouse():
                 pos = self.mapFromGlobal(self.cursor().pos())
-                if self._ruler_rect().contains(pos) or self._timeline_rect().contains(
-                    pos
-                ):
+                if self._ruler_rect().contains(pos) or self._timeline_rect().contains(pos):
                     fx = self._x_to_frame(pos.x())
                     hud = f"{fx} | {self._format_time(fx)}"
                     metrics = p.fontMetrics()
@@ -444,9 +478,7 @@ class TimelineWidget(QWidget):
             except (RuntimeError, SystemError):
                 pass
 
-    def _draw_ticks(
-        self, p: QPainter, rr: QRect, tick: QColor, tick_major: QColor
-    ) -> None:
+    def _draw_ticks(self, p: QPainter, rr: QRect, tick: QColor, tick_major: QColor) -> None:
         """
         Draws the ticks on the ruler.
 
@@ -466,10 +498,7 @@ class TimelineWidget(QWidget):
                 break
         first: int = max(
             0,
-            int(
-                math.floor((self._start + self._scroll_frames) / step_frames)
-                * step_frames
-            ),
+            int(math.floor((self._start + self._scroll_frames) / step_frames) * step_frames),
         )
         for f in range(first, self._end + 1, step_frames):
             x: float = self._frame_to_x(f)
@@ -578,7 +607,7 @@ class TimelineWidget(QWidget):
 
     def keyPressEvent(self, e: QKeyEvent) -> None:
         """
-        Handles key press events for shortcuts.
+        Handles key press events for shortcuts and accessibility navigation.
 
         Args:
             e: The key event.
@@ -601,6 +630,14 @@ class TimelineWidget(QWidget):
             return
         elif e.key() == Qt.Key_End:
             self.set_current_frame(self._end)
+            e.accept()
+            return
+        elif e.key() == Qt.Key_PageUp:
+            self.set_current_frame(min(self._current + 10, self._end))
+            e.accept()
+            return
+        elif e.key() == Qt.Key_PageDown:
+            self.set_current_frame(max(self._current - 10, self._start))
             e.accept()
             return
         elif e.key() == Qt.Key_Left:
@@ -630,9 +667,7 @@ class TimelineWidget(QWidget):
         Args:
             e: The mouse event.
         """
-        if e.button() == Qt.LeftButton and self._timeline_rect().contains(
-            e.position().toPoint()
-        ):
+        if e.button() == Qt.LeftButton and self._timeline_rect().contains(e.position().toPoint()):
             self.addKeyframeClicked.emit(self._x_to_frame(e.position().x()))
         super().mouseDoubleClickEvent(e)
 
@@ -667,16 +702,12 @@ class TimelineWidget(QWidget):
         kf_at_cursor: Optional[int] = self._kf_at_pos(e.position())
         if kf_at_cursor is not None:
             rem_action: QAction = QAction(f"Delete keyframe @ {kf_at_cursor}", self)
-            rem_action.triggered.connect(
-                lambda: self.deleteKeyframeClicked.emit(kf_at_cursor)
-            )
+            rem_action.triggered.connect(lambda: self.deleteKeyframeClicked.emit(kf_at_cursor))
             menu.addAction(rem_action)
             copy_action: QAction = QAction(f"Copy keyframe @ {kf_at_cursor}", self)
             from functools import partial as _partial
 
-            copy_action.triggered.connect(
-                _partial(self._emit_copy_at, int(kf_at_cursor))
-            )
+            copy_action.triggered.connect(_partial(self._emit_copy_at, int(kf_at_cursor)))
             menu.addAction(copy_action)
         paste_action: QAction = QAction(f"Paste @ {f}", self)
         from functools import partial as _partial

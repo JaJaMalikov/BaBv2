@@ -1,10 +1,21 @@
-"""SceneController: façade légère regroupant les opérations de scène."""
+"""SceneController: façade légère regroupant les opérations de scène.
+
+Data flow overview (see ARCHITECTURE.md §Sequence diagrams):
+- UI (widgets/adapters) → calls controller methods or emits signals
+- Controller → delegates model mutations to SceneService (Qt‑agnostic API)
+- Service → updates SceneModel and emits signals about changes
+- Controller/View adapters → apply state to QGraphicsItems and refresh visuals
+
+This controller keeps UI code thin by delegating business logic to services and
+state application to adapters, preserving testability.
+"""
 
 from __future__ import annotations
 
 import logging
 from typing import TYPE_CHECKING, Any, Optional, Protocol, cast
 
+# Controller boundaries: keep Qt usage minimal; avoid passing Qt graphics types across service boundaries
 from PySide6.QtCore import QPointF
 from PySide6.QtWidgets import QGraphicsItem, QGraphicsScene
 
@@ -52,7 +63,11 @@ class MainWindowProtocol(Protocol):
 
 
 class SceneController:
-    """Facade orchestrating scene-related operations."""
+    """Facade orchestrating scene-related operations.
+
+    Bridges UI and the Qt-agnostic SceneService; see the module docstring for
+    the end-to-end data flow and ARCHITECTURE.md for sequence diagrams.
+    """
 
     def __init__(
         self,
@@ -65,20 +80,16 @@ class SceneController:
     ) -> None:
         """Initialize the scene controller."""
         self.win = win
-        self.service = service if service is not None else SceneService(
-            win.scene_model, win.object_controller.capture_scene_state
+        self.service = (
+            service
+            if service is not None
+            else SceneService(win.scene_model, win.object_controller.capture_scene_state)
         )
         self.view = view if view is not None else SceneView(win)
-        self.onion: OnionSkinManager = (
-            onion if onion is not None else OnionSkinManager(win)
-        )
-        self.applier: StateApplier = (
-            applier if applier is not None else StateApplier(win)
-        )
+        self.onion: OnionSkinManager = onion if onion is not None else OnionSkinManager(win)
+        self.applier: StateApplier = applier if applier is not None else StateApplier(win)
         self.puppet_ops = PuppetOps(win, self.service)
-        self.library_ops = LibraryOps(
-            win, self.puppet_ops, win.object_controller, self.service
-        )
+        self.library_ops = LibraryOps(win, self.puppet_ops, win.object_controller, self.service)
         self.service.background_changed.connect(self.view.update_background)
         self.service.scene_resized.connect(self.view.handle_scene_resized)
 
@@ -116,9 +127,7 @@ class SceneController:
         self.puppet_ops.set_rotation_handles_visible(visible)
 
     # --- Variants ---------------------------------------------------------
-    def set_member_variant(
-        self, puppet_name: str, slot: str, variant_name: str
-    ) -> None:
+    def set_member_variant(self, puppet_name: str, slot: str, variant_name: str) -> None:
         """Choose a variant for a puppet slot at the current frame.
 
         - Immediately updates scene visibility
@@ -150,13 +159,9 @@ class SceneController:
         except AttributeError:
             pass
 
-    def attach_object_to_member(
-        self, obj_name: str, puppet_name: str, member_name: str
-    ) -> None:
+    def attach_object_to_member(self, obj_name: str, puppet_name: str, member_name: str) -> None:
         """Attach an object to a puppet member."""
-        self.win.object_controller.attach_object_to_member(
-            obj_name, puppet_name, member_name
-        )
+        self.win.object_controller.attach_object_to_member(obj_name, puppet_name, member_name)
         try:
             self.win.inspector_widget.refresh()
         except AttributeError:
@@ -265,7 +270,7 @@ class SceneController:
     # --- State application -------------------------------------------------
     def apply_puppet_states(
         self,
-        graphics_items: dict[str, QGraphicsItem],
+        graphics_items: dict[str, Any],
         keyframes: dict[int, Keyframe],
         index: int,
     ) -> None:

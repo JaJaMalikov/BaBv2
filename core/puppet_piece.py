@@ -46,9 +46,7 @@ class RotationHandle(QGraphicsEllipseItem):
     # pylint: disable=invalid-name
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """Record starting angle and rotation when interaction begins."""
-        pivot_in_scene: QPointF = self.piece.mapToScene(
-            self.piece.transformOriginPoint()
-        )
+        pivot_in_scene: QPointF = self.piece.mapToScene(self.piece.transformOriginPoint())
         mouse_in_scene: QPointF = event.scenePos()
         vector: QPointF = mouse_in_scene - pivot_in_scene
         self.start_angle = math.degrees(math.atan2(vector.y(), vector.x()))
@@ -58,9 +56,7 @@ class RotationHandle(QGraphicsEllipseItem):
     # pylint: disable=invalid-name
     def mouseMoveEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """Rotate the bound piece based on mouse movement."""
-        pivot_in_scene: QPointF = self.piece.mapToScene(
-            self.piece.transformOriginPoint()
-        )
+        pivot_in_scene: QPointF = self.piece.mapToScene(self.piece.transformOriginPoint())
         mouse_in_scene: QPointF = event.scenePos()
         vector: QPointF = mouse_in_scene - pivot_in_scene
         current_angle: float = math.degrees(math.atan2(vector.y(), vector.x()))
