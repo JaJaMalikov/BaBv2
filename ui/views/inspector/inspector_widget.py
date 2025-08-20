@@ -99,6 +99,8 @@ class InspectorWidget(QWidget):
         form_layout = QFormLayout(self.props_panel)
         form_layout.setSpacing(8)
         form_layout.setLabelAlignment(Qt.AlignRight)
+        # Keep a reference for later label lookups when toggling visibility
+        self.form_layout = form_layout
 
         self.scale_row = QWidget()
         scale_layout = QHBoxLayout(self.scale_row)
@@ -120,12 +122,18 @@ class InspectorWidget(QWidget):
 
         form_layout.addRow("Attacher à:", self.attach_puppet_combo)
         form_layout.addRow("Membre:", self.attach_member_combo)
+        # Store labels for later visibility toggling
+        self.attach_puppet_label = form_layout.labelForField(self.attach_puppet_combo)
+        self.attach_member_label = form_layout.labelForField(self.attach_member_combo)
 
-        attach_actions_layout = QHBoxLayout()
+        # Buttons row wrapped in a widget to hide/show easily
+        self.attach_actions_widget = QWidget()
+        attach_actions_layout = QHBoxLayout(self.attach_actions_widget)
         attach_actions_layout.addStretch()
         attach_actions_layout.addWidget(self.attach_btn)
         attach_actions_layout.addWidget(self.detach_btn)
-        form_layout.addRow("", attach_actions_layout)
+        form_layout.addRow("", self.attach_actions_widget)
+        self.attach_actions_label = form_layout.labelForField(self.attach_actions_widget)
 
         # Variants section (only visible for puppets with defined slots)
         self.variants_panel = QWidget()
@@ -379,7 +387,18 @@ class InspectorWidget(QWidget):
         self.light_props_widget.setVisible(is_light)
         self.scale_row.setVisible(not is_light)
         self.variants_panel.setVisible(typ == "puppet")
-        self.attach_puppet_combo.parentWidget().setVisible(typ == "object")
+        is_object = typ == "object"
+        # Toggle visibility of attachment controls and their labels without hiding the panel
+        for widget in (
+            self.attach_puppet_combo,
+            self.attach_member_combo,
+            self.attach_actions_widget,
+            self.attach_puppet_label,
+            self.attach_member_label,
+            self.attach_actions_label,
+        ):
+            if widget:
+                widget.setVisible(is_object)
 
         if typ == "object":
             if is_light and info:
