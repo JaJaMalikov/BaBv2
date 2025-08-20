@@ -33,7 +33,11 @@ class SceneVisuals:
         rect = self.win.scene.sceneRect()
         self.scene_border_item.setPen(QPen(QColor(100, 100, 100), 2, Qt.DashLine))
         self.scene_border_item.setRect(rect)
-        text = f"{self.win.scene_model.scene_width}x{self.win.scene_model.scene_height}"
+        try:
+            w, h = self.win.scene_controller.get_scene_size()
+        except Exception:
+            w, h = self.win.scene_model.scene_width, self.win.scene_model.scene_height
+        text = f"{w}x{h}"
         self.scene_size_text_item.setPlainText(text)
         self.scene_size_text_item.setDefaultTextColor(QColor(150, 150, 150))
         text_rect = self.scene_size_text_item.boundingRect()

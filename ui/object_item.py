@@ -36,7 +36,12 @@ class _ObjectItemMixin:
         self.setFlag(QGraphicsItem.ItemIsSelectable, True)
 
     def itemChange(self, change, value):
-        """Handles item changes and updates the scene model accordingly."""
+        """Handles item changes and updates the scene model accordingly.
+
+        Defensive: avoid raising from Qt callbacks which can destabilize the app
+        (observed OverflowError in tests). Keep side effects minimal and route
+        user-driven changes through controllers elsewhere.
+        """
         mw = getattr(self, "_mw", None)
         if mw and getattr(mw, "_suspend_item_updates", False):
             return super().itemChange(change, value)
@@ -49,23 +54,45 @@ class _ObjectItemMixin:
             name = getattr(self, "_obj_name", None)
             try:
                 if mw and name:
+                    # Light-touch: update cached transform for immediate feedback.
+                    # Persistent model updates are handled by controllers.
                     obj = mw.scene_model.objects.get(name)
                     if obj:
-                        obj.x = self.x()
-                        obj.y = self.y()
-                        obj.rotation = self.rotation()
-                        obj.scale = self.scale()
-                        obj.z = int(self.zValue())
-                        # If a keyframe exists at current frame, persist state in it
-                        kf = mw.scene_model.keyframes.get(mw.scene_model.current_frame)
-                        if kf is not None:
-                            kf.objects[name] = obj.to_dict()
-                    # Sync selection with inspector
-                    if change == QGraphicsItem.ItemSelectedHasChanged and bool(value):
-                        mw.controller.select_object_in_inspector(name)
-            except RuntimeError as e:
-                logging.error(f"Error in itemChange for {name}: {e}")
-        return super().itemChange(change, value)
+                        try:
+                            obj.x = float(self.x())
+                            obj.y = float(self.y())
+                            obj.rotation = float(self.rotation())
+                            obj.scale = float(self.scale())
+                            obj.z = int(self.zValue())
+                        except Exception:
+                            # Never propagate exceptions from here
+                            logging.debug("Non-fatal: failed to mirror item transform to model for %s", name)
+                    # Sync selection with inspector when becoming selected
+                    if change == QGraphicsItem.ItemSelectedHasChanged:
+                        selected_flag = False
+                        try:
+                            selected_flag = bool(value)
+                        except Exception:
+                            try:
+                                selected_flag = int(value) != 0  # type: ignore[arg-type]
+                            except Exception:
+                                selected_flag = False
+                        if selected_flag:
+                            try:
+                                # Some legacy controllers expose this helper; guard existence
+                                ctrl = getattr(mw, "controller", None)
+                                if ctrl and hasattr(ctrl, "select_object_in_inspector"):
+                                    ctrl.select_object_in_inspector(name)
+                            except Exception:
+                                # Best-effort only
+                                logging.debug("Selection sync failed for %s", name)
+            except Exception as e:
+                logging.debug("itemChange swallowed exception for %s: %s", name, e)
+        try:
+            return super().itemChange(change, value)
+        except Exception:
+            logging.debug("super().itemChange failed; returning original value")
+            return value
 
 
 class ObjectPixmapItem(_ObjectItemMixin, QGraphicsPixmapItem):

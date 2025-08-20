@@ -83,7 +83,7 @@ def show_error_dialog(parent: Optional[QWidget], title: str, message: str) -> No
     """
     # Headless/offscreen guard used by tests
     if os.environ.get("QT_QPA_PLATFORM", "").lower() == "offscreen":
-        logging.getLogger("ui").error("UIError: %s - %s", title, message)
+        logging.getLogger(__name__).error("UIError: %s - %s", title, message)
         return
 
     # Normal interactive path

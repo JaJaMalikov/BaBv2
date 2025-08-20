@@ -8,6 +8,7 @@ They aim to be minimally invasive and compatible with existing JSON format.
 """
 
 from typing import TypedDict, Dict, Any, Optional, Tuple
+from enum import Enum
 
 
 class ObjectState(TypedDict, total=False):
@@ -34,3 +35,25 @@ PuppetStateMap = Dict[str, PuppetState]
 class SceneSnapshot(TypedDict, total=False):
     puppets: PuppetStateMap
     objects: ObjectStateMap
+
+
+class Kind(Enum):
+    """Enumerates high-level asset and item kinds used across the app.
+
+    Using Enum prevents stringly-typed logic and centralizes allowed values.
+    Values are lowercase to match persisted/serialized representations.
+    """
+
+    OBJECT = "object"
+    PUPPET = "puppet"
+    BACKGROUND = "background"
+
+    @classmethod
+    def from_str(cls, value: str | None) -> "Kind | None":
+        if not value:
+            return None
+        val = value.lower().strip()
+        for k in cls:
+            if k.value == val:
+                return k
+        return None

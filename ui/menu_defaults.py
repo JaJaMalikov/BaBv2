@@ -73,4 +73,16 @@ COMMON_ICON_KEYS = {
     "minus",
     "rotate",
     "custom",
+    "add_light",
+    # Expanded to centralize commonly used icons across UI (docs/tasks.md §12)
+    "play",
+    "pause",
+    "stop",
+    "first",
+    "last",
+    "repeat",
+    "repeat_on",
+    "download",
+    "upload",
+    "warning",
 }

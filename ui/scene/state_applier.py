@@ -8,7 +8,8 @@ from typing import Dict, Optional, Any, List, Tuple, TYPE_CHECKING
 from PySide6.QtWidgets import QGraphicsItem
 
 from core.scene_model import SceneObject, Keyframe
-from core.puppet_piece import PuppetPiece
+from ui.scene.puppet_piece import PuppetPiece
+from core.naming import puppet_member_key
 from .visibility_utils import update_piece_visibility
 
 if TYPE_CHECKING:
@@ -16,7 +17,11 @@ if TYPE_CHECKING:
 
 
 class StateApplier:
-    """Apply model keyframe states to the current graphics items (puppets and objects)."""
+    """Apply model keyframe states to the current graphics items (puppets and objects).
+
+    Exposes helpers used by controllers/adapters to ensure there's a single
+    pathway for mutating QGraphicsItem transforms (docs/tasks.md §15).
+    """
 
     def __init__(self, win: "MainWindowProtocol") -> None:
         """Store reference to main window-like object for scene access."""
@@ -43,7 +48,7 @@ class StateApplier:
         """Ensure the graphics item's parent matches the attachment info."""
         if attachment:
             puppet_name, member_name = attachment
-            parent_piece: Optional[PuppetPiece] = graphics_items.get(f"{puppet_name}:{member_name}")
+            parent_piece: Optional[PuppetPiece] = graphics_items.get(puppet_member_key(puppet_name, member_name))
             if parent_piece is not None and gi.parentItem() is not parent_piece:
                 gi.setParentItem(parent_piece)
         else:
@@ -132,7 +137,7 @@ class StateApplier:
             for slot, candidates in vconf.items():
                 target = chosen.get(slot, candidates[0] if candidates else None)
                 for cand in candidates:
-                    gi_key = f"{pname}:{cand}"
+                    gi_key = puppet_member_key(pname, cand)
                     piece: Optional[PuppetPiece] = graphics_items.get(gi_key)  # type: ignore
                     if not piece:
                         continue
@@ -160,7 +165,7 @@ class StateApplier:
                         float(next_state["rotation"]),
                         ratio,
                     )
-                    piece: PuppetPiece = graphics_items[f"{name}:{member_name}"]
+                    piece: PuppetPiece = graphics_items[puppet_member_key(name, member_name)]
                     piece.local_rotation = interp_rot
                     if not piece.parent_piece:
                         prev_pos: Tuple[float, float] = prev_state["pos"]
@@ -180,7 +185,7 @@ class StateApplier:
                     member_state = state.get(member_name)
                     if not member_state:
                         continue
-                    piece = graphics_items.get(f"{name}:{member_name}")
+                    piece = graphics_items.get(puppet_member_key(name, member_name))
                     if not isinstance(piece, PuppetPiece):
                         continue
                     piece.local_rotation = float(member_state.get("rotation", piece.local_rotation))
@@ -192,7 +197,7 @@ class StateApplier:
         # Propagate transforms to children
         for name, puppet in self.win.scene_model.puppets.items():
             for root_member in puppet.get_root_members():
-                root_piece: PuppetPiece = graphics_items[f"{name}:{root_member.name}"]
+                root_piece: PuppetPiece = graphics_items[puppet_member_key(name, root_member.name)]
                 root_piece.setRotation(root_piece.local_rotation)
                 for child in root_piece.children:
                     child.update_transform_from_parent()
@@ -294,3 +299,55 @@ class StateApplier:
         finally:
             self.win._suspend_item_updates = False
         logging.debug(f"Applied object states: {updated} updated/visible")
+
+    # ------------------------------------------------------------------
+    # Direct visuals update helpers (single pathway for UI mutations)
+    def apply_object_visual_patch(self, name: str, patch: Dict[str, Any]) -> Dict[str, Any]:
+        """Apply a partial state patch to a single object graphics item.
+
+        Only keys present in `patch` are applied among: x, y, rotation, scale, z.
+        Does not change parenting/attachment. Returns the effective state as
+        seen from the adapter (used to persist into keyframes by controllers).
+        """
+        try:
+            obj_view = getattr(self.win, "object_view_adapter", None) or getattr(
+                self.win, "object_manager", None
+            )
+            if obj_view is None:
+                return {}
+            graphics_items: Dict[str, Any] = getattr(obj_view, "graphics_items", {})
+            gi: Optional[QGraphicsItem] = graphics_items.get(name)
+            if gi is None:
+                return {}
+            self.win._suspend_item_updates = True
+            try:
+                if "x" in patch or "y" in patch:
+                    x = float(patch.get("x", gi.x()))
+                    y = float(patch.get("y", gi.y()))
+                    gi.setPos(x, y)
+                if "rotation" in patch:
+                    gi.setRotation(float(patch["rotation"]))
+                if "scale" in patch:
+                    gi.setScale(float(patch["scale"]))
+                if "z" in patch:
+                    try:
+                        gi.setZValue(int(patch["z"]))
+                    except (TypeError, ValueError):
+                        pass
+            finally:
+                self.win._suspend_item_updates = False
+            # Ask adapter for the effective state snapshot
+            read_state = getattr(obj_view, "read_item_state", None)
+            if callable(read_state):
+                return read_state(name)
+            # Fallback minimal state
+            return {
+                "x": float(gi.x()),
+                "y": float(gi.y()),
+                "rotation": float(gi.rotation()),
+                "scale": float(gi.scale()),
+                "z": int(gi.zValue()),
+            }
+        except Exception:
+            logging.getLogger(__name__).exception("apply_object_visual_patch failed for %s", name)
+            return {}

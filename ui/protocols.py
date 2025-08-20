@@ -44,6 +44,11 @@ class ObjectViewAdapterProtocol(Protocol):
     def remove_object_graphics(self, name: str) -> None: ...
     def hide_object(self, name: str) -> None: ...
 
+    # Object transform updates (return effective state snapshot)
+    def set_object_scale(self, name: str, scale: float) -> Dict[str, Any]: ...
+    def set_object_rotation(self, name: str, angle: float) -> Dict[str, Any]: ...
+    def set_object_z(self, name: str, z: int) -> Dict[str, Any]: ...
+
     # Creation flows
     def create_object_from_file(
         self, file_path: str, scene_pos: Optional[Any] = None
@@ -57,3 +62,25 @@ class ObjectViewAdapterProtocol(Protocol):
         self, obj_name: str, puppet_name: str, member_name: str
     ) -> Dict[str, Any]: ...
     def detach_object(self, obj_name: str) -> Dict[str, Any]: ...
+
+
+class ZoomStatusAdapterProtocol(Protocol):
+    """Adapter to decouple SceneView from MainWindow for zoom/scale updates.
+
+    A thin layer that SceneView can call without knowing about QGraphicsView
+    or MainWindow internals. This follows docs/tasks.md Task 6.
+    """
+
+    def scale_view(self, factor: float) -> None: ...
+    def on_zoom_changed(self, zoom_factor: float) -> None: ...
+
+
+
+class MessageAdapterProtocol(Protocol):
+    """Adapter for user-facing messages/notifications from controllers or ops.
+
+    UI can implement this using status bars, toast overlays, dialogs, etc.
+    Levels are advisory: "info", "warning", "error".
+    """
+
+    def show_message(self, text: str, level: str = "info") -> None: ...

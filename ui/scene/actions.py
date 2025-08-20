@@ -37,11 +37,12 @@ def set_scene_size(win: "MainWindowProtocol") -> None:
 
     Updates the scene rect, visuals, background fit, and zoom status.
     """
+    cur_w, cur_h = win.scene_controller.get_scene_size() if hasattr(win, "scene_controller") else (win.scene_model.scene_width, win.scene_model.scene_height)
     width, ok1 = QInputDialog.getInt(
         win,
         "Taille de la scène",
         "Largeur:",
-        win.scene_model.scene_width,
+        cur_w,
         1,
     )
     if not ok1:
@@ -50,7 +51,7 @@ def set_scene_size(win: "MainWindowProtocol") -> None:
         win,
         "Taille de la scène",
         "Hauteur:",
-        win.scene_model.scene_height,
+        cur_h,
         1,
     )
     if not ok2:

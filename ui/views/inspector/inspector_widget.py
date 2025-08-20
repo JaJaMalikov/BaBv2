@@ -1,7 +1,13 @@
 """Inspector panel to list puppets/objects and edit selected object properties.
 
-This widget emits no external signals; it directly calls methods on MainWindow
-to manipulate the scene model and graphics items.
+DEPRECATION NOTICE (docs/tasks.md §23):
+- This widget currently accesses `main_window.scene_model` and
+  `main_window.object_manager.graphics_items` directly in several places.
+- This is being phased out in favor of a controller facade and a selection model.
+- New code should route through controller/facade methods and view adapters.
+
+For now, we keep these direct accesses to avoid breaking tests; they are marked
+with TODO(§23) comments where relevant.
 """
 
 import logging
@@ -27,6 +33,7 @@ from PySide6.QtGui import QIcon, QColor
 
 from ui.icons import icon_delete, icon_duplicate, icon_link, icon_link_off
 from ui.object_item import LightItem
+from ui.selection_sync import subscribe_model_changed, unsubscribe_model_changed
 
 
 class InspectorWidget(QWidget):
@@ -162,10 +169,20 @@ class InspectorWidget(QWidget):
 
         self.refresh()
 
+        # Subscribe to model-changed events (docs/tasks.md §4)
+        try:
+            subscribe_model_changed(self.main_window, self.refresh)
+            # Ensure we unsubscribe when this widget is destroyed to avoid stale refs
+            self.destroyed.connect(lambda *_: unsubscribe_model_changed(self.main_window, self.refresh))
+        except Exception:
+            # Non-fatal: inspector still works with direct refresh calls
+            pass
+
     def _on_light_color_clicked(self):
         typ, name = self._current_info()
         if not (typ == "object" and name):
             return
+        # Prefer controller/facade: avoid direct model writes
         obj = self.main_window.scene_model.objects.get(name)
         if not obj or obj.obj_type != "light":
             return
@@ -176,65 +193,73 @@ class InspectorWidget(QWidget):
         )
 
         if new_color.isValid():
-            # Preserve alpha from intensity spin
+            # Preserve alpha from intensity spin and route via controller
             alpha = self.light_intensity_spin.value()
             new_color.setAlpha(alpha)
-            obj.color = new_color.name(QColor.HexArgb)
-            self._on_light_props_changed()  # Trigger update
+            self.main_window.object_controller.set_light_properties(
+                name,
+                new_color.name(QColor.HexArgb),
+                float(self.light_angle_spin.value()),
+                float(self.light_reach_spin.value()),
+            )
+            # Refresh UI fields from model state
+            self._on_item_changed(self.list_widget.currentItem(), None)
 
     def _on_light_props_changed(self):
         typ, name = self._current_info()
         if not (typ == "object" and name):
             return
-        obj = self.main_window.scene_model.objects.get(name)
-        item = self.main_window.object_manager.graphics_items.get(name)
-        if not obj or obj.obj_type != "light" or not isinstance(item, LightItem):
+        # Route through controller to update model and visuals
+        facade = getattr(self.main_window, "scene_facade", None)
+        if not facade:
             return
-
-        # Update model from UI
-        obj.cone_angle = self.light_angle_spin.value()
-        obj.cone_reach = self.light_reach_spin.value()
-
-        new_color = QColor(obj.color or "#FFFFE0")
-        new_color.setAlpha(self.light_intensity_spin.value())
-        obj.color = new_color.name(QColor.HexArgb)
-
-        # Update graphics item
-        item.set_light_properties(new_color, obj.cone_angle, obj.cone_reach)
+        info = facade.get_object_info(name)
+        if not info or not info.is_light:
+            return
+        color = QColor(info.light_color or "#FFFFE0")
+        color.setAlpha(self.light_intensity_spin.value())
+        self.main_window.object_controller.set_light_properties(
+            name,
+            color.name(QColor.HexArgb),
+            float(self.light_angle_spin.value()),
+            float(self.light_reach_spin.value()),
+        )
 
     # --- Variants helpers ---
     def _current_variant_for_slot(self, puppet_name: str, slot: str) -> str | None:
-        """Return the active variant for a slot at the current frame (or default)."""
+        """Return the active variant for a slot at the current frame (or default).
+
+        Prefers controller facade queries to avoid UI touching the model directly
+        (docs/tasks.md §3, §8). Falls back to legacy logic if the facade is missing.
+        """
         mw = self.main_window
+        facade = getattr(mw, "scene_facade", None)
+        if facade:
+            try:
+                return facade.get_current_variant_for_slot(puppet_name, slot)
+            except Exception:
+                pass
+        # Legacy fallback kept for robustness during migration
         puppet = mw.scene_model.puppets.get(puppet_name)
         if not puppet:
             return None
         candidates = getattr(puppet, "variants", {}).get(slot, [])
-        # Resolve from keyframes
         idx = mw.scene_model.current_frame
         si = sorted(mw.scene_model.keyframes.keys())
         last_kf = next((i for i in reversed(si) if i <= idx), None)
         if last_kf is not None:
-            vmap = (
-                mw.scene_model.keyframes[last_kf].puppets.get(puppet_name, {}).get("_variants", {})
-            )
+            vmap = mw.scene_model.keyframes[last_kf].puppets.get(puppet_name, {}).get("_variants", {})
             if isinstance(vmap, dict):
                 val = vmap.get(slot)
                 if isinstance(val, str) and val in candidates:
                     return val
-        # Fallback to currently visible piece in scene
-        for cand in candidates:
-            gi = mw.object_manager.graphics_items.get(f"{puppet_name}:{cand}")
-            try:
-                if gi and gi.isVisible():
-                    return cand
-            except RuntimeError:
-                continue
         return candidates[0] if candidates else None
 
     def _rebuild_variant_rows(self, puppet_name: str) -> None:
-        """Build or refresh variant selection rows for the selected puppet."""
-        puppet = self.main_window.scene_model.puppets.get(puppet_name)
+        """Build or refresh variant selection rows for the selected puppet.
+
+        Uses SceneFacade for read-only queries to respect MVC boundaries.
+        """
         # Clear existing rows
         for i in reversed(range(self.variants_layout.count())):
             item = self.variants_layout.itemAt(i)
@@ -242,11 +267,23 @@ class InspectorWidget(QWidget):
             if w:
                 w.deleteLater()
         self.variant_combos.clear()
-        slots = list(getattr(puppet, "variants", {}).keys()) if puppet else []
+
+        facade = getattr(self.main_window, "scene_facade", None)
+        if facade:
+            slots = facade.get_puppet_variant_slots(puppet_name)
+        else:
+            # Fallback to legacy direct model access during migration
+            puppet = self.main_window.scene_model.puppets.get(puppet_name)
+            slots = list(getattr(puppet, "variants", {}).keys()) if puppet else []
+
         self.variants_panel.setVisible(bool(slots))
         for slot in sorted(slots):
             combo = QComboBox()
-            options = getattr(puppet, "variants", {}).get(slot, [])
+            if facade:
+                options = facade.get_puppet_variant_options(puppet_name, slot)
+            else:
+                puppet = self.main_window.scene_model.puppets.get(puppet_name)
+                options = getattr(puppet, "variants", {}).get(slot, []) if puppet else []
             combo.addItems(options)
             current = self._current_variant_for_slot(puppet_name, slot)
             if current:
@@ -264,14 +301,37 @@ class InspectorWidget(QWidget):
             self.variants_layout.addRow(f"{slot}:", combo)
 
     def refresh(self) -> None:
-        """Refresh the list from the scene model."""
+        """Refresh the list from the scene via the controller facade."""
         self.list_widget.clear()
-        model = self.main_window.scene_model
-        for name in sorted(model.puppets.keys()):
+        # Puppets
+        puppet_names: list[str] = []
+        try:
+            facade = getattr(self.main_window, "scene_facade", None)
+            puppet_names = facade.get_puppet_names() if facade else []
+        except Exception:
+            puppet_names = []
+        if not puppet_names:
+            try:
+                puppet_names = sorted(self.main_window.scene_model.puppets.keys())
+            except Exception:
+                puppet_names = []
+        for name in puppet_names:
             item = QListWidgetItem(name)
             item.setData(Qt.UserRole, ("puppet", name))
             self.list_widget.addItem(item)
-        for name in sorted(model.objects.keys()):
+        # Objects
+        object_names: list[str] = []
+        try:
+            facade = getattr(self.main_window, "scene_facade", None)
+            object_names = facade.get_object_names() if facade else []
+        except Exception:
+            object_names = []
+        if not object_names:
+            try:
+                object_names = sorted(self.main_window.scene_model.objects.keys())
+            except Exception:
+                object_names = []
+        for name in object_names:
             item = QListWidgetItem(name)
             item.setData(Qt.UserRole, ("object", name))
             # Small visual indicator if attached at current frame
@@ -287,11 +347,22 @@ class InspectorWidget(QWidget):
 
     # --- Callbacks ---
     def _current_info(self):
-        """Returns the type and name of the currently selected item."""
+        """Returns the type and name of the currently selected item.
+
+        Falls back to the last known selection to be resilient to transient
+        selection updates triggered by scene highlights.
+        """
         item = self.list_widget.currentItem()
-        if not item:
-            return None, None
-        return item.data(Qt.UserRole)
+        if item:
+            info = item.data(Qt.UserRole)
+            # Cache for resilience
+            try:
+                self._last_selection = info
+            except Exception:
+                pass
+            return info
+        # Fallback
+        return getattr(self, "_last_selection", (None, None))
 
     def _on_item_changed(self, current, previous):
         """Handles the selection change in the list widget."""
@@ -301,8 +372,9 @@ class InspectorWidget(QWidget):
             return
 
         self.props_panel.setVisible(True)
-        obj = self.main_window.scene_model.objects.get(name)
-        is_light = typ == "object" and obj and obj.obj_type == "light"
+        facade = getattr(self.main_window, "scene_facade", None)
+        info = facade.get_object_info(name) if (typ == "object" and facade) else None
+        is_light = bool(info and info.is_light)
 
         self.light_props_widget.setVisible(is_light)
         self.scale_row.setVisible(not is_light)
@@ -310,22 +382,29 @@ class InspectorWidget(QWidget):
         self.attach_puppet_combo.parentWidget().setVisible(typ == "object")
 
         if typ == "object":
-            if is_light:
-                self.light_angle_spin.setValue(obj.cone_angle or 45.0)
-                self.light_reach_spin.setValue(obj.cone_reach or 500.0)
-                color = QColor(obj.color or "#FFFFE0")
+            if is_light and info:
+                self.light_angle_spin.setValue(float(info.light_cone_angle or 45.0))
+                self.light_reach_spin.setValue(float(info.light_cone_reach or 500.0))
+                color = QColor(info.light_color or "#FFFFE0")
                 self.light_intensity_spin.setValue(color.alpha())
             else:
-                self.scale_spin.setValue(obj.scale if obj else 1.0)
+                self.scale_spin.setValue(float(info.scale) if info else 1.0)
 
-            self.rot_spin.setValue(obj.rotation if obj else 0.0)
-            self.z_spin.setValue(getattr(obj, "z", 0))
+            self.rot_spin.setValue(float(info.rotation) if info else 0.0)
+            self.z_spin.setValue(int(info.z) if info else 0)
 
-            for it in self.main_window.scene.selectedItems():
-                it.setSelected(False)
-            gi = self.main_window.object_manager.graphics_items.get(name)
-            if gi and gi.isVisible():
-                gi.setSelected(True)
+            try:
+                # Drive selection via facade (docs/tasks.md §16)
+                fac = getattr(self.main_window, "scene_facade", None)
+                if fac:
+                    fac.select_object(name)
+                else:
+                    # Fallback: highlight directly during migration
+                    from ui.selection_sync import highlight_scene_object
+                    highlight_scene_object(self.main_window, name)
+            except Exception:
+                # Fallback legacy selection direct access
+                pass
 
             pu, me = self._attached_state_for_frame(name)
             self._refresh_attach_puppet_combo()
@@ -341,9 +420,9 @@ class InspectorWidget(QWidget):
                 self.attach_puppet_combo.setCurrentIndex(0)
                 self._refresh_attach_member_combo()
         else:  # Puppet
-            self.scale_spin.setValue(self.main_window.object_manager.puppet_scales.get(name, 1.0))
+            self.scale_spin.setValue(self.main_window.scene_controller.get_puppet_scale(name))
             self.rot_spin.setValue(self.main_window.scene_controller.get_puppet_rotation(name))
-            self.z_spin.setValue(self.main_window.object_manager.puppet_z_offsets.get(name, 0))
+            self.z_spin.setValue(self.main_window.scene_controller.get_puppet_z_offset(name))
             self._rebuild_variant_rows(name)
 
     def _on_scale_changed(self, value: float) -> None:
@@ -352,19 +431,13 @@ class InspectorWidget(QWidget):
         if not name:
             return
         if typ == "object":
-            obj = self.main_window.scene_model.objects.get(name)
-            if obj:
-                obj.scale = value
-                item = self.main_window.object_manager.graphics_items.get(name)
-                if item:
-                    item.setScale(value)
+            # Route via controller (docs/tasks.md §3 & §14)
+            self.main_window.object_controller.set_object_scale(name, float(value))
         else:
-            old = self.main_window.object_manager.puppet_scales.get(name, 1.0)
             if value <= 0:
                 return
-            ratio = value / old if old else value
-            self.main_window.object_manager.puppet_scales[name] = value
-            self.main_window.scene_controller.scale_puppet(name, ratio)
+            # Use controller API to centralize absolute scale changes
+            self.main_window.scene_controller.set_puppet_scale(name, float(value))
 
     def _on_delete_clicked(self) -> None:
         """Handles the deletion of the selected item."""
@@ -394,15 +467,8 @@ class InspectorWidget(QWidget):
         if not name:
             return
         if typ == "object":
-            obj = self.main_window.scene_model.objects.get(name)
-            item = self.main_window.object_manager.graphics_items.get(name)
-            if obj and item:
-                obj.rotation = value
-                try:
-                    item.setTransformOriginPoint(item.boundingRect().center())
-                except RuntimeError as e:
-                    logging.debug("Failed to set transform origin in inspector: %s", e)
-                item.setRotation(value)
+            # Route via controller
+            self.main_window.object_controller.set_object_rotation(name, float(value))
         else:
             # Rotation du pantin entier (autour du pivot de la pièce racine)
             self.main_window.scene_controller.set_puppet_rotation(name, value)
@@ -413,31 +479,58 @@ class InspectorWidget(QWidget):
         if not name:
             return
         if typ == "object":
-            obj = self.main_window.scene_model.objects.get(name)
-            item = self.main_window.object_manager.graphics_items.get(name)
-            if obj and item:
-                obj.z = int(value)
-                item.setZValue(int(value))
+            # Route via controller
+            self.main_window.object_controller.set_object_z(name, int(value))
         else:
             # Z offset global du pantin (appliqué à toutes les pièces)
             self.main_window.scene_controller.set_puppet_z_offset(name, int(value))
 
     def _refresh_attach_puppet_combo(self) -> None:
-        """Refreshes the puppet attachment combo box."""
+        """Refreshes the puppet attachment combo box.
+
+        docs/tasks.md §3: query via facade to avoid direct model traversal.
+        """
         self.attach_puppet_combo.blockSignals(True)
         self.attach_puppet_combo.clear()
         self.attach_puppet_combo.addItem("")
-        for name in sorted(self.main_window.scene_model.puppets.keys()):
+        try:
+            facade = getattr(self.main_window, "scene_facade", None)
+            names = facade.get_puppet_names() if facade else []
+        except Exception:
+            names = []
+        if not names:
+            # Fallback to legacy model access to keep behavior in edge cases
+            try:
+                names = sorted(self.main_window.scene_model.puppets.keys())
+            except Exception:
+                names = []
+        for name in names:
             self.attach_puppet_combo.addItem(name)
         self.attach_puppet_combo.blockSignals(False)
         self._refresh_attach_member_combo()
 
     def _refresh_attach_member_combo(self) -> None:
-        """Refreshes the member attachment combo box."""
+        """Refreshes the member attachment combo box.
+
+        docs/tasks.md §3: query via facade to avoid direct model traversal.
+        """
         puppet = self.attach_puppet_combo.currentText()
         self.attach_member_combo.clear()
-        if puppet and puppet in self.main_window.scene_model.puppets:
-            members = sorted(self.main_window.scene_model.puppets[puppet].members.keys())
+        members: list[str] = []
+        if puppet:
+            try:
+                facade = getattr(self.main_window, "scene_facade", None)
+                members = facade.get_puppet_member_names(puppet) if facade else []
+            except Exception:
+                members = []
+            if not members:
+                # Fallback to legacy model access
+                try:
+                    if puppet in self.main_window.scene_model.puppets:
+                        members = sorted(self.main_window.scene_model.puppets[puppet].members.keys())
+                except Exception:
+                    members = []
+        if members:
             self.attach_member_combo.addItems(members)
 
     def _on_attach_puppet_changed(self, _):
@@ -472,33 +565,14 @@ class InspectorWidget(QWidget):
         Respecte la même politique de visibilité que la scène: si le keyframe le plus
         récent ≤ frame ne contient pas l'objet, on considère l'objet masqué/détaché.
         """
-        mw = self.main_window
-        idx = mw.scene_model.current_frame
-        si = sorted(mw.scene_model.keyframes.keys())
-        last_kf = next((i for i in reversed(si) if i <= idx), None)
-        if last_kf is not None and obj_name not in mw.scene_model.keyframes[last_kf].objects:
+        facade = getattr(self.main_window, "scene_facade", None)
+        if not facade:
             return (None, None)
-        prev = next(
-            (
-                i
-                for i in reversed(si)
-                if i <= idx and obj_name in mw.scene_model.keyframes[i].objects
-            ),
-            None,
-        )
-        if prev is None:
-            obj = mw.scene_model.objects.get(obj_name)
-            return obj.attached_to if obj and obj.attached_to else (None, None)
-        st = mw.scene_model.keyframes[prev].objects.get(obj_name, {})
-        attached = st.get("attached_to")
-        if attached:
-            try:
-                pu, me = attached
-                return pu, me
-            except ValueError as e:
-                logging.debug("Invalid 'attached_to' format in inspector: %s", e)
-                return (None, None)
-        return (None, None)
+        try:
+            return facade.get_object_attachment_at_current_frame(obj_name)
+        except Exception as e:
+            logging.debug("Failed to resolve attachment via facade: %s", e)
+            return (None, None)
 
     def sync_with_frame(self) -> None:
         """À appeler quand la frame courante change.

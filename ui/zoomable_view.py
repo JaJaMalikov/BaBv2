@@ -519,6 +519,10 @@ class ZoomableView(QGraphicsView):
         order = s.value("ui/menu/main/order") or list(mapping.keys())
         if isinstance(order, str):
             order = [k for k in order.split(",") if k]
+        # Append any new keys not present in saved order (forward-compatible)
+        for key in mapping.keys():
+            if key not in order:
+                order.append(key)
         # Clear and re-add in order
         try:
             # Remove existing buttons except collapse

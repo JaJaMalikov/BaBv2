@@ -2,6 +2,11 @@
 
 It includes functions for saving and loading scenes to/from JSON files, as well as
 creating a blank scene.
+
+DEPRECATION NOTICE (docs/tasks.md §23):
+- This module still touches `win.object_manager.graphics_items` and calls
+  `win.inspector_widget.refresh()` directly. These will be replaced by facade/event
+  pathways incrementally to respect MVC boundaries.
 """
 
 from __future__ import annotations
@@ -13,6 +18,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from PySide6.QtCore import QTimer, QSettings
 from PySide6.QtWidgets import QFileDialog
+from core.naming import puppet_member_key
 
 if TYPE_CHECKING:
     from ui.main_window import MainWindow
@@ -104,7 +110,7 @@ def export_scene(win: "MainWindow", file_path: str) -> None:
         if not root_members:
             continue
         root_piece: Optional[Any] = win.object_manager.graphics_items.get(
-            f"{name}:{root_members[0].name}"
+            puppet_member_key(name, root_members[0].name)
         )
         if root_piece:
             puppets_data[name] = {
@@ -148,7 +154,7 @@ def export_scene_async(win: "MainWindow", file_path: str) -> None:
         if not root_members:
             continue
         root_piece: Optional[Any] = win.object_manager.graphics_items.get(
-            f"{name}:{root_members[0].name}"
+            puppet_member_key(name, root_members[0].name)
         )
         if root_piece:
             puppets_data[name] = {

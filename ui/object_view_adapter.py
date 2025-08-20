@@ -10,8 +10,8 @@ from PySide6.QtCore import QPointF
 from PySide6.QtWidgets import QGraphicsItem, QGraphicsScene
 
 from core.scene_model import SceneModel, SceneObject
-from core.puppet_piece import PuppetPiece
-from core.naming import unique_name
+from ui.scene.puppet_piece import PuppetPiece
+from core.naming import unique_name, puppet_member_key, split_puppet_member_key, MEMBER_KEY_SEP
 from .object_item import (
     ObjectPixmapItem,
     ObjectSvgItem,
@@ -33,6 +33,9 @@ class ObjectViewAdapter:
     puppets, keeping controllers/services Qt-agnostic. It exposes helpers to
     capture current states and to build/remove graphics items corresponding to
     model objects.
+
+    docs/tasks.md §15: Provide a single pathway to update visuals. These
+    helpers are invoked by controllers to reflect model changes immediately.
     """
 
     def __init__(self, win: MainWindow) -> None:
@@ -61,7 +64,7 @@ class ObjectViewAdapter:
         for name, puppet in self.scene_model.puppets.items():
             puppet_state: Dict[str, Dict[str, Any]] = {}
             for member_name in puppet.members:
-                piece: Optional[PuppetPiece] = self.graphics_items.get(f"{name}:{member_name}")
+                piece: Optional[PuppetPiece] = self.graphics_items.get(puppet_member_key(name, member_name))
                 if piece:
                     puppet_state[member_name] = {
                         "rotation": piece.local_rotation,
@@ -72,7 +75,7 @@ class ObjectViewAdapter:
                 for slot, candidates in puppet.variants.items():
                     active = None
                     for cand in candidates:
-                        gi = self.graphics_items.get(f"{name}:{cand}")
+                        gi = self.graphics_items.get(puppet_member_key(name, cand))
                         try:
                             if gi and gi.isVisible():
                                 active = cand
@@ -98,9 +101,9 @@ class ObjectViewAdapter:
         states: Dict[str, Dict[str, Any]] = {}
         piece_owner: Dict[QGraphicsItem, tuple[str, str]] = {}
         for key, val in self.graphics_items.items():
-            if isinstance(val, PuppetPiece) and ":" in key:
+            if isinstance(val, PuppetPiece) and MEMBER_KEY_SEP in key:
                 try:
-                    puppet_name, member_name = key.split(":", 1)
+                    puppet_name, member_name = split_puppet_member_key(key)
                     piece_owner[val] = (puppet_name, member_name)
                 except ValueError as e:
                     logging.debug("Split key '%s' failed: %s", key, e)
@@ -178,6 +181,93 @@ class ObjectViewAdapter:
         """Hide the graphics item for the given object name (if present)."""
         if item := self.graphics_items.get(name):
             item.setVisible(False)
+
+    # ------------------------------------------------------------------
+    # Transform updates (used by controllers)
+    def set_light_properties(self, name: str, color_argb: str, angle: float, reach: float) -> Dict[str, Any]:
+        """Update a LightItem's visuals and return the effective state.
+
+        Args:
+            name: Object name.
+            color_argb: Color in ARGB hex string (e.g., #AARRGGBB or #RRGGBB).
+            angle: Cone angle in degrees.
+            reach: Cone reach in scene units.
+        """
+        item = self.graphics_items.get(name)
+        if not item or not isinstance(item, LightItem):
+            return {}
+        try:
+            from PySide6.QtGui import QColor
+            color = QColor(color_argb)
+        except Exception:
+            # Fallback to default color if parsing fails
+            from PySide6.QtGui import QColor
+            color = QColor(DEFAULT_LIGHT_COLOR)
+        try:
+            # Avoid emitting change signals back into model during visual update
+            self.win._suspend_item_updates = True
+            item.set_light_properties(color, float(angle), float(reach))
+        finally:
+            self.win._suspend_item_updates = False
+        return self.read_item_state(name)
+
+    def set_object_scale(self, name: str, scale: float) -> Dict[str, Any]:
+        # Route via StateApplier to enforce single visuals pathway (docs/tasks.md §15)
+        try:
+            applier = getattr(self.win, "controller").applier
+            return applier.apply_object_visual_patch(name, {"scale": float(scale)})
+        except Exception:
+            # Fallback to legacy path for resilience
+            item = self.graphics_items.get(name)
+            if not item:
+                return {}
+            self.win._suspend_item_updates = True
+            try:
+                try:
+                    if not item.boundingRect().isEmpty():
+                        item.setTransformOriginPoint(item.boundingRect().center())
+                except RuntimeError:
+                    pass
+                item.setScale(float(scale))
+            finally:
+                self.win._suspend_item_updates = False
+            return self.read_item_state(name)
+
+    def set_object_rotation(self, name: str, angle: float) -> Dict[str, Any]:
+        # Route via StateApplier to enforce single visuals pathway (docs/tasks.md §15)
+        try:
+            applier = getattr(self.win, "controller").applier
+            return applier.apply_object_visual_patch(name, {"rotation": float(angle)})
+        except Exception:
+            item = self.graphics_items.get(name)
+            if not item:
+                return {}
+            self.win._suspend_item_updates = True
+            try:
+                try:
+                    if not item.boundingRect().isEmpty():
+                        item.setTransformOriginPoint(item.boundingRect().center())
+                except RuntimeError:
+                    pass
+                item.setRotation(float(angle))
+            finally:
+                self.win._suspend_item_updates = False
+            return self.read_item_state(name)
+
+    def set_object_z(self, name: str, z: int) -> Dict[str, Any]:
+        # Route via StateApplier to enforce single visuals pathway (docs/tasks.md §15)
+        try:
+            applier = getattr(self.win, "controller").applier
+            return applier.apply_object_visual_patch(name, {"z": int(z)})
+        except Exception:
+            item = self.graphics_items.get(name)
+            if not item:
+                return {}
+            try:
+                item.setZValue(int(z))
+            except (RuntimeError, TypeError, ValueError):
+                pass
+            return self.read_item_state(name)
 
     # ------------------------------------------------------------------
     # Création d'objets

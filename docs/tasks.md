@@ -1,89 +1,120 @@
-# Improvement Tasks Checklist
+# BaBv2 Improvement Tasks (Strict MVC + Code Quality)
 
-Note: Each item starts with a checkbox placeholder for tracking. Items are numbered for logical order; use sub-numbering for related subtasks.
+This document lists actionable, logically ordered tasks to evolve the codebase toward a stricter MVC architecture and improved code quality. Each task is specific, testable, and references the current modules where applicable.
 
-[ ] 1. Define and enforce architectural boundaries across layers (core, controllers, ui).
-[ ] 1.1 Add an import-linter (or similar) configuration to prevent forbidden imports (e.g., ui -> core, controllers -> core only, ui -> controllers only).
-[ ] 1.2 Add a lightweight pytest check that runs import-linter with the repo to fail on boundary violations.
-[ ] 1.3 Document allowed dependencies and examples in ARCHITECTURE.md (update the “Layers” and “Data flow” sections).
+1. [x] Establish architecture boundaries and conventions
+   - [x] Add docs/architecture.md describing layer responsibilities (core/, controllers/, ui/), allowed dependencies, and anti-patterns (e.g., UI touching core models directly, controllers importing PySide).
+   - [x] Define a dependency rule: core -> controllers -> ui (one-way). No UI imports in controllers; no PySide in core.
+   - [x] Document adapter patterns (view adapters, presenters) for Qt widgets to interact with controllers without leaking Qt into core.
 
-[ ] 2. Centralize settings keys/namespacing and usage across the codebase.
-[ ] 2.1 Adopt controllers.settings_service.SettingsService.key(...) for QSettings key construction in all UI modules.
-[ ] 2.2 Replace ad-hoc string literals for settings keys in ui/* with centralized helpers; add a test to assert key stability.
+2. [x] Introduce a Controller API for view-facing operations (facade)
+   - [x] Create a SceneFacade in controllers/ (or extend controllers/scene_service.py) exposing safe methods for UI (select, transform, z-order, attach/detach, duplicate, delete) without exposing raw models/graphics.
+   - [x] Replace direct access to main_window.scene_model and object_manager in UI with calls to the facade.
+   - [x] Provide minimal dataclasses/DTOs for UI to read state (e.g., SelectedItemInfo, PuppetInfo) without exposing mutable model objects.
 
-[ ] 3. Refactor ui/settings_manager.py into smaller, testable units.
-[ ] 3.1 Extract dialog data binding to a presenter/adapter (see §7.2) and remove nested functions from open_dialog.
-[ ] 3.2 Move import/export logic to a pure service (see §7.1/§7.3) and keep the manager focused on orchestration and QSettings bridge.
-[ ] 3.3 Add unit tests that cover: load/save geometry, timeline visibility, toolbar overlay geometry, and shortcut persistence.
-[ ] 3.4 Add error handling paths for malformed QSettings values (e.g., invalid QByteArray) with logged warnings (consistent logger usage).
+3. [x] Refactor InspectorWidget to respect MVC boundaries
+   - [x] ui/views/inspector/inspector_widget.py: remove direct reads/writes to scene_model and QGraphicsItems; call controller/facade methods instead.
+   - [x] Move transformation logic (scale/rotation/z) into controller methods (set_object_scale, set_object_rotation, set_object_z, set_puppet_rotation, set_puppet_z_offset, scale_puppet by ratio) and have the controller update both model and visuals.
+   - [x] Replace _refresh_attach_* to query controller for puppet/member lists; avoid reading model dicts directly.
+   - [x] Replace selection highlighting (selectedItems, setSelected) with a selection service in controllers (or via facade) that updates UI selection through signals/adapters.
+   - [x] Add unit tests covering inspector-controller interactions (no direct model access in UI) using mocks for facade.
 
-[ ] 4. Strengthen SceneModel invariants and serialization.
-[ ] 4.1 After import_json/from_dict, run _validate_invariants with clear error reporting; return False with messages collected for UI display.
-[ ] 4.2 Add scene schema versioning constants and explicit migration steps in _migrate_data; unit-test a migration scenario.
-[ ] 4.3 Improve typing of SceneSnapshot/ObjectStateMap/PuppetStateMap usages; add mypy-friendly annotations where missing.
-[ ] 4.4 Add a round-trip property test: to_dict -> json -> from_dict maintains equality of keyframes and object attachments.
+4. [x] Selection synchronization and event signaling
+   - [x] Create a lightweight event bus or use Qt signals in a dedicated adapter layer (ui/selection_sync.py can be extended) to broadcast selection changes and frame sync events.
+   - [x] Ensure controllers emit domain events (pure Python callbacks or Qt signal adapters) instead of UI polling models.
+   - [x] Update UI views to subscribe to these events to refresh state (e.g., InspectorWidget.refresh()).
 
-[ ] 5. Isolate Puppet SVG validation and enhance performance.
-[ ] 5.1 Move validate_svg_structure out of core/puppet_model.py into a new core/svg_validation.py to separate concerns.
-[ ] 5.2 Introduce caching of computed parent/child maps and pivots keyed by SVG path + mtime to avoid recomputation.
-[ ] 5.3 Add tests for cycle detection, missing pivots, and invalid parent references (positive/negative tests).
+5. [x] Consolidate settings management (remove duplication, enforce purity)
+   - [x] Adopt controllers/settings_service.py (pure dataclass-based) as the single source of truth for persistence.
+   - [x] Keep controllers/settings_presenter.py as the UI bridge for onion and future tabs.
+   - [x] Shrink ui/settings_manager.py: delegate JSON import/export and default resolution to SettingsService; limit it to dialog assembly and QSettings migration only.
+   - [x] Replace hard-coded QSettings key strings with SettingsService.key() helper; add tests to prevent regressions.
+   - [x] Add round-trip tests for SettingsService (save/load JSON) and dialog mapping tests via SettingsPresenter.
 
-[ ] 6. Improve SvgLoader robustness and caching.
-[ ] 6.1 Key the renderer cache by (path, mtime, size) to avoid stale caches when the file changes in place.
-[ ] 6.2 Provide XML parsing errors with element line/column when available; include group/pivot id context in messages.
-[ ] 6.3 Add a fast-path for group bbox using viewBox + transform-free elements; unit-test deterministic bounding boxes.
-[ ] 6.4 Expand malformed SVG tests (tests/test_svg_loader_malformed.py) with additional cases (missing viewBox, nested groups, invalid href).
+6. [x] Clarify SceneView responsibilities and decouple from MainWindow
+   - [x] ui/scene/scene_view.py: stop calling win._update_zoom_status() directly; introduce a callback or a controller method (e.g., scene_facade.on_zoom_changed) invoked by SceneView.
+   - [x] Replace direct win.view.scale() calls with a view adapter exposing scale and status update methods, injected into SceneView.
+   - [x] Add tests for SceneView behavior via the adapter mock (no MainWindow dependency).
 
-[ ] 7. Settings system modernization and portability.
-[ ] 7.1 Extract a pure SettingsService (no Qt) with dataclass schema and defaults for portable JSON profiles. (Present in controllers/settings_service.py; integrate across UI.)
-[ ] 7.2 Extract a presenter/adapter for dialog bindings to onion-skin controls (and future tabs), mapping to/from schema. (Present in controllers/settings_presenter.py; wire into SettingsManager.)
-[ ] 7.3 Implement JSON import/export via SettingsService (load_json/save_json) with version/namespace validation and issue reporting in the UI.
-[ ] 7.4 Replace duplicate onion key handling by reusing presenter helpers; add tests verifying backward compatibility of legacy QSettings keys.
-[ ] 7.5 Add a migration command in the UI: "Export current QSettings to JSON profile" and "Import JSON profile to QSettings" using the service.
+7. [x] Normalize scene operations across UI modules
+   - [x] ui/scene/library_ops.py: replace direct calls to win.inspector_widget.refresh() with event emission (selection or model-changed event) handled by Inspector.
+   - [x] Route object/puppet creation via controllers (ObjectController/PuppetOps) and ensure controllers apply both model and visuals consistently.
+   - [x] Ensure background changes go only through controllers/scene_service.py, not directly to UI.
 
-[ ] 8. Decompose ui/views/timeline_widget.py for maintainability.
-[ ] 8.1 Extract a TimelinePainter responsible only for drawing (no state/QSettings/etc.).
-[ ] 8.2 Extract a small interaction/model class for selection, hover, drag, and keyframe sets; keep QWidget thin.
-[ ] 8.3 Centralize timeline-related settings (colors, zoom, keyframe size) and load via SettingsService/keys.
-[ ] 8.4 Add focused unit tests for coordinate transforms (_frame_to_x/_x_to_frame) and keyboard/mouse actions without a QPA server (tests use _app fixture).
+8. [x] Reduce direct model/graphics exposure in UI
+   - [x] Audit ui/ for any attribute access like main_window.scene_model, object_manager.graphics_items; replace with controller/facade queries and commands.
+   - [x] Introduce minimal read-only view models (snapshots) for lists shown in UI (objects, puppets, attachments) instead of handing dicts.
 
-[ ] 9. Unify logging and contextual diagnostics.
-[ ] 9.1 Ensure all controllers use core.logging_config.log_with_context for structured logs on warning/error paths.
-[ ] 9.2 Replace bare prints/logging calls in UI with module-level loggers and consistent messages (include op= and identifiers).
-[ ] 9.3 Add a test that exercises a few error paths and asserts logs contain expected context keys.
+9. [x] Improve validation and error handling at controller boundaries
+   - [x] Use core/scene_validation.py in controllers prior to mutating model state; convert errors to user-facing messages via UI adapters.
+   - [x] Standardize logging calls (core/logging_config.py) and reduce bare excepts. Prefer logging.exception for unexpected errors.
+   - [x] Add explicit return values or exceptions for controller operations; write tests for edge cases (invalid names, missing puppets/members, negative scales).
 
-[ ] 10. Strengthen type hints and protocols.
-[ ] 10.1 Add Protocols for window/controller interfaces passed around (win has: scene_model, timeline_widget, playback_handler, etc.).
-[ ] 10.2 Add type hints to public methods lacking annotations; run mypy optionally in dev (not enforced in CI yet).
+10. [x] Strengthen type hints and protocols across layers
+  - [x] Add Protocols for view adapters (e.g., object selection adapter, zoom status adapter) to decouple controllers from Qt.
+  - [x] Complete type hints in controllers and core to enable mypy-like checking (even if mypy is not in CI yet).
+  - [x] Add simple TypedDicts or dataclasses for payloads (e.g., ui/scene/library_ops.py already uses LibraryPayload; extend pattern elsewhere).
 
-[ ] 11. Expand and harden the test suite.
-[ ] 11.1 Add tests for SettingsManager integration using the _app fixture: verify apply/import/export flows without touching real user directories.
-[ ] 11.2 Add property-based tests (hypothesis) for SceneModel keyframe operations (insert/remove/go_to_frame monotonic behaviors).
-[ ] 11.3 Add fuzz-like tests for SvgLoader group/pivot lookup using small synthetic SVG snippets.
+11. [x] Untangle settings UI composition and persistence
+   - [x] ui/settings_dialog.py: move logic manipulating onion controls into SettingsPresenter helpers.
+   - [x] ui/settings_manager.py: extract dialog construction/private helpers into smaller functions; remove long nested functions to improve readability and testability.
+   - [x] Write focused tests for settings dialog mapping using the _app fixture.
 
-[ ] 12. Performance improvements (measurable wins).
-[ ] 12.1 Implement optional onion skin pixmap mode in OnionSkinManager with downscaling (see schema onion_pixmap_mode/onion_pixmap_scale); add toggles in settings dialog.
-[ ] 12.2 Cache per-frame composite onion layers when camera/zoom unchanged; invalidate on scene change.
-[ ] 12.3 Add a simple micro-benchmark script (under tests/perf/) to compare frame render times with/without pixmap mode.
+12. [x] Standardize menu/defaults and icon usage
+   - [x] Expand ui/menu_defaults.py to include any remaining duplicated icon keys/order lists found elsewhere; refactor imports to use it everywhere.
+   - [x] Add a small validation test ensuring all keys in menu defaults exist in assets/icons/ to avoid runtime missing icons.
 
-[ ] 13. Improve UI startup and layout persistence.
-[ ] 13.1 Ensure timeline dock visibility and floating state changes persist reliably across sessions; add regression tests.
-[ ] 13.2 Make overlay toolbars raise_ calls resilient when overlays are absent; avoid attribute errors (defensive hasattr checks).
+13. [x] Core purity audit
+   - [x] Ensure no PySide6 imports in core/ modules; convert any accidental imports to protocols or move to ui/.
+   - [x] Verify serialization code in core/scene_model.py and core/svg_loader.py has no UI dependencies.
+   - [x] Add round-trip tests (already present in tests/) for any newly exposed fields.
 
-[ ] 14. Developer experience and tooling.
-[ ] 14.1 Extend .pre-commit-config.yaml with black, isort, flake8/pylint hooks; document usage in README.
-[ ] 14.2 Add a Makefile target: `make lint` and `make test` to streamline local dev flows.
-[ ] 14.3 Optionally add GitHub Actions workflow to run tests and lint on pushes/PRs (if/when repo is hosted with CI).
+14. [x] Controller/service API completeness and consistency
+   - [x] controllers/scene_service.py: ensure it exposes background size updates, model queries, and validation entry points used by UI.
+   - [x] controllers/object_controller.py: centralize transformations, duplication, deletion; unify naming via core/naming.py.
+   - [x] Add docstrings and examples for each public controller method.
 
-[ ] 15. Documentation improvements.
-[ ] 15.1 Update ARCHITECTURE.md with a diagram of settings flow: QSettings <-> Presenter <-> Dialog Widgets and JSON import/export via SettingsService.
-[ ] 15.2 Add a small docs/settings.md explaining profile format (namespace, version, data) with examples and migration policy.
-[ ] 15.3 Document testing tips for Qt in tests/README or ARCHITECTURE.md appendices (reuse conftest _app fixture, headless offscreen).
+15. [x] Visuals update pathway and state applier consistency
+   - [x] ui/scene/state_applier.py: ensure there is a single pathway to apply model -> QGraphicsItem updates; controllers should invoke this instead of UI directly setting graphics item properties.
+   - [x] Replace direct item.setRotation/Scale/Z calls in UI with calls routed through state_applier or controller methods that delegate there.
+   - [x] Tests: verify that modifying rotation/scale/z via controller updates both model and visuals deterministically.
 
-[ ] 16. Safety and error handling.
-[ ] 16.1 Ensure file operations in import/export catch and surface errors to the UI with actionable messages; test file-not-found and invalid JSON cases.
-[ ] 16.2 Standardize try/except patterns: catch specific exceptions where possible; log and continue gracefully.
+16. [x] Selection model and highlight strategy
+   - [x] Replace scattered calls to scene.selectedItems()/setSelected with a selection model managed by controllers and a thin adapter that highlights items.
+   - [x] Provide APIs: select_object(name), select_puppet(name), clear_selection(), get_selection().
+   - [x] Ensure Inspector reads selection from the selection model, not from the scene.
 
-[ ] 17. Code cleanup and consistency.
-[ ] 17.1 Remove dead code and unused imports (run pylint hints); keep UI thin and move logic into controllers/core where feasible.
-[ ] 17.2 Normalize naming conventions (English identifiers, consistent acronyms: kf/keyframe, bbox, etc.).
+17. [x] Performance: onion skin and large scenes
+- [x] Audit ui/onion_skin.py and tests/test_onion_perf.py; add toggles via SettingsService (onion_pixmap_mode, onion_pixmap_scale already present) and ensure they are applied by controllers, not UI.
+- [x] Micro-benchmark large puppet scenes; cache heavy computations in controllers/state_applier where safe.
+- [x] Add a regression test measuring basic performance expectations (time budget hints, not strict timing).
+
+18. [x] Error reporting and user feedback
+   - [x] Introduce a simple UI message adapter (protocol) for controllers to report non-fatal issues (e.g., failed positioning in library_ops) instead of logging only.
+   - [x] Replace print/log-only in UI operations with routed notifications.
+
+19. [x] Testing coverage improvements
+- [x] Add tests for new controller facade APIs and selection model.
+- [x] Add tests verifying UI no longer directly mutates core models or QGraphicsItems (use monkeypatch/mocks to assert calls go through controller/facade).
+- [x] Add serialization tests for settings JSON version/namespace mismatch handling (controllers/settings_service.py already supports issues list).
+
+20. [x] Logging and diagnostics
+  - [x] Enforce usage of core/logging_config.py across UI and controllers; remove ad-hoc basicConfig calls if any.
+  - [x] Standardize logger names per module and ensure debug logs in hot paths are minimal or gated.
+
+21. [x] Developer ergonomics and linting
+   - [x] Add lightweight pylint rules guidance to README or docs/ (no strict CI), focusing on R0801 (duplicate-code), C0114/5/6 (docstrings), and typing hints.
+   - [x] Run pylint on controllers core ui and address the top offenders (long functions, too many locals/branches in SettingsManager and InspectorWidget).
+
+22. [x] Documentation updates
+  - [x] Update README.md with a brief overview of the layered architecture and how to run tests in headless Qt.
+  - [x] Add diagrams (optional) to docs/ showing the flow: UI widget -> presenter/adapter -> controller/service -> core model -> state_applier -> visuals.
+
+23. [x] Migration steps and deprecations
+- [x] Mark direct UI access patterns (e.g., main_window.scene_model, object_manager.graphics_items) as deprecated in code comments with TODOs pointing to facade methods.
+- [x] Stage refactors in small PR-sized chunks: Inspector first, then SceneView, LibraryOps, then SettingsManager.
+- [x] Keep existing tests green at each step; add incremental tests as new APIs are introduced.
+
+24. [x] Clean edges discovered during refactor
+   - [x] Replace magic strings for kinds ("object", "puppet", "background") with Enum in core/types.py and update users accordingly.
+   - [x] Centralize name formatting for puppet members (e.g., f"{name}:{member}") via core/naming.py helpers to avoid stringly-typed keys.

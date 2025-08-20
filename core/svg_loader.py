@@ -8,8 +8,6 @@ import xml.etree.ElementTree as ET
 from typing import Dict, List, Optional, Tuple
 
 
-from PySide6.QtSvg import QSvgRenderer
-from PySide6.QtCore import QRectF
 
 
 # Types parlants
@@ -28,14 +26,15 @@ class SvgLoader:
     - Validates that the parsed document has an <svg> root element.
     - Raises ValueError for obviously malformed files early.
 
-    Caching and lazy init (docs/tasks.md Task 5.30):
-    - ``QSvgRenderer`` instances are cached per file path with a modification time (mtime) key.
-    - The renderer is created lazily on first access via the ``renderer`` property.
-    - Cache entries are refreshed automatically when the file on disk changes.
+    Design (core purity — docs/tasks.md Task 13):
+    - This core class does not import PySide6. Methods that require geometry
+      information rely on an attached renderer adapter (e.g., QSvgRenderer)
+      provided by UI/controllers via ``attach_renderer``. If none is attached,
+      geometry-dependent methods return None or neutral defaults.
     """
 
-    # Renderer cache keyed by svg_path -> (mtime, QSvgRenderer)
-    _renderer_cache: Dict[str, Tuple[float, QSvgRenderer]] = {}
+    # Renderer adapter attached by UI (e.g., QSvgRenderer); kept as opaque object
+    _renderer: object | None = None
 
     def __init__(self, svg_path: str) -> None:
         """Initialize loader and parse the SVG file at ``svg_path``.
@@ -87,55 +86,48 @@ class SvgLoader:
             self._has_namespace = False
         return self
 
-    @property
-    def renderer(self) -> QSvgRenderer:
-        """Lazily construct and cache a QSvgRenderer for this SVG path.
+    def attach_renderer(self, renderer: object) -> None:
+        """Attach a renderer adapter (e.g., QSvgRenderer) provided by UI.
 
-        Caching strategy (docs/tasks.md Task 5.30):
-        - Cache key is the SVG file path with its current modification time (mtime).
-        - If the file changes on disk, the cache is refreshed automatically.
+        This keeps core free of PySide6 imports while allowing geometry queries
+        when a compatible adapter is attached. The adapter must implement
+        boundsOnElement(str) -> rect with left/top/right/bottom and isNull().
         """
-        try:
-            mtime: float = os.path.getmtime(self.svg_path)
-        except OSError:
-            # If we cannot stat the file, use a sentinel to avoid crashes; still build a renderer.
-            mtime = -1.0
-        cache_entry = SvgLoader._renderer_cache.get(self.svg_path)
-        if cache_entry is None or cache_entry[0] != mtime:
-            renderer = QSvgRenderer(self.svg_path)
-            SvgLoader._renderer_cache[self.svg_path] = (mtime, renderer)
-            return renderer
-        return cache_entry[1]
-
-    @classmethod
-    def invalidate_cache(cls, svg_path: Optional[str] = None) -> None:
-        """Invalidate the renderer cache for a single path or all.
-
-        - svg_path=None clears the whole cache.
-        - svg_path set clears only that entry (no error if missing).
-        """
-        if svg_path is None:
-            cls._renderer_cache.clear()
-        else:
-            cls._renderer_cache.pop(svg_path, None)
+        self._renderer = renderer
 
     # -------------------------
     # Helpers privés
     # -------------------------
-    def _get_bounds_rect(self, element_id: str) -> Optional[QRectF]:
-        """Retourne le QRectF des bounds pour un élément identifié.
+    def _get_bounds_rect(self, element_id: str) -> Optional[object]:
+        """Return the renderer bounds rect for an element, if a renderer is attached.
 
-        Retourne None si non trouvé/invalide.
+        Returns None if no renderer is attached or bounds cannot be computed.
         """
-        bounds_rect: QRectF = self.renderer.boundsOnElement(element_id)
-        if bounds_rect.isNull():
+        r = self._renderer
+        if r is None:
             return None
-        return bounds_rect
+        try:
+            rect = r.boundsOnElement(element_id)
+        except Exception:  # pragma: no cover - adapter mismatch
+            return None
+        try:
+            # Qt QRectF has isNull(); if present and True -> ignore
+            if hasattr(rect, "isNull") and rect.isNull():
+                return None
+        except Exception:
+            pass
+        return rect
 
     @staticmethod
-    def _rect_to_bbox(rect: QRectF) -> BoundingBox:
-        """Convertit un QRectF en BoundingBox (x_min, y_min, x_max, y_max)."""
-        return rect.left(), rect.top(), rect.right(), rect.bottom()
+    def _rect_to_bbox(rect: object) -> BoundingBox:
+        """Convert a rect-like object to BoundingBox using duck-typed API."""
+        # QRectF-like API: left/top/right/bottom
+        return (
+            float(getattr(rect, "left")()),
+            float(getattr(rect, "top")()),
+            float(getattr(rect, "right")()),
+            float(getattr(rect, "bottom")()),
+        )
 
     @staticmethod
     def _clone_element(elem: ET.Element) -> ET.Element:
@@ -147,10 +139,11 @@ class SvgLoader:
     # -------------------------
     def get_group_offset(self, group_id: str) -> Optional[Point]:
         """Retourne les coordonnées (x, y) du coin haut-gauche du groupe."""
-        bounds_rect: Optional[QRectF] = self._get_bounds_rect(group_id)
-        if bounds_rect is None:
+        rect = self._get_bounds_rect(group_id)
+        if rect is None:
             return None
-        return bounds_rect.left(), bounds_rect.top()
+        # Access via duck-typing
+        return float(getattr(rect, "left")()), float(getattr(rect, "top")())
 
     def get_groups(self) -> List[str]:
         """List the identifiers of all ``<g>`` groups.
@@ -175,10 +168,10 @@ class SvgLoader:
 
     def get_group_bounding_box(self, group_id: str) -> Optional[BoundingBox]:
         """Retourne la bounding box (x_min, y_min, x_max, y_max) du groupe."""
-        bounds_rect: Optional[QRectF] = self._get_bounds_rect(group_id)
-        if bounds_rect is None:
+        rect = self._get_bounds_rect(group_id)
+        if rect is None:
             return None
-        return self._rect_to_bbox(bounds_rect)
+        return self._rect_to_bbox(rect)
 
     def get_pivot(self, group_id: str) -> Point:
         """Return the center of a group's bounding box (pivot)."""

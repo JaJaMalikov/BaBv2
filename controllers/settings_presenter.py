@@ -16,7 +16,7 @@ additional tabs/controls.
 from dataclasses import dataclass
 from typing import Protocol
 
-from controllers.settings_service import SettingsSchema
+from controllers.settings_service import SettingsSchema, SettingsService
 
 
 class _SpinLike(Protocol):
@@ -91,10 +91,10 @@ def qsettings_to_dialog_onion(dlg: OnionControls, qsettings) -> None:  # type: i
     Keeps existing key names used by SettingsManager to avoid breaking runtime behavior.
     """
     try:
-        prev_count = int(qsettings.value("onion/prev_count", 2))
-        next_count = int(qsettings.value("onion/next_count", 1))
-        op_prev = float(qsettings.value("onion/opacity_prev", 0.25))
-        op_next = float(qsettings.value("onion/opacity_next", 0.18))
+        prev_count = int(qsettings.value(SettingsService.key("onion", "prev_count"), 2))
+        next_count = int(qsettings.value(SettingsService.key("onion", "next_count"), 1))
+        op_prev = float(qsettings.value(SettingsService.key("onion", "opacity_prev"), 0.25))
+        op_next = float(qsettings.value(SettingsService.key("onion", "opacity_next"), 0.18))
     except Exception:
         prev_count, next_count, op_prev, op_next = 2, 1, 0.25, 0.18
     apply_onion_to_dialog(
@@ -111,10 +111,41 @@ def qsettings_to_dialog_onion(dlg: OnionControls, qsettings) -> None:  # type: i
 def dialog_onion_to_qsettings(dlg: OnionControls, qsettings) -> None:  # type: ignore[no-untyped-def]
     """Write dialog onion controls back to QSettings using legacy keys."""
     vals = extract_onion_from_dialog(dlg)
-    qsettings.setValue("onion/prev_count", int(vals.prev_count))
-    qsettings.setValue("onion/next_count", int(vals.next_count))
-    qsettings.setValue("onion/opacity_prev", float(vals.opacity_prev))
-    qsettings.setValue("onion/opacity_next", float(vals.opacity_next))
+    qsettings.setValue(SettingsService.key("onion", "prev_count"), int(vals.prev_count))
+    qsettings.setValue(SettingsService.key("onion", "next_count"), int(vals.next_count))
+    qsettings.setValue(SettingsService.key("onion", "opacity_prev"), float(vals.opacity_prev))
+    qsettings.setValue(SettingsService.key("onion", "opacity_next"), float(vals.opacity_next))
+
+
+# --- Optional performance controls mapping (pixmap mode) -----------------
+class OnionPerfControls(Protocol):
+    def set_pixmap_mode_checked(self, checked: bool) -> None: ...
+    def is_pixmap_mode_checked(self) -> bool: ...
+    def set_pixmap_scale_value(self, v: float) -> None: ...
+    def pixmap_scale_value(self) -> float: ...
+
+
+def schema_to_dialog_onion_perf(dlg: OnionPerfControls, schema: SettingsSchema) -> None:
+    """Apply performance-related onion fields from schema into dialog controls.
+
+    Dialog can provide thin adapter methods to avoid binding to specific Qt widgets.
+    """
+    try:
+        dlg.set_pixmap_mode_checked(bool(schema.onion_pixmap_mode))
+        dlg.set_pixmap_scale_value(float(schema.onion_pixmap_scale))
+    except Exception:
+        pass
+
+
+def dialog_onion_perf_to_schema(dlg: OnionPerfControls) -> SettingsSchema:
+    """Build a schema carrying only onion performance fields from dialog controls."""
+    s = SettingsSchema()
+    try:
+        s.onion_pixmap_mode = bool(dlg.is_pixmap_mode_checked())
+        s.onion_pixmap_scale = float(dlg.pixmap_scale_value())
+    except Exception:
+        pass
+    return s
 
 
 __all__ = [
@@ -126,4 +157,7 @@ __all__ = [
     "dialog_onion_to_schema",
     "qsettings_to_dialog_onion",
     "dialog_onion_to_qsettings",
+    "OnionPerfControls",
+    "schema_to_dialog_onion_perf",
+    "dialog_onion_perf_to_schema",
 ]

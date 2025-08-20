@@ -13,8 +13,6 @@ Repository: BaBv2 (PySide6/pytest)
     - pip install -r requirements.txt
 - Running the app:
   - python macronotron.py
-- Project metadata:
-  - pyproject.toml is minimal; PySide6 project metadata is present, no custom build hooks.
 - Runtime assets:
   - The UI references assets/ and ui_profile.json. Running from the repo root keeps relative paths valid.
 
@@ -80,11 +78,12 @@ Test framework: pytest (configured via tests/conftest.py).
 ## 3) Additional development information
 
 Coding style and structure:
-- The codebase is organized into layered modules:
+- The codebase is actually organized into layered modules:
   - core/: domain models, serialization, SVG/puppet handling.
   - controllers/: application logic and services mediating between UI and models.
   - ui/: PySide6 widgets, view adapters, and scene‑specific operations.
   - assets/: runtime images, icons, and puppet configuration used by the UI.
+- The codebase must adopt a stricter MVC architecture.
 - Prefer extending core/ and controllers/ for logic and keep ui/ lean; this keeps logic testable without a GUI.
 - Tests already cover core serialization, state application, playback, and minimal UI introspection. Follow the existing patterns for new features.
 

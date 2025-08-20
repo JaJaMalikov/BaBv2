@@ -30,6 +30,7 @@ from ui.zoomable_view import ZoomableView
 from ui.views.library import actions as library_actions
 from ui.views.inspector import actions as inspector_actions
 from controllers.app_controller import AppController
+from controllers.settings_service import SettingsService
 
 
 class MainWindow(QMainWindow):
@@ -80,6 +81,27 @@ class MainWindow(QMainWindow):
         self.object_controller: ObjectController = ObjectController(
             self.scene_model, self.object_view_adapter
         )
+        # Bridge controller domain events to UI notifications
+        try:
+            from ui.selection_sync import emit_model_changed as _emit_model_changed
+
+            self.object_controller.on_model_changed = lambda: _emit_model_changed(self)
+        except Exception:
+            pass
+        # UI-facing facade (docs/tasks.md §2). Incrementally adopted by widgets.
+        try:
+            from controllers.scene_facade import SceneFacade
+
+            self.scene_facade = SceneFacade(self.scene_model, self.object_view_adapter)
+            # Bind facade selection model to UI highlights
+            try:
+                from ui.selection_sync import bind_facade_selection as _bind_sel
+                _bind_sel(self)
+            except Exception:
+                pass
+        except Exception:
+            # Non-fatal in tests that monkeypatch MainWindow
+            self.scene_facade = None  # type: ignore[attr-defined]
         # Compatibilité : plusieurs modules accèdent encore à ``object_manager``
         self.object_manager = self.object_view_adapter
 
@@ -156,28 +178,11 @@ class MainWindow(QMainWindow):
         """Applies stored startup preferences."""
         try:
             s = QSettings("JaJa", "Macronotron")
-            self.onion.prev_count = int(
-                cast(int, s.value("onion/prev_count", self.onion.prev_count))
-            )
-            self.onion.next_count = int(
-                cast(int, s.value("onion/next_count", self.onion.next_count))
-            )
-            self.onion.opacity_prev = float(
-                cast(float, s.value("onion/opacity_prev", self.onion.opacity_prev))
-            )
-            self.onion.opacity_next = float(
-                cast(float, s.value("onion/opacity_next", self.onion.opacity_next))
-            )
-            # Onion performance options
+            # Delegate onion options to controller per MVC boundary
             try:
-                self.onion.pixmap_mode = bool(
-                    cast(bool, s.value("onion/pixmap_mode", self.onion.pixmap_mode))
-                )
-                self.onion.pixmap_scale = float(
-                    cast(float, s.value("onion/pixmap_scale", self.onion.pixmap_scale))
-                )
-            except Exception as e:
-                logging.debug("Failed to read pixmap onion options: %s", e)
+                self.scene_controller.apply_onion_settings_from_qsettings(s)
+            except Exception:
+                logging.debug("SceneController.apply_onion_settings_from_qsettings failed", exc_info=True)
 
             self.overlays.apply_menu_settings()
         except (RuntimeError, ValueError, ImportError):

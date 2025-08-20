@@ -105,6 +105,11 @@ def _create_icon(name: str) -> QIcon:
     fallback_map = {
         "custom": "layers",
         "settings": "layers",
+        # Map logical action keys to actual asset names
+        "zoom_in": "plus",
+        "zoom_out": "minus",
+        "add_light": "plus",
+        "close": "close_menu",
     }
     svg_key = fallback_map.get(name, name)
     svg_path = ICONS_DIR / f"{svg_key}.svg"

@@ -12,8 +12,12 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+_log = logging.getLogger(__name__)
+
 from PySide6.QtCore import QSettings, QByteArray
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QDialog
+
+from controllers.settings_service import SettingsService
 
 import ui.icons as app_icons
 from ui.styles import apply_stylesheet, build_stylesheet
@@ -36,59 +40,85 @@ class SettingsManager:
         self.org = "JaJa"
         self.app = "Macronotron"
 
+    # ---- Small QSettings helper methods (extracted from open_dialog) ----
+    @staticmethod
+    def _qsettings_get_str(s: QSettings, key: str, default: str) -> str:  # type: ignore[name-defined]
+        v = s.value(key)
+        return str(v) if v not in [None, ""] else default
+
+    @staticmethod
+    def _qsettings_get_bool(s: QSettings, key: str, default: bool = True) -> bool:  # type: ignore[name-defined]
+        v = s.value(key)
+        return default if v is None else (v in [True, "true", "1"])
+
+    @staticmethod
+    def _load_order_and_vis(s: QSettings, prefix: str, default_order: list[str]) -> tuple[list[str], dict[str, bool]]:  # type: ignore[name-defined]
+        order = s.value(f"ui/menu/{prefix}/order") or default_order
+        if isinstance(order, str):
+            order = [k for k in order.split(",") if k]
+        for k in default_order:
+            if k not in order:
+                order.append(k)
+        vis: dict[str, bool] = {}
+        for k in order:
+            v = s.value(f"ui/menu/{prefix}/{k}")
+            vis[k] = True if v is None else (v in [True, "true", "1"])
+        return order, vis
+
     def save(self) -> None:
         """Saves the current UI settings."""
         s = QSettings(self.org, self.app)
-        s.setValue("layout/version", LAYOUT_SCHEMA_VERSION)
-        s.setValue("geometry/mainwindow", self.win.saveGeometry())
-        s.setValue("geometry/library", self.win.library_overlay.geometry())
-        s.setValue("geometry/inspector", self.win.inspector_overlay.geometry())
-        s.setValue("layout/timeline_visible", self.win.timeline_dock.isVisible())
+        s.setValue(SettingsService.key("layout", "version"), LAYOUT_SCHEMA_VERSION)
+        s.setValue(SettingsService.key("geometry", "mainwindow"), self.win.saveGeometry())
+        s.setValue(SettingsService.key("geometry", "library"), self.win.library_overlay.geometry())
+        s.setValue(SettingsService.key("geometry", "inspector"), self.win.inspector_overlay.geometry())
+        s.setValue(SettingsService.key("layout", "timeline_visible"), self.win.timeline_dock.isVisible())
         if hasattr(self.win.view, "_overlay") and self.win.view._overlay:
-            s.setValue("geometry/view_toolbar", self.win.view._overlay.geometry())
+            s.setValue(SettingsService.key("geometry", "view_toolbar"), self.win.view._overlay.geometry())
         if hasattr(self.win.view, "_main_tools_overlay") and self.win.view._main_tools_overlay:
-            s.setValue("geometry/main_toolbar", self.win.view._main_tools_overlay.geometry())
+            s.setValue(SettingsService.key("geometry", "main_toolbar"), self.win.view._main_tools_overlay.geometry())
 
     def load(self) -> None:
         """Loads the UI settings."""
         s = QSettings(self.org, self.app)
-        version = s.value("layout/version")
+        version = s.value(SettingsService.key("layout", "version"))
         ok_layout = True
         try:
             ok_layout = int(version) == LAYOUT_SCHEMA_VERSION
         except Exception:
             ok_layout = False
-        if ok_layout and s.contains("geometry/mainwindow"):
-            val = s.value("geometry/mainwindow")
+        if ok_layout and s.contains(SettingsService.key("geometry", "mainwindow")):
+            val = s.value(SettingsService.key("geometry", "mainwindow"))
             try:
                 if isinstance(val, QByteArray):
                     self.win.restoreGeometry(val)
                     self.win._settings_loaded = True
             except Exception:
-                logging.debug("Invalid mainwindow geometry; skipping restore")
-        if s.contains("geometry/library"):
-            self.win.library_overlay.setGeometry(s.value("geometry/library"))
+                if _log.isEnabledFor(logging.DEBUG):
+                    _log.debug("Invalid mainwindow geometry; skipping restore")
+        if s.contains(SettingsService.key("geometry", "library")):
+            self.win.library_overlay.setGeometry(s.value(SettingsService.key("geometry", "library")))
         self.win.set_library_overlay_visible(True)
 
-        if s.contains("geometry/inspector"):
-            self.win.inspector_overlay.setGeometry(s.value("geometry/inspector"))
+        if s.contains(SettingsService.key("geometry", "inspector")):
+            self.win.inspector_overlay.setGeometry(s.value(SettingsService.key("geometry", "inspector")))
         self.win.set_inspector_overlay_visible(True)
-        if s.contains("layout/timeline_visible"):
-            is_visible = s.value("layout/timeline_visible")
+        if s.contains(SettingsService.key("layout", "timeline_visible")):
+            is_visible = s.value(SettingsService.key("layout", "timeline_visible"))
             # QSettings might return string 'true'/'false'
             self.win.timeline_dock.setVisible(is_visible in [True, "true"])
         if (
             hasattr(self.win.view, "_overlay")
             and self.win.view._overlay
-            and s.contains("geometry/view_toolbar")
+            and s.contains(SettingsService.key("geometry", "view_toolbar"))
         ):
-            self.win.view._overlay.setGeometry(s.value("geometry/view_toolbar"))
+            self.win.view._overlay.setGeometry(s.value(SettingsService.key("geometry", "view_toolbar")))
         if (
             hasattr(self.win.view, "_main_tools_overlay")
             and self.win.view._main_tools_overlay
-            and s.contains("geometry/main_toolbar")
+            and s.contains(SettingsService.key("geometry", "main_toolbar"))
         ):
-            self.win.view._main_tools_overlay.setGeometry(s.value("geometry/main_toolbar"))
+            self.win.view._main_tools_overlay.setGeometry(s.value(SettingsService.key("geometry", "main_toolbar")))
 
         # Ensure toolbars are always on top
         if hasattr(self.win.view, "_overlay") and self.win.view._overlay:
@@ -115,12 +145,12 @@ class SettingsManager:
         s = QSettings(self.org, self.app)
         # Only clear geometry/layout; keep theme, icons, overlays builder, timeline colors
         for key in [
-            "geometry/mainwindow",
-            "geometry/library",
-            "geometry/inspector",
-            "geometry/view_toolbar",
-            "geometry/main_toolbar",
-            "layout/timeline_visible",
+            SettingsService.key("geometry", "mainwindow"),
+            SettingsService.key("geometry", "library"),
+            SettingsService.key("geometry", "inspector"),
+            SettingsService.key("geometry", "view_toolbar"),
+            SettingsService.key("geometry", "main_toolbar"),
+            SettingsService.key("layout", "timeline_visible"),
         ]:
             s.remove(key)
 
@@ -134,17 +164,17 @@ class SettingsManager:
             dlg.set_shortcut_actions(win.shortcuts)
 
         s = QSettings(self.org, self.app)
-        icon_dir = s.value("ui/icon_dir")
+        icon_dir = s.value(SettingsService.key("ui", "icon_dir"))
         if icon_dir:
             try:
                 dlg.icon_dir_edit.setText(str(icon_dir))
             except (RuntimeError, AttributeError):
-                logging.exception("Failed to set icon directory text")
+                _log.exception("Failed to set icon directory text")
         try:
-            dlg.icon_size_spin.setValue(int(s.value("ui/icon_size", 32)))
+            dlg.icon_size_spin.setValue(int(s.value(SettingsService.key("ui", "icon_size"), 32)))
         except (TypeError, ValueError):
             dlg.icon_size_spin.setValue(32)
-        theme = str(s.value("ui/theme", "dark")).lower()
+        theme = str(s.value(SettingsService.key("ui", "theme"), "dark")).lower()
         try:
             presets_map = {
                 "light": "Light",
@@ -157,7 +187,7 @@ class SettingsManager:
                 # Load from theme file if present, else from custom_params
                 from pathlib import Path
 
-                theme_path = s.value("ui/theme_file") or str(
+                theme_path = s.value(SettingsService.key("ui", "theme_file")) or str(
                     Path.home() / ".config/JaJa/Macronotron/theme.json"
                 )
                 try:
@@ -168,14 +198,12 @@ class SettingsManager:
                         data = json.load(p.open("r", encoding="utf-8"))
                         if isinstance(data, dict):
                             for k, v in data.items():
-                                s.setValue(f"ui/custom_params/{k}", v)
+                                s.setValue(SettingsService.key("ui", "custom_params", k), v)
                 except Exception:
                     logging.exception("Failed to read theme file")
-                s.beginGroup("ui/custom_params")
-
+                s.beginGroup(SettingsService.key("ui", "custom_params"))
                 def _gv(key: str, default: str) -> str:
-                    v = s.value(key)
-                    return str(v) if v not in [None, ""] else default
+                    return SettingsManager._qsettings_get_str(s, key, default)
 
                 try:
                     dlg.bg_edit.setText(_gv("bg_color", "#E2E8F0"))
@@ -184,6 +212,10 @@ class SettingsManager:
                     dlg.hover_edit.setText(_gv("hover_color", "#E3E6FD"))
                     dlg.panel_edit.setText(_gv("panel_bg", "#F7F8FC"))
                     dlg.border_edit.setText(_gv("panel_border", "#D0D5DD"))
+                    # Header fields (previously not restored)
+                    dlg.header_bg_edit.setText(_gv("header_bg", ""))
+                    dlg.header_text_edit.setText(_gv("header_text", dlg.text_edit.text()))
+                    dlg.header_border_edit.setText(_gv("header_border", dlg.border_edit.text()))
                     dlg.group_edit.setText(_gv("group_title_color", "#2D3748"))
                     dlg.tooltip_bg_edit.setText(_gv("tooltip_bg", dlg.panel_edit.text()))
                     dlg.tooltip_text_edit.setText(_gv("tooltip_text", dlg.text_edit.text()))
@@ -211,7 +243,7 @@ class SettingsManager:
                     dlg.radius_spin.setValue(int(s.value("radius", 12) or 12))
                     dlg.font_spin.setValue(int(s.value("font_size", 10) or 10))
                     dlg.font_family_edit.setText(
-                        _gv("font_family", str(s.value("ui/font_family") or "Poppins"))
+                        _gv("font_family", str(s.value(SettingsService.key("ui", "font_family")) or "Poppins"))
                     )
                 except Exception:
                     logging.exception("Failed to load custom params")
@@ -229,7 +261,7 @@ class SettingsManager:
         # Font family default if not set via custom
         try:
             if not dlg.font_family_edit.text().strip():
-                fam = s.value("ui/font_family") or "Poppins"
+                fam = s.value(SettingsService.key("ui", "font_family")) or "Poppins"
                 dlg.font_family_edit.setText(str(fam))
         except (RuntimeError, AttributeError):
             logging.exception("Failed to set font family edit")
@@ -255,8 +287,7 @@ class SettingsManager:
 
         # Menu builder defaults
         def getb(key: str, default: bool = True) -> bool:
-            v = s.value(key)
-            return default if v is None else (v in [True, "true", "1"])
+            return SettingsManager._qsettings_get_bool(s, key, default)
 
         dlg.cb_custom_visible.setChecked(getb("ui/menu/custom/visible", False))
 
@@ -264,14 +295,7 @@ class SettingsManager:
         def get_order_and_vis(
             prefix: str, default_order: list[str]
         ) -> tuple[list[str], dict[str, bool]]:
-            order = s.value(f"ui/menu/{prefix}/order") or default_order
-            if isinstance(order, str):
-                order = [k for k in order.split(",") if k]
-            vis: dict[str, bool] = {}
-            for k in order:
-                v = s.value(f"ui/menu/{prefix}/{k}")
-                vis[k] = True if v is None else (v in [True, "true", "1"])
-            return order, vis
+            return SettingsManager._load_order_and_vis(s, prefix, default_order)
 
         from ui.menu_defaults import (
             MAIN_DEFAULT_ORDER,
@@ -298,24 +322,24 @@ class SettingsManager:
         try:
             if hasattr(dlg, "icon_norm_edit"):
                 s_ic = QSettings(self.org, self.app)
-                dlg.icon_norm_edit.setText(str(s_ic.value("ui/icon_color_normal") or "#4A5568"))
-                dlg.icon_hover_edit.setText(str(s_ic.value("ui/icon_color_hover") or "#E53E3E"))
-                dlg.icon_active_edit.setText(str(s_ic.value("ui/icon_color_active") or "#FFFFFF"))
+                dlg.icon_norm_edit.setText(str(s_ic.value(SettingsService.key("ui", "icon_color_normal")) or "#4A5568"))
+                dlg.icon_hover_edit.setText(str(s_ic.value(SettingsService.key("ui", "icon_color_hover")) or "#E53E3E"))
+                dlg.icon_active_edit.setText(str(s_ic.value(SettingsService.key("ui", "icon_color_active")) or "#FFFFFF"))
         except Exception:
             logging.exception("Failed to preload icon colors")
 
         # Preload timeline colors
         try:
-            dlg.tl_bg.setText(str(s.value("timeline/bg") or "#1E1E1E"))
-            dlg.tl_ruler_bg.setText(str(s.value("timeline/ruler_bg") or "#2C2C2C"))
-            dlg.tl_track_bg.setText(str(s.value("timeline/track_bg") or "#242424"))
-            dlg.tl_tick.setText(str(s.value("timeline/tick") or "#8A8A8A"))
-            dlg.tl_tick_major.setText(str(s.value("timeline/tick_major") or "#E0E0E0"))
-            dlg.tl_playhead.setText(str(s.value("timeline/playhead") or "#65B0FF"))
-            dlg.tl_kf.setText(str(s.value("timeline/kf") or "#FFC107"))
-            dlg.tl_kf_hover.setText(str(s.value("timeline/kf_hover") or "#FFE082"))
+            dlg.tl_bg.setText(str(s.value(SettingsService.key("timeline", "bg")) or "#1E1E1E"))
+            dlg.tl_ruler_bg.setText(str(s.value(SettingsService.key("timeline", "ruler_bg")) or "#2C2C2C"))
+            dlg.tl_track_bg.setText(str(s.value(SettingsService.key("timeline", "track_bg")) or "#242424"))
+            dlg.tl_tick.setText(str(s.value(SettingsService.key("timeline", "tick")) or "#8A8A8A"))
+            dlg.tl_tick_major.setText(str(s.value(SettingsService.key("timeline", "tick_major")) or "#E0E0E0"))
+            dlg.tl_playhead.setText(str(s.value(SettingsService.key("timeline", "playhead")) or "#65B0FF"))
+            dlg.tl_kf.setText(str(s.value(SettingsService.key("timeline", "kf")) or "#FFC107"))
+            dlg.tl_kf_hover.setText(str(s.value(SettingsService.key("timeline", "kf_hover")) or "#FFE082"))
             try:
-                dlg.tl_inout_alpha.setValue(int(s.value("timeline/inout_alpha", 30)))
+                dlg.tl_inout_alpha.setValue(int(s.value(SettingsService.key("timeline", "inout_alpha"), 30)))
             except Exception:
                 dlg.tl_inout_alpha.setValue(30)
         except Exception:
@@ -323,7 +347,7 @@ class SettingsManager:
 
         # Preload scene background color
         try:
-            dlg.scene_bg_edit.setText(str(s.value("ui/style/scene_bg") or ""))
+            dlg.scene_bg_edit.setText(str(s.value(SettingsService.key("ui", "style", "scene_bg")) or ""))
         except Exception:
             logging.exception("Failed to preload scene background color")
 
@@ -340,13 +364,13 @@ class SettingsManager:
             try:
                 # icon dir / size
                 icon_dir = dlg.icon_dir_edit.text().strip()
-                s.setValue("ui/icon_dir", icon_dir if icon_dir else "")
-                s.setValue("ui/icon_size", int(dlg.icon_size_spin.value()))
+                s.setValue(SettingsService.key("ui", "icon_dir"), icon_dir if icon_dir else "")
+                s.setValue(SettingsService.key("ui", "icon_size"), int(dlg.icon_size_spin.value()))
                 # font family
-                s.setValue("ui/font_family", dlg.font_family_edit.text().strip() or "Poppins")
+                s.setValue(SettingsService.key("ui", "font_family"), dlg.font_family_edit.text().strip() or "Poppins")
                 # theme
                 theme = dlg.preset_combo.currentText().strip().lower() or "light"
-                s.setValue("ui/theme", theme)
+                s.setValue(SettingsService.key("ui", "theme"), theme)
                 if theme == "custom":
                     params = {
                         "bg_color": dlg.bg_edit.text() or "#E2E8F0",
@@ -390,11 +414,11 @@ class SettingsManager:
                         "checkbox_checked_hover": dlg.cb_ch_hover_edit.text() or "#F56565",
                     }
                     css = build_stylesheet(params)
-                    s.setValue("ui/custom_stylesheet", css)
+                    s.setValue(SettingsService.key("ui", "custom_stylesheet"), css)
                     # Save to theme file for persistence beyond resets
                     from pathlib import Path
 
-                    theme_path = s.value("ui/theme_file") or str(
+                    theme_path = s.value(SettingsService.key("ui", "theme_file")) or str(
                         Path.home() / ".config/JaJa/Macronotron/theme.json"
                     )
                     try:
@@ -403,17 +427,17 @@ class SettingsManager:
                         import json
 
                         p.write_text(json.dumps(params, indent=2), encoding="utf-8")
-                        s.setValue("ui/theme_file", str(p))
+                        s.setValue(SettingsService.key("ui", "theme_file"), str(p))
                     except Exception:
                         logging.exception("Failed to write theme file")
                     # Keep QSettings copy for compatibility
-                    s.beginGroup("ui/custom_params")
+                    s.beginGroup(SettingsService.key("ui", "custom_params"))
                     for k, v in params.items():
                         s.setValue(k, v)
                     s.endGroup()
                 # scene bg
                 scene_bg = dlg.scene_bg_edit.text().strip()
-                s.setValue("ui/style/scene_bg", scene_bg)
+                s.setValue(SettingsService.key("ui", "style", "scene_bg"), scene_bg)
                 if scene_bg:
                     from PySide6.QtGui import QColor
 
@@ -481,6 +505,13 @@ class SettingsManager:
                 apply_stylesheet(QApplication.instance())
             except Exception:
                 logging.exception("Apply settings failed")
+
+        # Execute dialog and apply on accept
+        try:
+            if dlg.exec() == QDialog.Accepted:
+                _apply_all()
+        except Exception:
+            logging.exception("Settings dialog exec/apply failed")
 
         # Import/Export/Reset profile (ne sauvegardent pas tant que le dialog n'est pas validé)
         def _export_profile() -> None:
@@ -664,12 +695,58 @@ class SettingsManager:
             except Exception:
                 logging.exception("Reset UI profile failed")
 
+        # Onion JSON import/export/defaults via SettingsService (pure persistence)
+        def _export_onion_json() -> None:
+            try:
+                # Build schema from dialog onion controls via presenter
+                from controllers.settings_presenter import dialog_onion_to_schema
+                from PySide6.QtWidgets import QFileDialog
+                from pathlib import Path
+                schema = dialog_onion_to_schema(dlg)
+                path, _ = QFileDialog.getSaveFileName(
+                    dlg, "Exporter les réglages Onion", "onion_settings.json", "JSON (*.json)"
+                )
+                if not path:
+                    return
+                SettingsService.save_json(Path(path), schema)
+            except Exception:
+                logging.exception("Export onion settings failed")
+
+        def _import_onion_json() -> None:
+            try:
+                from controllers.settings_presenter import schema_to_dialog_onion
+                from controllers.settings_service import SettingsService as _SS  # for typing isolation
+                from PySide6.QtWidgets import QFileDialog
+                from pathlib import Path
+                path, _ = QFileDialog.getOpenFileName(
+                    dlg, "Importer des réglages Onion", "", "JSON (*.json)"
+                )
+                if not path:
+                    return
+                schema, _issues = SettingsService.load_json(Path(path))
+                # Apply onion-related fields into dialog controls
+                schema_to_dialog_onion(dlg, schema)
+            except Exception:
+                logging.exception("Import onion settings failed")
+
+        def _reset_onion_defaults() -> None:
+            try:
+                from controllers.settings_presenter import schema_to_dialog_onion
+                defaults = SettingsService.defaults()
+                schema_to_dialog_onion(dlg, defaults)
+            except Exception:
+                logging.exception("Reset onion defaults failed")
+
         try:
             dlg.btn_export_profile.clicked.connect(_export_profile)
             dlg.btn_import_profile.clicked.connect(_import_profile)
             dlg.btn_reset_profile.clicked.connect(_reset_profile_default)
+            # Wire onion JSON actions
+            dlg.btn_onion_export_json.clicked.connect(_export_onion_json)
+            dlg.btn_onion_import_json.clicked.connect(_import_onion_json)
+            dlg.btn_onion_reset_defaults.clicked.connect(_reset_onion_defaults)
         except Exception:
-            logging.exception("Failed to connect UI profile buttons")
+            logging.exception("Failed to connect settings buttons")
 
         if dlg.exec() == SettingsDialog.Accepted:
             # Construire un profil complet à partir des champs et l'appliquer

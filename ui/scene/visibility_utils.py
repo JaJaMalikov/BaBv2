@@ -5,9 +5,9 @@ This centralizes logic duplicated in state application and puppet ops.
 
 from __future__ import annotations
 
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
-from core.puppet_piece import PuppetPiece
+from ui.scene.puppet_piece import PuppetPiece
 
 if TYPE_CHECKING:
     from .scene_controller import MainWindowProtocol

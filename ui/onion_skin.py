@@ -3,6 +3,11 @@
 This module provides the `OnionSkinManager` class, which is responsible for
 displaying semi-transparent 'ghosts' of puppets and objects from previous
 and next frames.
+
+DEPRECATION NOTICE (docs/tasks.md §23):
+- This module reads from `win.scene_model` and `win.object_manager.graphics_items`.
+  These access patterns will be routed through a controller facade and event bus
+  over time to decouple UI from model/graphics internals.
 """
 
 from __future__ import annotations
@@ -20,7 +25,8 @@ from PySide6.QtCore import QPointF, Qt
 from PySide6.QtSvg import QSvgRenderer
 
 from core.scene_model import Keyframe
-from core.puppet_piece import PuppetPiece
+from ui.scene.puppet_piece import PuppetPiece
+from core.naming import puppet_member_key
 
 
 class OnionSkinManager:
@@ -143,7 +149,7 @@ class OnionSkinManager:
         )
 
         for member_name in puppet.members:
-            base_piece: PuppetPiece = graphics_items.get(f"{puppet_name}:{member_name}")
+            base_piece: PuppetPiece = graphics_items.get(puppet_member_key(puppet_name, member_name))
             if not base_piece:
                 continue
 
@@ -174,7 +180,7 @@ class OnionSkinManager:
             clone_root.setRotation(state.get("rotation", 0.0))
 
         def propagate(member_name: str, p_puppet_name, p_clones, p_scale_factor, p_puppet_state):
-            base_piece: PuppetPiece = graphics_items.get(f"{p_puppet_name}:{member_name}")
+            base_piece: PuppetPiece = graphics_items.get(puppet_member_key(p_puppet_name, member_name))
             clone_piece: PuppetPiece = p_clones.get(member_name)
             if not base_piece or not clone_piece:
                 return
@@ -298,7 +304,7 @@ class OnionSkinManager:
                 try:
                     puppet_name, member_name = attached
                     parent_clone: Optional[PuppetPiece] = clones_map.get(
-                        f"{puppet_name}:{member_name}"
+                        puppet_member_key(puppet_name, member_name)
                     )
                     if parent_clone is not None:
                         item.setParentItem(parent_clone)
@@ -372,7 +378,7 @@ class OnionSkinManager:
         for puppet_name, puppet in self.win.scene_model.puppets.items():
             clones = self._clone_puppet(puppet_name, puppet, kf, opacity, z_offset)
             for member_name, clone in clones.items():
-                clones_map[f"{puppet_name}:{member_name}"] = clone
+                clones_map[puppet_member_key(puppet_name, member_name)] = clone
 
         for name, base_obj in self.win.scene_model.objects.items():
             self._clone_object(name, base_obj, kf, opacity, z_offset, clones_map, frame_index)

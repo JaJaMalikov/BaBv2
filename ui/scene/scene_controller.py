@@ -92,6 +92,14 @@ class SceneController:
         self.library_ops = LibraryOps(win, self.puppet_ops, win.object_controller, self.service)
         self.service.background_changed.connect(self.view.update_background)
         self.service.scene_resized.connect(self.view.handle_scene_resized)
+        # Bridge domain model change events to UI refresh notifications
+        try:
+            from ui.selection_sync import emit_model_changed as _emit_model_changed
+
+            self.service.model_changed.connect(lambda: _emit_model_changed(self.win))
+        except Exception:
+            # Keep resilient if selection_sync is not available in some tests
+            pass
 
     # --- Puppet operations -------------------------------------------------
     def add_puppet(self, file_path: str, puppet_name: str) -> None:
@@ -113,6 +121,37 @@ class SceneController:
     def get_puppet_rotation(self, puppet_name: str) -> float:
         """Return the current rotation of a puppet."""
         return cast(float, self.puppet_ops.get_puppet_rotation(puppet_name))
+
+    def get_puppet_scale(self, puppet_name: str) -> float:
+        """Return the current stored absolute scale of a puppet (default 1.0)."""
+        try:
+            return float(getattr(self.win, "object_manager").puppet_scales.get(puppet_name, 1.0))
+        except Exception:
+            return 1.0
+
+    def set_puppet_scale(self, puppet_name: str, value: float) -> None:
+        """Set absolute puppet scale and apply ratio via PuppetOps.
+
+        Centralizes scale handling to avoid direct UI writes to adapter state.
+        No-op if value <= 0.
+        """
+        try:
+            if value <= 0:
+                return
+            old = self.get_puppet_scale(puppet_name)
+            ratio = (value / old) if old else value
+            getattr(self.win, "object_manager").puppet_scales[puppet_name] = float(value)
+            self.scale_puppet(puppet_name, float(ratio))
+        except Exception:
+            # Keep resilient; scaling is best-effort
+            pass
+
+    def get_puppet_z_offset(self, puppet_name: str) -> int:
+        """Return the current Z offset for a puppet (default 0)."""
+        try:
+            return int(getattr(self.win, "object_manager").puppet_z_offsets.get(puppet_name, 0))
+        except Exception:
+            return 0
 
     def set_puppet_rotation(self, puppet_name: str, angle: float) -> None:
         """Set the rotation angle of a puppet."""
@@ -267,6 +306,70 @@ class SceneController:
         """Update onion skins."""
         self.onion.update()
 
+    def apply_onion_settings_from_qsettings(self, qsettings: Any) -> None:  # type: ignore[no-untyped-def]
+        """Apply onion-related options from QSettings into the OnionSkinManager.
+
+        Uses SettingsService.key to resolve namespaced keys so the logic stays
+        controller-bound and testable. UI should delegate here instead of
+        mutating OnionSkinManager fields directly (docs/tasks.md §17).
+        """
+        try:
+            from controllers.settings_service import SettingsService as _SS
+
+            self.onion.prev_count = int(
+                qsettings.value(_SS.key("onion", "prev_count"), self.onion.prev_count)
+            )
+            self.onion.next_count = int(
+                qsettings.value(_SS.key("onion", "next_count"), self.onion.next_count)
+            )
+            self.onion.opacity_prev = float(
+                qsettings.value(_SS.key("onion", "opacity_prev"), self.onion.opacity_prev)
+            )
+            self.onion.opacity_next = float(
+                qsettings.value(_SS.key("onion", "opacity_next"), self.onion.opacity_next)
+            )
+            # Performance toggles
+            try:
+                self.onion.pixmap_mode = bool(
+                    qsettings.value(_SS.key("onion", "pixmap_mode"), self.onion.pixmap_mode)
+                )
+                self.onion.pixmap_scale = float(
+                    qsettings.value(_SS.key("onion", "pixmap_scale"), self.onion.pixmap_scale)
+                )
+            except Exception:
+                pass
+        except Exception:
+            logging.debug("apply_onion_settings_from_qsettings failed", exc_info=True)
+
+    def apply_onion_settings_from_schema(self, schema: Any) -> None:
+        """Apply onion-related options from a SettingsSchema instance.
+
+        Only reads fields used by onion; safe to be called with any object
+        that has the attributes used below. This keeps the controller independent
+        from importing the dataclass in common UI paths.
+        """
+        try:
+            span = max(0, int(getattr(schema, "onion_span", getattr(schema, "span", 0))))
+            op = float(getattr(schema, "onion_opacity", getattr(schema, "opacity", 0.25)))
+            self.onion.prev_count = span
+            self.onion.next_count = span
+            self.onion.opacity_prev = op
+            self.onion.opacity_next = op
+            # Performance toggles from schema if available
+            if hasattr(schema, "onion_pixmap_mode"):
+                self.onion.pixmap_mode = bool(getattr(schema, "onion_pixmap_mode"))
+            if hasattr(schema, "onion_pixmap_scale"):
+                try:
+                    scale = float(getattr(schema, "onion_pixmap_scale"))
+                    self.onion.pixmap_scale = max(0.1, min(1.0, scale))
+                except Exception:
+                    pass
+            # If onion is enabled, refresh to apply changes
+            if getattr(self.onion, "enabled", False):
+                self.onion.update()
+        except Exception:
+            logging.debug("apply_onion_settings_from_schema failed", exc_info=True)
+
     # --- State application -------------------------------------------------
     def apply_puppet_states(
         self,
@@ -290,3 +393,7 @@ class SceneController:
     def set_scene_size(self, width: int, height: int) -> None:
         """Set the scene dimensions."""
         self.service.set_scene_size(width, height)
+
+    def get_scene_size(self) -> tuple[int, int]:
+        """Return the scene dimensions (width, height) from the service."""
+        return self.service.get_scene_size()

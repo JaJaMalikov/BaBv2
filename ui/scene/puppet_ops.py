@@ -1,17 +1,26 @@
-"""Utilities for manipulating puppets within the scene view."""
+"""Utilities for manipulating puppets within the scene view.
+
+DEPRECATION NOTICE (docs/tasks.md §23):
+- This module performs direct access to `win.scene_model` and
+  `win.object_manager.graphics_items`. These patterns are being migrated to a
+  controller/facade API and selection model. New code should avoid adding more
+  direct accesses and instead route via controllers/state_applier.
+"""
 
 from __future__ import annotations
 
 import logging
 from typing import TYPE_CHECKING, Optional
+from pathlib import Path
+import json
 
 from PySide6.QtCore import QPointF
 from PySide6.QtWidgets import QGraphicsItem
 from PySide6.QtSvg import QSvgRenderer
 
 from core.puppet_model import Puppet, PuppetMember, normalize_variants
-from core.naming import unique_name
-from core.puppet_piece import PuppetPiece
+from core.naming import unique_name, puppet_member_key
+from ui.scene.puppet_piece import PuppetPiece
 from core.svg_loader import SvgLoader
 
 # Named constants
@@ -55,8 +64,6 @@ class PuppetOps:
                 from PySide6.QtConcurrent import run as _qt_run  # type: ignore
                 from PySide6.QtCore import QFutureWatcher
                 import xml.etree.ElementTree as ET
-                from pathlib import Path
-                import json
 
                 def _worker_parse(path: str):
                     tree = ET.parse(path)
@@ -102,7 +109,8 @@ class PuppetOps:
                         logging.exception("Applying sidecar variants failed for %s", file_path)
                     try:
                         loader: SvgLoader = SvgLoader.from_parsed(file_path, tree)
-                        renderer: QSvgRenderer = loader.renderer
+                        renderer: QSvgRenderer = QSvgRenderer(file_path)
+                        loader.attach_renderer(renderer)
                         self.win.object_manager.renderers[puppet_name] = renderer
                         puppet.build_from_svg(loader)
                         self.scene_service.add_puppet(puppet_name, puppet)
@@ -125,13 +133,12 @@ class PuppetOps:
         # Synchronous path (default)
         puppet: Puppet = Puppet()
         loader: SvgLoader = SvgLoader(file_path)
-        renderer: QSvgRenderer = loader.renderer
+        renderer: QSvgRenderer = QSvgRenderer(file_path)
+        loader.attach_renderer(renderer)
         self.win.object_manager.renderers[puppet_name] = renderer
         # Optionnel: charger un fichier JSON de configuration à côté du SVG
         # pour définir des variantes spécifiques au pantin (sans toucher au fichier global).
         try:
-            from pathlib import Path
-
             svg_path = Path(file_path)
             candidates = [
                 svg_path.with_suffix(".json"),
@@ -139,8 +146,6 @@ class PuppetOps:
             ]
             for sidecar in candidates:
                 if sidecar.exists():
-                    import json
-
                     with sidecar.open("r", encoding="utf-8") as fh:
                         data = json.load(fh)
                     if isinstance(data, dict):
@@ -174,7 +179,7 @@ class PuppetOps:
             piece: PuppetPiece = PuppetPiece(file_path, name, pivot_x, pivot_y, renderer)
             piece.setZValue(member.z_order)
             pieces[name] = piece
-            self.win.object_manager.graphics_items[f"{puppet_name}:{name}"] = piece
+            self.win.object_manager.graphics_items[puppet_member_key(puppet_name, name)] = piece
 
         scene_center: QPointF = self.win.scene.sceneRect().center()
         for name, piece in pieces.items():
@@ -235,7 +240,7 @@ class PuppetOps:
                         continue
                     default_var = candidates[0]
                     for cand in candidates:
-                        gi_key = f"{puppet_name}:{cand}"
+                        gi_key = puppet_member_key(puppet_name, cand)
                         piece = self.win.object_manager.graphics_items.get(gi_key)
                         if not piece:
                             continue
@@ -253,7 +258,7 @@ class PuppetOps:
             return
         for member_name in puppet.members:
             piece: Optional[PuppetPiece] = self.win.object_manager.graphics_items.get(
-                f"{puppet_name}:{member_name}"
+                puppet_member_key(puppet_name, member_name)
             )
             if not piece:
                 continue
@@ -265,7 +270,7 @@ class PuppetOps:
                 )
         for root_member in puppet.get_root_members():
             if root_piece := self.win.object_manager.graphics_items.get(
-                f"{puppet_name}:{root_member.name}"
+                puppet_member_key(puppet_name, root_member.name)
             ):
                 for child in root_piece.children:
                     child.update_transform_from_parent()
@@ -275,7 +280,7 @@ class PuppetOps:
         if puppet := self.win.scene_model.puppets.get(puppet_name):
             for member_name in list(puppet.members.keys()):
                 if piece := self.win.object_manager.graphics_items.pop(
-                    f"{puppet_name}:{member_name}", None
+                    puppet_member_key(puppet_name, member_name), None
                 ):
                     self.win.scene.removeItem(piece)
                     if piece.pivot_handle:
@@ -356,8 +361,24 @@ class PuppetOps:
         if not roots:
             return None
         return self.win.object_manager.graphics_items.get(
-            f"{puppet_name}:{roots[0].name}"
+            puppet_member_key(puppet_name, roots[0].name)
         )  # type: ignore
+
+    def set_puppet_root_pos(self, puppet_name: str, pos: QPointF) -> None:
+        """Set the root position of a puppet and update children transforms.
+
+        This centralizes root placement logic to avoid direct graphics access from
+        other UI modules (docs/tasks.md §7).
+        """
+        root = self._puppet_root_piece(puppet_name)
+        if not isinstance(root, PuppetPiece):
+            return
+        try:
+            root.setPos(float(pos.x()), float(pos.y()))
+            for child in root.children:
+                child.update_transform_from_parent()
+        except Exception:  # pylint: disable=broad-except
+            logging.exception("Failed to set root position for puppet %s", puppet_name)
 
     def get_puppet_rotation(self, puppet_name: str) -> float:
         """Returns the rotation of a puppet."""
@@ -380,7 +401,7 @@ class PuppetOps:
         self.win.object_manager.puppet_z_offsets[puppet_name] = int(offset)
         for member_name, member in puppet.members.items():
             piece: Optional[PuppetPiece] = self.win.object_manager.graphics_items.get(
-                f"{puppet_name}:{member_name}"
+                puppet_member_key(puppet_name, member_name)
             )
             if piece:
                 try:
@@ -416,7 +437,7 @@ class PuppetOps:
             # If invalid, fallback to first
             variant_name = candidates[0]
         for cand in candidates:
-            gi_key = f"{puppet_name}:{cand}"
+            gi_key = puppet_member_key(puppet_name, cand)
             piece = self.win.object_manager.graphics_items.get(gi_key)
             if not piece:
                 continue
@@ -435,7 +456,7 @@ class PuppetOps:
             return None
         candidates = getattr(puppet, "variants", {}).get(slot, [])
         for cand in candidates:
-            piece = self.win.object_manager.graphics_items.get(f"{puppet_name}:{cand}")
+            piece = self.win.object_manager.graphics_items.get(puppet_member_key(puppet_name, cand))
             try:
                 if piece and piece.isVisible():
                     return cand

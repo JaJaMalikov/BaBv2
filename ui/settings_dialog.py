@@ -324,6 +324,18 @@ class SettingsDialog(QDialog):
         onion_form.addRow("Fantômes suivants:", self.next_count)
         onion_form.addRow("Opacité précédents:", self.opacity_prev)
         onion_form.addRow("Opacité suivants:", self.opacity_next)
+        # JSON Persistence controls for onion settings (via SettingsService)
+        self.btn_onion_import_json = QPushButton("Importer JSON…")
+        self.btn_onion_export_json = QPushButton("Exporter JSON…")
+        self.btn_onion_reset_defaults = QPushButton("Réinitialiser par défaut")
+        row_onion_actions = QHBoxLayout()
+        row_onion_actions.addStretch(1)
+        row_onion_actions.addWidget(self.btn_onion_import_json)
+        row_onion_actions.addWidget(self.btn_onion_export_json)
+        row_onion_actions.addWidget(self.btn_onion_reset_defaults)
+        wrap_onion_actions = QWidget()
+        wrap_onion_actions.setLayout(row_onion_actions)
+        onion_form.addRow("", wrap_onion_actions)
         tabs.addTab(tab_onion, "Onion")
 
         # --- Tab: Styles (friendly controls) ---
@@ -965,15 +977,16 @@ class SettingsDialog(QDialog):
         self._main_specs = [
             ("save", "Sauver", icon_save()),
             ("load", "Charger", icon_open()),
+            ("add_light", "Ajouter projo", icon_plus()),
             ("scene_size", "Scène", icon_scene_size()),
             ("background", "Fond", icon_background()),
-            ("settings", "Paramètres", get_icon("layers")),
+            ("settings", "Paramètres", get_icon("settings")),
             ("reset_scene", "Reset scène", icon_reset_scene()),
             ("reset_ui", "Reset UI", icon_reset_ui()),
             ("toggle_library", "Lib", icon_library()),
             ("toggle_inspector", "Insp", icon_inspector()),
             ("toggle_timeline", "Time", icon_timeline()),
-            ("toggle_custom", "Custom", get_icon("layers")),
+            ("toggle_custom", "Custom", get_icon("chevron_left")),
         ]
         self._quick_specs = [
             ("zoom_out", "-", icon_minus()),

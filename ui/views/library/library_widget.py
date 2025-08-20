@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QDrag, QIcon
 
 from ui.icons import get_icon
+from core.types import Kind
 
 LIB_MIME = "application/x-bab-item"
 
@@ -140,17 +141,17 @@ class LibraryWidget(QWidget):  # pylint: disable=too-few-public-methods
         self.puppets_grid.clear()
 
         asset_dirs = {
-            "background": (
+            Kind.BACKGROUND.value: (
                 self.background_grid,
                 self.root_dir / "assets" / "background",
                 {".png", ".jpg", ".jpeg"},
             ),
-            "object": (
+            Kind.OBJECT.value: (
                 self.objects_grid,
                 self.root_dir / "assets" / "objets",
                 {".png", ".svg"},
             ),
-            "puppet": (
+            Kind.PUPPET.value: (
                 self.puppets_grid,
                 self.root_dir / "assets" / "pantins",
                 {".svg"},

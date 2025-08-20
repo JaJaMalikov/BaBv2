@@ -38,6 +38,48 @@ pip install -r requirements.txt
 python macronotron.py
 ```
 
+## 🧠 Architecture (aperçu rapide)
+
+Le projet suit une architecture en couches stricte (MVC‑ish) :
+- core/ : modèles de domaine, sérialisation, validation, SVG — sans dépendance Qt.
+- controllers/ : services d’application orchestrant core et UI — pas de widgets Qt ici.
+- ui/ : widgets PySide6, adaptateurs de vue, branchements d’événements.
+
+Règle de dépendance : core -> controllers -> ui (sens unique). Voir docs/architecture.md pour les détails et anti‑patterns.
+
+Pour un schéma d’ensemble, voir également docs/flow.md (diagrammes ASCII/Mermaid du flux MVC).
+
+## 🧪 Tests (Qt sans affichage)
+
+Les tests utilisent pytest et un mode Qt « offscreen ».
+
+```bash
+# Lancer tous les tests
+pytest -q
+
+# Fichier unique
+pytest -q tests/test_scene_model_io.py
+
+# Par mot‑clé
+pytest -q -k keyframe
+```
+
+Astuce : l’environnement headless est géré par tests/conftest.py. Utilisez le fixture _app pour toute création de widgets Qt.
+
+## 🧹 Linting rapide (pylint)
+
+Pour garder un code propre sans CI strict, on applique des règles légères :
+
+- Lancer pylint localement :
+  ```bash
+  pylint controllers core ui macronotron.py
+  ```
+- Points d’attention (non bloquants, mais encouragés) :
+  - R0801 (duplicate-code) : évitez le copié‑collé, factorisez les helpers.
+  - C0114/C0115/C0116 (docstrings) : ajoutez des docstrings aux modules, classes et fonctions publiques.
+  - Typage : ajoutez des hints (Protocol, TypedDict, dataclasses) pour stabiliser les interfaces entre couches.
+- Pas d’import PySide6 dans core/ ; pas d’accès direct au modèle depuis ui/ : passez par les controllers/facades.
+
 ## 📄 Licence
 
 [The Unlicense](https://unlicense.org/) — libre de droit, libre d’usage, libre de ce que tu veux.
