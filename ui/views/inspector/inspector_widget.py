@@ -302,6 +302,8 @@ class InspectorWidget(QWidget):
 
     def refresh(self) -> None:
         """Refresh the list from the scene via the controller facade."""
+        # Preserve current selection so we can restore it after refresh
+        previous = self._current_info()
         self.list_widget.clear()
         # Puppets
         puppet_names: list[str] = []
@@ -342,6 +344,29 @@ class InspectorWidget(QWidget):
         self._refresh_attach_puppet_combo()
         # Ensure icons reflect current frame state
         self._update_list_attachment_icons()
+
+        # Reselect previous item if it still exists
+        typ, name = previous
+        if typ and name:
+            for i in range(self.list_widget.count()):
+                item = self.list_widget.item(i)
+                if item.data(Qt.UserRole) == previous:
+                    self.list_widget.setCurrentItem(item)
+                    break
+            else:
+                # Selection no longer valid
+                self.list_widget.setCurrentItem(None)
+                try:
+                    self._last_selection = (None, None)
+                except Exception:
+                    pass
+        else:
+            self.list_widget.setCurrentItem(None)
+            try:
+                self._last_selection = (None, None)
+            except Exception:
+                pass
+
         # Hide props when nothing selected
         self.props_panel.setVisible(self.list_widget.currentItem() is not None)
 
