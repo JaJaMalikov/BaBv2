@@ -9,19 +9,55 @@ from PySide6.QtCore import Qt, QSize, QSettings, QByteArray
 from PySide6.QtGui import QIcon, QPixmap, QPainter
 from PySide6.QtSvg import QSvgRenderer
 from .ui_profile import _color, _int
+from ui.settings_keys import (
+    ORG,
+    APP,
+    UI_ICON_SIZE,
+    UI_ICON_COLOR_NORMAL,
+    UI_ICON_COLOR_HOVER,
+    UI_ICON_COLOR_ACTIVE,
+    UI_ICON_OVERRIDE,
+    UI_ICON_DIR,
+)
 
 ICONS_DIR = Path("assets/icons")
 # Cache keyed by name|size|colors to reflect runtime settings
 ICON_CACHE: Dict[str, QIcon] = {}
 
 
+def _tint_svg(svg: str, color: str) -> str:
+    """Return SVG with <path> elements filled with the given color.
+    - Removes existing fill attributes and style-based fill on <path> tags.
+    - If no <path> tags are present, returns original SVG (graceful fallback).
+    """
+    try:
+        if "<path" not in svg:
+            return svg
+        # Remove explicit fill attributes on path
+        svg2 = re.sub(r"(<path\b[^>]*?)\s+fill=\"[^\"]*\"", r"\\1", svg)
+        # Remove style fill declarations inside style="..."
+        def _strip_style_fill(m: re.Match[str]) -> str:
+            prefix, body, suffix = m.group(1), m.group(2), m.group(3)
+            # Remove fill:...; occurrences
+            parts = [p for p in body.split(";") if p.strip() and not p.strip().lower().startswith("fill:")]
+            new_body = ";".join(parts)
+            return f"{prefix}{new_body}{suffix}"
+        svg2 = re.sub(r"(<path\b[^>]*?\sstyle=\")([^\"]*)(\")", _strip_style_fill, svg2)
+        # Inject our fill
+        tinted = re.sub(r"<path\b", f'<path fill="{color}"', svg2)
+        return tinted
+    except Exception:
+        # Safety: return the original SVG if anything goes wrong
+        return svg
+
+
 def _icon_colors() -> tuple[str, str, str]:
     """Read icon colors from settings or return defaults with normalization."""
     try:
-        s = QSettings("JaJa", "Macronotron")
-        normal = _color(s.value("ui/icon_color_normal"), "#4A5568")
-        hover = _color(s.value("ui/icon_color_hover"), "#E53E3E")
-        active = _color(s.value("ui/icon_color_active"), "#FFFFFF")
+        s = QSettings(ORG, APP)
+        normal = _color(s.value(UI_ICON_COLOR_NORMAL), "#4A5568")
+        hover = _color(s.value(UI_ICON_COLOR_HOVER), "#E53E3E")
+        active = _color(s.value(UI_ICON_COLOR_ACTIVE), "#FFFFFF")
         return normal, hover, active
     except (RuntimeError, ValueError):
         logging.exception("Failed to read icon colors from settings")
@@ -29,10 +65,17 @@ def _icon_colors() -> tuple[str, str, str]:
 
 
 def _icon_size() -> int:
-    """Read preferred icon size from QSettings with normalization; default 32."""
+    """Read preferred icon size from QSettings with normalization; default 32.
+    Clamps the value to a sensible range [16, 128].
+    """
     try:
-        s = QSettings("JaJa", "Macronotron")
-        return _int(s.value("ui/icon_size"), 32)
+        s = QSettings(ORG, APP)
+        size = _int(s.value(UI_ICON_SIZE), 32)
+        if size < 16:
+            size = 16
+        elif size > 128:
+            size = 128
+        return size
     except Exception:
         return 32
 
@@ -61,8 +104,8 @@ def _render_svg(svg_data: str, size: QSize | None = None) -> QPixmap:
 def _load_override_icon(name: str) -> Optional[QIcon]:
     """Load an icon from an override path if specified in QSettings."""
     try:
-        s = QSettings("JaJa", "Macronotron")
-        override_path = s.value(f"ui/icon_override/{name}")
+        s = QSettings(ORG, APP)
+        override_path = s.value(UI_ICON_OVERRIDE(name))
     except (RuntimeError, ValueError):
         logging.exception("Failed to read icon overrides")
         return None
@@ -79,9 +122,9 @@ def _load_override_icon(name: str) -> Optional[QIcon]:
             with open(p, "r", encoding="utf-8") as f:
                 original_svg = f.read()
             c_norm, c_hover, c_active = _icon_colors()
-            normal_svg = re.sub(r"<path", f'<path fill="{c_norm}"', original_svg)
-            hover_svg = re.sub(r"<path", f'<path fill="{c_hover}"', original_svg)
-            active_svg = re.sub(r"<path", f'<path fill="{c_active}"', original_svg)
+            normal_svg = _tint_svg(original_svg, c_norm)
+            hover_svg = _tint_svg(original_svg, c_hover)
+            active_svg = _tint_svg(original_svg, c_active)
             pixmap_normal = _render_svg(normal_svg)
             pixmap_hover = _render_svg(hover_svg)
             pixmap_active = _render_svg(active_svg)
@@ -117,8 +160,8 @@ def _create_icon(name: str) -> QIcon:
         ICON_CACHE[cache_key] = override_icon
         return override_icon
 
-    s = QSettings("JaJa", "Macronotron")
-    icon_dir_override = s.value("ui/icon_dir")
+    s = QSettings(ORG, APP)
+    icon_dir_override = s.value(UI_ICON_DIR)
 
     # Locate in override directory or default assets (SVG expected)
     # Fallback mapping for missing or alias keys. Documented for maintainability.
@@ -161,9 +204,9 @@ def _create_icon(name: str) -> QIcon:
             with open(warn_path, "r", encoding="utf-8") as f:
                 original_svg = f.read()
             c_norm, c_hover, c_active = _icon_colors()
-            normal_svg = re.sub(r"<path", f'<path fill="{c_norm}"', original_svg)
-            hover_svg = re.sub(r"<path", f'<path fill="{c_hover}"', original_svg)
-            active_svg = re.sub(r"<path", f'<path fill="{c_active}"', original_svg)
+            normal_svg = _tint_svg(original_svg, c_norm)
+            hover_svg = _tint_svg(original_svg, c_hover)
+            active_svg = _tint_svg(original_svg, c_active)
             size = QSize(side, side)
             pixmap_normal = _render_svg(normal_svg, size)
             pixmap_hover = _render_svg(hover_svg, size)
@@ -181,10 +224,10 @@ def _create_icon(name: str) -> QIcon:
     with open(svg_path, "r", encoding="utf-8") as f:
         original_svg = f.read()
 
-    # Create different colored versions by substituting fill on <path> tags
-    normal_svg = re.sub(r"<path", f'<path fill="{c_norm}"', original_svg)
-    hover_svg = re.sub(r"<path", f'<path fill="{c_hover}"', original_svg)
-    active_svg = re.sub(r"<path", f'<path fill="{c_active}"', original_svg)
+    # Create different colored versions using robust tinting
+    normal_svg = _tint_svg(original_svg, c_norm)
+    hover_svg = _tint_svg(original_svg, c_hover)
+    active_svg = _tint_svg(original_svg, c_active)
 
     # Render pixmaps at the configured size
     size = QSize(side, side)

@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from PySide6.QtCore import QSettings
-from PySide6.QtGui import QAction
+from PySide6.QtGui import QAction, QKeySequence
 
 from ui.icons import (
     get_icon,
@@ -23,6 +24,8 @@ from ui.views.inspector import actions as inspector_actions
 from ui.views.library import actions as library_actions
 from ui.scene import actions as scene_actions
 from ui.scene import scene_io
+
+logger = logging.getLogger(__name__)
 
 
 def build_actions(win: Any) -> None:
@@ -87,13 +90,19 @@ def build_actions(win: Any) -> None:
     }
 
     # Load persisted shortcuts
-    s = QSettings("JaJa", "Macronotron")
-    s.beginGroup("shortcuts")
+    from ui.settings_keys import ORG, APP, SHORTCUT_KEY
+    s = QSettings(ORG, APP)
     for key, action in win.shortcuts.items():
-        seq = s.value(key)
+        seq = s.value(SHORTCUT_KEY(key))
         if seq:
-            action.setShortcut(seq)
-    s.endGroup()
+            try:
+                ks = QKeySequence(seq)
+                if ks.isEmpty():
+                    logger.warning("Ignoring invalid shortcut sequence for %s: %r", key, seq)
+                else:
+                    action.setShortcut(ks)
+            except Exception as e:
+                logger.warning("Failed to apply shortcut for %s: %r (%s)", key, seq, e)
 
 
 def connect_signals(win: Any) -> None:

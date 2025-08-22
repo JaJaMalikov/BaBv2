@@ -4,17 +4,17 @@
     "preset": "custom",
     "font_family": "Poppins",
     "custom_params": {
-      "bg_color": "#E2E8F0",
+      "bg_color": "#2a3444",
       "text_color": "#1E1E1E",
       "accent_color": "#E53E3E",
       "hover_color": "#E3E6FD",
       "panel_bg": "#2D3748",
-      "panel_opacity": 0.9,
+      "panel_opacity": 1.0,
       "panel_border": "#D0D5DD",
-      "header_bg": "#1E1E1E",
+      "header_bg": "#2a3444",
       "header_text": "#ffffff",
       "header_border": "#D0D5DD",
-      "group_title_color": "#2D3748",
+      "group_title_color": "#2a3444",
       "tooltip_bg": "#F7F8FC",
       "tooltip_text": "#1A202C",
       "tooltip_border": "#D0D5DD",
@@ -53,12 +53,11 @@
   "timeline_kf": "#FFC107",
   "timeline_kf_hover": "#FFE082",
   "timeline_inout_alpha": 30,
-  "scene_bg": "#2D3748",
+  "scene_bg": "#2a3444",
   "custom_overlay_visible": false,
   "menu_main_order": [
     "save",
     "load",
-    "scene_size",
     "background",
     "add_light",
     "settings",
@@ -67,12 +66,12 @@
     "toggle_library",
     "toggle_inspector",
     "toggle_timeline",
-    "toggle_custom"
+    "toggle_custom",
+    "scene_size"
   ],
   "menu_main_vis": {
     "save": true,
     "load": true,
-    "scene_size": false,
     "background": false,
     "add_light": true,
     "settings": true,
@@ -81,7 +80,8 @@
     "toggle_library": true,
     "toggle_inspector": true,
     "toggle_timeline": true,
-    "toggle_custom": false
+    "toggle_custom": false,
+    "scene_size": false
   },
   "menu_quick_order": [
     "zoom_out",

@@ -167,7 +167,9 @@ class StateApplier:
                         float(next_state["rotation"]),
                         ratio,
                     )
-                    piece: PuppetPiece = graphics_items[f"{name}:{member_name}"]
+                    piece = graphics_items.get(f"{name}:{member_name}")
+                    if not isinstance(piece, PuppetPiece):
+                        continue
                     piece.local_rotation = interp_rot
                     if not piece.parent_piece:
                         prev_pos: Tuple[float, float] = prev_state["pos"]
@@ -207,9 +209,11 @@ class StateApplier:
         # Propagate transforms to children
         for name, puppet in self.win.scene_model.puppets.items():
             for root_member in puppet.get_root_members():
-                root_piece: PuppetPiece = graphics_items[f"{name}:{root_member.name}"]
+                root_piece = graphics_items.get(f"{name}:{root_member.name}")
+                if not isinstance(root_piece, PuppetPiece):
+                    continue
                 root_piece.setRotation(root_piece.local_rotation)
-                for child in root_piece.children:
+                for child in getattr(root_piece, "children", []):
                     child.update_transform_from_parent()
 
     def apply_object_states(

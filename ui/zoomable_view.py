@@ -41,6 +41,19 @@ from ui.icons import (
 )
 from ui.views.library.library_widget import LIB_MIME
 from ui.utils import make_tool_button
+from ui.settings_keys import (
+    ORG,
+    APP,
+    UI_ICON_SIZE,
+    UI_MENU_ORDER,
+    UI_MENU_VIS,
+    UI_MENU_CUSTOM_VISIBLE,
+    UI_DEFAULT_CUSTOM_SIZE,
+    UI_DEFAULT_CUSTOM_POS,
+    MAIN_MENU,
+    QUICK_MENU,
+    CUSTOM_MENU,
+)
 
 
 class ZoomableView(QGraphicsView):
@@ -74,8 +87,13 @@ class ZoomableView(QGraphicsView):
         self.layout: QHBoxLayout = QHBoxLayout(self._overlay)
         self.layout.setContentsMargins(4, 4, 4, 4)
         self.layout.setSpacing(2)
-        s = QSettings("JaJa", "Macronotron")
-        icon_size: int = int(s.value("ui/icon_size", 32))
+        s = QSettings(ORG, APP)
+        try:
+            from ui.ui_profile import _int as _to_int
+        except Exception:
+            _to_int = lambda v, d=32: int(v) if v is not None else d  # type: ignore
+        size_val = _to_int(s.value(UI_ICON_SIZE), 32)
+        icon_size: int = max(16, min(128, int(size_val)))
         button_size: int = max(28, icon_size + 4)
 
         self.collapse_btn: QToolButton = make_tool_button(
@@ -160,8 +178,13 @@ class ZoomableView(QGraphicsView):
         self.main_tools_layout: QHBoxLayout = QHBoxLayout(self._main_tools_overlay)
         self.main_tools_layout.setContentsMargins(4, 4, 4, 4)
         self.main_tools_layout.setSpacing(2)
-        s = QSettings("JaJa", "Macronotron")
-        icon_size: int = int(s.value("ui/icon_size", 32))
+        s = QSettings(ORG, APP)
+        try:
+            from ui.ui_profile import _int as _to_int
+        except Exception:
+            _to_int = lambda v, d=32: int(v) if v is not None else d  # type: ignore
+        size_val = _to_int(s.value(UI_ICON_SIZE), 32)
+        icon_size: int = max(16, min(128, int(size_val)))
         button_size: int = max(28, icon_size + 4)
 
         self.main_collapse_btn: QToolButton = make_tool_button(
@@ -294,7 +317,12 @@ class ZoomableView(QGraphicsView):
         lay.setContentsMargins(4, 4, 4, 4)
         lay.setSpacing(2)
         s = QSettings("JaJa", "Macronotron")
-        icon_size: int = int(s.value("ui/icon_size", 32))
+        try:
+            from ui.ui_profile import _int as _to_int
+        except Exception:
+            _to_int = lambda v, d=32: int(v) if v is not None else d  # type: ignore
+        size_val = _to_int(s.value("ui/icon_size"), 32)
+        icon_size: int = max(16, min(128, int(size_val)))
         button_size: int = max(28, icon_size + 4)
 
         def make_btn(action: QAction, checkable: bool = False) -> QToolButton:
@@ -461,8 +489,14 @@ class ZoomableView(QGraphicsView):
 
     def apply_icon_size(self) -> None:
         """Applies the icon size from settings to all overlay buttons."""
-        s = QSettings("JaJa", "Macronotron")
-        icon_size: int = int(s.value("ui/icon_size", 32))
+        from ui.settings_keys import ORG, APP, UI_ICON_SIZE
+        s = QSettings(ORG, APP)
+        try:
+            from ui.ui_profile import _int as _to_int
+        except Exception:
+            _to_int = lambda v, d=32: int(v) if v is not None else d  # type: ignore
+        size_val = _to_int(s.value(UI_ICON_SIZE), 32)
+        icon_size: int = max(16, min(128, int(size_val)))
         button_size: int = max(28, icon_size + 4)
         # Left overlay
         for btn in [
@@ -494,9 +528,15 @@ class ZoomableView(QGraphicsView):
         """Apply visibility settings for main tools overlay based on QSettings."""
         s = QSettings("JaJa", "Macronotron")
 
+        # Normalize boolean flags via shared helper to handle QSettings quirks
+        try:
+            from ui.ui_profile import _bool as _to_bool
+        except Exception:
+            _to_bool = lambda v, d=True: d if v is None else (v in [True, "true", "1"])  # type: ignore
+
         def is_on(key: str, default: bool = True) -> bool:
             v = s.value(f"ui/menu/main/{key}")
-            return default if v is None else (v in [True, "true", "1"])
+            return _to_bool(v, default)
 
         mapping = getattr(self, "main_tool_buttons_map", {})
         defaults = {
@@ -544,9 +584,15 @@ class ZoomableView(QGraphicsView):
         """Apply visibility settings for quick overlay buttons based on QSettings."""
         s = QSettings("JaJa", "Macronotron")
 
+        # Normalize boolean flags via shared helper to handle QSettings quirks
+        try:
+            from ui.ui_profile import _bool as _to_bool
+        except Exception:
+            _to_bool = lambda v, d=True: d if v is None else (v in [True, "true", "1"])  # type: ignore
+
         def is_on(key: str, default: bool = True) -> bool:
             v = s.value(f"ui/menu/quick/{key}")
-            return default if v is None else (v in [True, "true", "1"])
+            return _to_bool(v, default)
 
         defaults = {
             "zoom_out": True,

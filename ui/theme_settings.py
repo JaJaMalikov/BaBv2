@@ -63,13 +63,69 @@ class ThemeSettings:
     ORG: str = "JaJa"
     APP: str = "Macronotron"
 
+    @staticmethod
+    def _is_hex_color(value: Any) -> bool:
+        if not isinstance(value, str):
+            return False
+        v = value.strip()
+        if not v.startswith("#"):
+            return False
+        n = len(v)
+        if n not in (7, 9):
+            return False
+        try:
+            int(v[1:], 16)
+            return True
+        except Exception:
+            return False
+
+    @classmethod
+    def _sanitize_custom_params(cls, params: Dict[str, Any]) -> Dict[str, Any]:
+        """Return a sanitized copy of custom theme params.
+
+        Mirrors ui.styles.sanitize_custom_params to avoid circular import,
+        ensuring sanitation even when styles are not yet applied.
+        """
+        sanitized: Dict[str, Any] = dict(DEFAULT_CUSTOM_PARAMS)
+        sanitized.update({k: v for k, v in params.items() if k in DEFAULT_CUSTOM_PARAMS})
+
+        # Validate colors
+        for k, dv in DEFAULT_CUSTOM_PARAMS.items():
+            if isinstance(dv, str) and dv.startswith("#"):
+                v = sanitized.get(k)
+                if not cls._is_hex_color(v):
+                    sanitized[k] = dv
+        # Numeric sanitization
+        try:
+            op = float(sanitized.get("panel_opacity", 0.9))
+        except (TypeError, ValueError):
+            op = 0.9
+        sanitized["panel_opacity"] = max(0.0, min(1.0, op))
+
+        for key in ("radius", "font_size"):
+            try:
+                sanitized[key] = int(sanitized.get(key, DEFAULT_CUSTOM_PARAMS[key]))
+            except (TypeError, ValueError):
+                sanitized[key] = int(DEFAULT_CUSTOM_PARAMS[key])
+
+        # Basic string coercions
+        for key in ("font_family", "header_bg", "tooltip_border"):
+            v = sanitized.get(key)
+            if v is None:
+                sanitized[key] = DEFAULT_CUSTOM_PARAMS.get(key, "")
+            else:
+                sanitized[key] = str(v)
+
+        return sanitized
+
     @classmethod
     def from_qsettings(cls, s: Optional[QSettings] = None) -> "ThemeSettings":
         """Load theme settings from QSettings, falling back to defaults."""
         s = s or QSettings(cls.ORG, cls.APP)
-        preset = str(s.value("ui/theme", "light")).lower()
-        font_family = str(s.value("ui/font_family") or "Poppins")
-        theme_file = s.value("ui/theme_file")
+        from ui.settings_keys import UI_THEME, UI_FONT_FAMILY, UI_THEME_FILE
+        preset = str(s.value(UI_THEME, "light")).lower()
+        font_family = str(s.value(UI_FONT_FAMILY) or "Poppins")
+        theme_file = s.value(UI_THEME_FILE)
         custom_params: Dict[str, Any] = dict(DEFAULT_CUSTOM_PARAMS)
 
         if preset == "custom":
@@ -99,6 +155,8 @@ class ThemeSettings:
                 s.endGroup()
             # Ensure font_family mirrors top-level value if not explicitly set
             custom_params.setdefault("font_family", font_family)
+            # Sanitize early to enforce safe values everywhere (Task 7)
+            custom_params = cls._sanitize_custom_params(custom_params)
 
         return cls(
             preset=preset,
@@ -152,6 +210,8 @@ class ThemeSettings:
         ts.custom_params.update(
             {k: v for k, v in data.items() if k in DEFAULT_CUSTOM_PARAMS}
         )
+        # Sanitize early (Task 7)
+        ts.custom_params = cls._sanitize_custom_params(ts.custom_params)
         ts.theme_file = str(p)
         ts.font_family = str(data.get("font_family", ts.font_family))
         return ts

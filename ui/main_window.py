@@ -156,19 +156,20 @@ class MainWindow(QMainWindow):
     def _apply_startup_preferences(self) -> None:
         """Applies stored startup preferences."""
         try:
-            s = QSettings("JaJa", "Macronotron")
-            self.onion.prev_count = int(
-                cast(int, s.value("onion/prev_count", self.onion.prev_count))
+            from ui.settings_keys import (
+                ORG,
+                APP,
+                ONION_PREV_COUNT,
+                ONION_NEXT_COUNT,
+                ONION_OPACITY_PREV,
+                ONION_OPACITY_NEXT,
             )
-            self.onion.next_count = int(
-                cast(int, s.value("onion/next_count", self.onion.next_count))
-            )
-            self.onion.opacity_prev = float(
-                cast(float, s.value("onion/opacity_prev", self.onion.opacity_prev))
-            )
-            self.onion.opacity_next = float(
-                cast(float, s.value("onion/opacity_next", self.onion.opacity_next))
-            )
+            s = QSettings(ORG, APP)
+            from ui.ui_profile import _int as _to_int, _float as _to_float
+            self.onion.prev_count = _to_int(s.value(ONION_PREV_COUNT), self.onion.prev_count)
+            self.onion.next_count = _to_int(s.value(ONION_NEXT_COUNT), self.onion.next_count)
+            self.onion.opacity_prev = _to_float(s.value(ONION_OPACITY_PREV), self.onion.opacity_prev)
+            self.onion.opacity_next = _to_float(s.value(ONION_OPACITY_NEXT), self.onion.opacity_next)
             self.overlays.apply_menu_settings()
         except (RuntimeError, ValueError, ImportError):
             logging.exception("Failed to apply startup preferences")

@@ -143,12 +143,18 @@ class ObjectViewAdapter:
         self.graphics_items[obj.name] = item
 
     def remove_object_graphics(self, name: str) -> None:
-        if item := self.graphics_items.pop(name, None):
+        item = self.graphics_items.pop(name, None)
+        if item is not None:
             self.scene.removeItem(item)
+        else:
+            logging.debug("remove_object_graphics: item '%s' not found", name)
 
     def hide_object(self, name: str) -> None:
-        if item := self.graphics_items.get(name):
+        item = self.graphics_items.get(name)
+        if item is not None:
             item.setVisible(False)
+        else:
+            logging.debug("hide_object: item '%s' not found", name)
 
     # ------------------------------------------------------------------
     # Création d'objets

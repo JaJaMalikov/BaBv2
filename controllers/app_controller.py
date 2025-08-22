@@ -10,6 +10,8 @@ from ui import selection_sync
 from ui.scene import scene_io
 from ui.contracts import AppWindowContract
 
+logger = logging.getLogger(__name__)
+
 
 class AppController:
     """Centralise la logique métier autour de la `MainWindow`."""
@@ -39,7 +41,7 @@ class AppController:
             self.win._kf_copy_sc.activated.connect(self.copy_current_keyframe)
             self.win._kf_paste_sc.activated.connect(self.paste_current_keyframe)
         except (AttributeError, RuntimeError) as e:
-            logging.warning(
+            logger.warning(
                 "Failed to install keyframe shortcuts: %s", e, exc_info=True
             )
 
@@ -50,7 +52,7 @@ class AppController:
             if idx in getattr(self.win.timeline_widget, "_kfs", set()):
                 self.win.playback_handler.copy_keyframe(idx)  # type: ignore[attr-defined]
         except (AttributeError, ValueError, RuntimeError, TypeError) as e:
-            logging.debug("Copy current keyframe shortcut ignored: %s", e)
+            logger.debug("Copy current keyframe shortcut ignored: %s", e)
 
     def paste_current_keyframe(self) -> None:
         """Colle le keyframe courant via le `PlaybackController`."""
@@ -58,7 +60,7 @@ class AppController:
             idx = int(self.win.scene_model.current_frame)
             self.win.playback_handler.paste_keyframe(idx)  # type: ignore[attr-defined]
         except (AttributeError, ValueError, RuntimeError, TypeError) as e:
-            logging.debug("Paste current keyframe shortcut ignored: %s", e)
+            logger.debug("Paste current keyframe shortcut ignored: %s", e)
 
     # --- Manipulation de keyframes ------------------------------------
     def add_keyframe(self, frame_index: int) -> None:

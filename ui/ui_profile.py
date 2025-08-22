@@ -162,22 +162,49 @@ class UIProfile:
         p.theme = ThemeSettings.from_qsettings(s)
 
         # Icon base
-        p.icon_dir = s.value("ui/icon_dir") or None
+        from ui.settings_keys import (
+            UI_ICON_DIR,
+            UI_ICON_SIZE,
+            UI_ICON_COLOR_NORMAL,
+            UI_ICON_COLOR_HOVER,
+            UI_ICON_COLOR_ACTIVE,
+        )
+        p.icon_dir = s.value(UI_ICON_DIR) or None
         try:
-            p.icon_size = int(s.value("ui/icon_size", p.icon_size))
+            p.icon_size = int(s.value(UI_ICON_SIZE, p.icon_size))
         except Exception:
             pass
         p.icon_color_normal = str(
-            s.value("ui/icon_color_normal") or p.icon_color_normal
+            s.value(UI_ICON_COLOR_NORMAL) or p.icon_color_normal
         )
-        p.icon_color_hover = str(s.value("ui/icon_color_hover") or p.icon_color_hover)
+        p.icon_color_hover = str(s.value(UI_ICON_COLOR_HOVER) or p.icon_color_hover)
         p.icon_color_active = str(
-            s.value("ui/icon_color_active") or p.icon_color_active
+            s.value(UI_ICON_COLOR_ACTIVE) or p.icon_color_active
         )
 
         # Timeline (validated)
         def _get_col(key: str, current: str) -> str:
-            raw = s.value(f"timeline/{key}")
+            from ui.settings_keys import (
+                TIMELINE_BG,
+                TIMELINE_RULER_BG,
+                TIMELINE_TRACK_BG,
+                TIMELINE_TICK,
+                TIMELINE_TICK_MAJOR,
+                TIMELINE_PLAYHEAD,
+                TIMELINE_KF,
+                TIMELINE_KF_HOVER,
+            )
+            key_map = {
+                "bg": TIMELINE_BG,
+                "ruler_bg": TIMELINE_RULER_BG,
+                "track_bg": TIMELINE_TRACK_BG,
+                "tick": TIMELINE_TICK,
+                "tick_major": TIMELINE_TICK_MAJOR,
+                "playhead": TIMELINE_PLAYHEAD,
+                "kf": TIMELINE_KF,
+                "kf_hover": TIMELINE_KF_HOVER,
+            }
+            raw = s.value(key_map.get(key, f"timeline/{key}"))
             if raw is None or raw == "":
                 return current
             val = _color(raw, current)
@@ -199,7 +226,20 @@ class UIProfile:
         p.timeline_kf = _get_col("kf", p.timeline_kf)
         p.timeline_kf_hover = _get_col("kf_hover", p.timeline_kf_hover)
 
-        raw_alpha = s.value("timeline/inout_alpha", p.timeline_inout_alpha)
+        from ui.settings_keys import (
+            TIMELINE_INOUT_ALPHA,
+            UI_STYLE_SCENE_BG,
+            UI_MENU_CUSTOM_VISIBLE,
+            UI_MENU_ORDER,
+            UI_MENU_VIS,
+            UI_ICON_OVERRIDE,
+            GEOMETRY_LIBRARY,
+            GEOMETRY_INSPECTOR,
+            GEOMETRY_VIEW_TOOLBAR,
+            GEOMETRY_MAIN_TOOLBAR,
+            LAYOUT_TIMELINE_VISIBLE,
+        )
+        raw_alpha = s.value(TIMELINE_INOUT_ALPHA, p.timeline_inout_alpha)
         a = _int(raw_alpha, p.timeline_inout_alpha)
         clamped = max(0, min(255, a))
         if clamped != a:
@@ -209,20 +249,20 @@ class UIProfile:
         p.timeline_inout_alpha = clamped
 
         # Scene bg
-        p.scene_bg = s.value("ui/style/scene_bg") or None
+        p.scene_bg = s.value(UI_STYLE_SCENE_BG) or None
 
         # Overlay/menu
-        p.custom_overlay_visible = _bool(s.value("ui/menu/custom/visible"), False)
+        p.custom_overlay_visible = _bool(s.value(UI_MENU_CUSTOM_VISIBLE), False)
 
         def get_order_vis(
             prefix: str, default_order: List[str]
         ) -> Tuple[List[str], Dict[str, bool]]:
-            order = s.value(f"ui/menu/{prefix}/order") or list(default_order)
+            order = s.value(UI_MENU_ORDER(prefix)) or list(default_order)
             if isinstance(order, str):
                 order = [k for k in order.split(",") if k]
             vis: Dict[str, bool] = {}
             for k in order:
-                vis[k] = _bool(s.value(f"ui/menu/{prefix}/{k}"), True)
+                vis[k] = _bool(s.value(UI_MENU_VIS(prefix, k)), True)
             return list(order), vis
 
         p.menu_main_order, p.menu_main_vis = get_order_vis("main", p.menu_main_order)
@@ -238,23 +278,23 @@ class UIProfile:
         keys = set(p.menu_main_order + p.menu_quick_order + p.menu_custom_order)
         overrides: Dict[str, str] = {}
         for k in keys:
-            v = s.value(f"ui/icon_override/{k}")
+            v = s.value(UI_ICON_OVERRIDE(k))
             if v:
                 overrides[k] = str(v)
         p.icon_overrides = overrides
 
         # Geometries
-        p.geom_library = _rect_to_tuple(s.value("geometry/library")) or p.geom_library
+        p.geom_library = _rect_to_tuple(s.value(GEOMETRY_LIBRARY)) or p.geom_library
         p.geom_inspector = (
-            _rect_to_tuple(s.value("geometry/inspector")) or p.geom_inspector
+            _rect_to_tuple(s.value(GEOMETRY_INSPECTOR)) or p.geom_inspector
         )
         p.geom_view_toolbar = (
-            _rect_to_tuple(s.value("geometry/view_toolbar")) or p.geom_view_toolbar
+            _rect_to_tuple(s.value(GEOMETRY_VIEW_TOOLBAR)) or p.geom_view_toolbar
         )
         p.geom_main_toolbar = (
-            _rect_to_tuple(s.value("geometry/main_toolbar")) or p.geom_main_toolbar
+            _rect_to_tuple(s.value(GEOMETRY_MAIN_TOOLBAR)) or p.geom_main_toolbar
         )
-        p.timeline_visible = _bool(s.value("layout/timeline_visible"), True)
+        p.timeline_visible = _bool(s.value(LAYOUT_TIMELINE_VISIBLE), True)
         return p
 
     def apply_to_qsettings(self, s: Optional[QSettings] = None) -> None:
@@ -262,55 +302,81 @@ class UIProfile:
         # Theme first
         self.theme.to_qsettings(s)
         # Icon base
-        s.setValue("ui/icon_dir", self.icon_dir or "")
-        s.setValue("ui/icon_size", int(self.icon_size))
-        s.setValue("ui/icon_color_normal", self.icon_color_normal)
-        s.setValue("ui/icon_color_hover", self.icon_color_hover)
-        s.setValue("ui/icon_color_active", self.icon_color_active)
+        from ui.settings_keys import (
+            UI_ICON_DIR,
+            UI_ICON_SIZE,
+            UI_ICON_COLOR_NORMAL,
+            UI_ICON_COLOR_HOVER,
+            UI_ICON_COLOR_ACTIVE,
+            TIMELINE_BG,
+            TIMELINE_RULER_BG,
+            TIMELINE_TRACK_BG,
+            TIMELINE_TICK,
+            TIMELINE_TICK_MAJOR,
+            TIMELINE_PLAYHEAD,
+            TIMELINE_KF,
+            TIMELINE_KF_HOVER,
+            TIMELINE_INOUT_ALPHA,
+            UI_STYLE_SCENE_BG,
+            UI_MENU_CUSTOM_VISIBLE,
+            UI_MENU_ORDER,
+            UI_MENU_VIS,
+            UI_ICON_OVERRIDE,
+            GEOMETRY_LIBRARY,
+            GEOMETRY_INSPECTOR,
+            GEOMETRY_VIEW_TOOLBAR,
+            GEOMETRY_MAIN_TOOLBAR,
+            LAYOUT_TIMELINE_VISIBLE,
+        )
+        s.setValue(UI_ICON_DIR, self.icon_dir or "")
+        s.setValue(UI_ICON_SIZE, int(self.icon_size))
+        s.setValue(UI_ICON_COLOR_NORMAL, self.icon_color_normal)
+        s.setValue(UI_ICON_COLOR_HOVER, self.icon_color_hover)
+        s.setValue(UI_ICON_COLOR_ACTIVE, self.icon_color_active)
         # Timeline
-        s.setValue("timeline/bg", self.timeline_bg)
-        s.setValue("timeline/ruler_bg", self.timeline_ruler_bg)
-        s.setValue("timeline/track_bg", self.timeline_track_bg)
-        s.setValue("timeline/tick", self.timeline_tick)
-        s.setValue("timeline/tick_major", self.timeline_tick_major)
-        s.setValue("timeline/playhead", self.timeline_playhead)
-        s.setValue("timeline/kf", self.timeline_kf)
-        s.setValue("timeline/kf_hover", self.timeline_kf_hover)
-        s.setValue("timeline/inout_alpha", int(self.timeline_inout_alpha))
+        s.setValue(TIMELINE_BG, self.timeline_bg)
+        s.setValue(TIMELINE_RULER_BG, self.timeline_ruler_bg)
+        s.setValue(TIMELINE_TRACK_BG, self.timeline_track_bg)
+        s.setValue(TIMELINE_TICK, self.timeline_tick)
+        s.setValue(TIMELINE_TICK_MAJOR, self.timeline_tick_major)
+        s.setValue(TIMELINE_PLAYHEAD, self.timeline_playhead)
+        s.setValue(TIMELINE_KF, self.timeline_kf)
+        s.setValue(TIMELINE_KF_HOVER, self.timeline_kf_hover)
+        s.setValue(TIMELINE_INOUT_ALPHA, int(self.timeline_inout_alpha))
         # Scene
-        s.setValue("ui/style/scene_bg", self.scene_bg or "")
+        s.setValue(UI_STYLE_SCENE_BG, self.scene_bg or "")
         # Menus
-        s.setValue("ui/menu/custom/visible", bool(self.custom_overlay_visible))
+        s.setValue(UI_MENU_CUSTOM_VISIBLE, bool(self.custom_overlay_visible))
 
         def set_order_vis(prefix: str, order: List[str], vis: Dict[str, bool]) -> None:
-            s.setValue(f"ui/menu/{prefix}/order", order)
+            s.setValue(UI_MENU_ORDER(prefix), order)
             for k in order:
-                s.setValue(f"ui/menu/{prefix}/{k}", bool(vis.get(k, True)))
+                s.setValue(UI_MENU_VIS(prefix, k), bool(vis.get(k, True)))
 
         set_order_vis("main", self.menu_main_order, self.menu_main_vis)
         set_order_vis("quick", self.menu_quick_order, self.menu_quick_vis)
         set_order_vis("custom", self.menu_custom_order, self.menu_custom_vis)
         # Overrides
         for k, v in (self.icon_overrides or {}).items():
-            s.setValue(f"ui/icon_override/{k}", v)
+            s.setValue(UI_ICON_OVERRIDE(k), v)
         # Geometries
         if self.geom_library:
             r = _tuple_to_rect(self.geom_library)
             if r:
-                s.setValue("geometry/library", r)
+                s.setValue(GEOMETRY_LIBRARY, r)
         if self.geom_inspector:
             r = _tuple_to_rect(self.geom_inspector)
             if r:
-                s.setValue("geometry/inspector", r)
+                s.setValue(GEOMETRY_INSPECTOR, r)
         if self.geom_view_toolbar:
             r = _tuple_to_rect(self.geom_view_toolbar)
             if r:
-                s.setValue("geometry/view_toolbar", r)
+                s.setValue(GEOMETRY_VIEW_TOOLBAR, r)
         if self.geom_main_toolbar:
             r = _tuple_to_rect(self.geom_main_toolbar)
             if r:
-                s.setValue("geometry/main_toolbar", r)
-        s.setValue("layout/timeline_visible", bool(self.timeline_visible))
+                s.setValue(GEOMETRY_MAIN_TOOLBAR, r)
+        s.setValue(LAYOUT_TIMELINE_VISIBLE, bool(self.timeline_visible))
 
     # JSON I/O -----------------------------------------------------------
     def to_dict(self) -> Dict[str, Any]:

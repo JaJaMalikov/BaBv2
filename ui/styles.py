@@ -183,6 +183,35 @@ TimelineWidget QToolButton:checked { background-color: #EF4444; color: white; }
 QToolTip { background-color: #111827; color: #E5E7EB; border: 1px solid #374151; border-radius: 6px; padding: 4px 8px; }
 """
 
+STYLE_SHEET_HIGH_CONTRAST = """
+* { color: #FFFFFF; font-family: Poppins, Arial, sans-serif; font-size: 11pt; }
+QMainWindow, QDialog { background-color: #000000; }
+DraggableOverlay, PanelOverlay { background-color: rgba(0,0,0,1.0); border-radius: 0px; border: 2px solid #FFFFFF; }
+DraggableHeader { background-color: rgba(0,0,0,1.0); border-bottom: 2px solid #FFFFFF; border-top-left-radius: 0px; border-top-right-radius: 0px; }
+QToolButton { background: transparent; border: 2px solid transparent; border-radius: 0px; padding: 6px; color: #FFFFFF; }
+QToolButton:hover { background-color: #333333; }
+QToolButton:checked { background-color: #FFD600; color: #000000; }
+QLineEdit, QDoubleSpinBox, QSpinBox, QComboBox { background-color: #000000; border: 2px solid #FFFFFF; border-radius: 0px; padding: 4px; color: #FFFFFF; }
+QLineEdit:focus, QDoubleSpinBox:focus, QSpinBox:focus, QComboBox:focus { border-color: #FFD600; background-color: #000000; color: #FFFFFF; }
+QTreeView, QListWidget { background-color: transparent; border: none; }
+QTreeView::item, QListWidget::item { padding: 4px; border-radius: 0px; }
+QTreeView::item:hover, QListWidget::item:hover { background-color: #333333; }
+QTreeView::item:selected, QListWidget::item:selected { background-color: #FFD600; color: #000000; }
+QCheckBox { spacing: 6px; }
+QCheckBox::indicator { width: 18px; height: 18px; border-radius: 0px; }
+QCheckBox::indicator:unchecked { background-color: #000000; border: 2px solid #FFFFFF; }
+QCheckBox::indicator:unchecked:hover { background-color: #333333; }
+QCheckBox::indicator:checked { background-color: #FFD600; border: 2px solid #000000; }
+QCheckBox::indicator:checked:hover { background-color: #FFE24A; }
+QGroupBox { font-weight: 700; color: #FFFFFF; margin-top: 8px; }
+QGroupBox:title { subcontrol-origin: margin; left: 6px; padding: 2px 4px; }
+TimelineWidget { background-color: #000000; color: #FFFFFF; }
+TimelineWidget QToolButton { background: transparent; color: #FFFFFF; }
+TimelineWidget QToolButton:hover { background-color: #333333; }
+TimelineWidget QToolButton:checked { background-color: #FFD600; color: #000000; }
+QToolTip { background-color: #000000; color: #FFFFFF; border: 2px solid #FFFFFF; border-radius: 0px; padding: 6px 10px; }
+"""
+
 
 def _is_hex_color(value: str) -> bool:
     if not isinstance(value, str):
@@ -349,8 +378,9 @@ def apply_stylesheet(app):
     """
     try:
         from PySide6.QtCore import QSettings
+        from ui.settings_keys import ORG, APP, UI_CUSTOM_STYLESHEET
 
-        s = QSettings("JaJa", "Macronotron")
+        s = QSettings(ORG, APP)
         ts = ThemeSettings.from_qsettings(s)
 
         # Choose a safe font family available on the system
@@ -365,7 +395,7 @@ def apply_stylesheet(app):
 
         if ts.preset == "custom":
             # Prefer explicit stored CSS, otherwise build from sanitized params
-            custom_css = s.value("ui/custom_stylesheet")
+            custom_css = s.value(UI_CUSTOM_STYLESHEET)
             if not custom_css:
                 try:
                     params = sanitize_custom_params(ts.custom_params)
@@ -391,8 +421,7 @@ def apply_stylesheet(app):
             if preset == "dark":
                 css = STYLE_SHEET_DARK
             elif preset == "high contrast":
-                # No dedicated stylesheet; reuse dark for now
-                css = STYLE_SHEET_DARK
+                css = STYLE_SHEET_HIGH_CONTRAST
             else:
                 css = STYLE_SHEET_LIGHT
             app.setStyleSheet(css)
@@ -412,15 +441,23 @@ def apply_stylesheet(app):
 def get_theme_colors() -> dict[str, str]:
     """Get current theme colors for non-stylesheet elements (e.g., QGraphicsScene)."""
     from PySide6.QtCore import QSettings
+    from ui.settings_keys import ORG, APP, UI_THEME
 
-    s = QSettings("JaJa", "Macronotron")
-    theme = str(s.value("ui/theme", "dark")).lower()
+    s = QSettings(ORG, APP)
+    theme = str(s.value(UI_THEME, "dark")).lower()
     if theme == "dark":
         return {
             "background": "#1F2937",
             "text": "#E2E8F0",
             "panel": "#111827",
             "accent": "#EF4444",
+        }
+    if theme == "high contrast":
+        return {
+            "background": "#000000",
+            "text": "#FFFFFF",
+            "panel": "#000000",
+            "accent": "#FFD600",
         }
     return {
         "background": "#E2E8F0",

@@ -7,6 +7,7 @@ from typing import Any
 
 from PySide6.QtCore import QSettings
 from PySide6.QtWidgets import QApplication
+from PySide6.QtGui import QKeySequence
 
 import ui.icons as app_icons
 from ui.styles import apply_stylesheet, build_stylesheet
@@ -31,7 +32,9 @@ class SettingsManager:
         """Read order and visibility map for a menu prefix from QSettings.
         Returns a sanitized order list and a visibility map compatible with SettingsDialog.populate_icon_list.
         """
-        order: list[str] | str | None = s.value(f"ui/menu/{prefix}/order")
+        from ui.settings_keys import UI_MENU_ORDER, UI_MENU_VIS
+
+        order: list[str] | str | None = s.value(UI_MENU_ORDER(prefix))
         if not order:
             order_list = list(default_order)
         elif isinstance(order, str):
@@ -41,60 +44,79 @@ class SettingsManager:
             order_list = list(order)  # type: ignore[arg-type]
         vis: dict[str, bool] = {}
         for k in order_list:
-            v = s.value(f"ui/menu/{prefix}/{k}")
+            v = s.value(UI_MENU_VIS(prefix, k))
             vis[k] = _bool(v, True)
         return order_list, vis
 
-    def __init__(self, win: Any) -> None:
+    def __init__(self, win: Any, org: str = "JaJa", app: str = "Macronotron") -> None:
         """
         Initializes the SettingsManager.
 
         Args:
             win: The main window instance.
+            org: QSettings organization scope (default: "JaJa").
+            app: QSettings application scope (default: "Macronotron").
         """
         self.win = win
-        self.org = "JaJa"
-        self.app = "Macronotron"
+        self.org = org
+        self.app = app
+
 
     def save(self) -> None:
         """Saves the current UI settings."""
+        from ui.settings_keys import (
+            GEOMETRY_MAINWINDOW,
+            GEOMETRY_LIBRARY,
+            GEOMETRY_INSPECTOR,
+            GEOMETRY_VIEW_TOOLBAR,
+            GEOMETRY_MAIN_TOOLBAR,
+            LAYOUT_TIMELINE_VISIBLE,
+        )
         s = QSettings(self.org, self.app)
-        s.setValue("geometry/mainwindow", self.win.saveGeometry())
-        s.setValue("geometry/library", self.win.library_overlay.geometry())
-        s.setValue("geometry/inspector", self.win.inspector_overlay.geometry())
-        s.setValue("layout/timeline_visible", self.win.timeline_dock.isVisible())
+        s.setValue(GEOMETRY_MAINWINDOW, self.win.saveGeometry())
+        s.setValue(GEOMETRY_LIBRARY, self.win.library_overlay.geometry())
+        s.setValue(GEOMETRY_INSPECTOR, self.win.inspector_overlay.geometry())
+        s.setValue(LAYOUT_TIMELINE_VISIBLE, self.win.timeline_dock.isVisible())
         if hasattr(self.win.view, "_overlay") and self.win.view._overlay:
-            s.setValue("geometry/view_toolbar", self.win.view._overlay.geometry())
+            s.setValue(GEOMETRY_VIEW_TOOLBAR, self.win.view._overlay.geometry())
         if (
             hasattr(self.win.view, "_main_tools_overlay")
             and self.win.view._main_tools_overlay
         ):
             s.setValue(
-                "geometry/main_toolbar", self.win.view._main_tools_overlay.geometry()
+                GEOMETRY_MAIN_TOOLBAR, self.win.view._main_tools_overlay.geometry()
             )
 
     def load(self) -> None:
         """Loads the UI settings."""
         s = QSettings(self.org, self.app)
+        from ui.settings_keys import (
+            GEOMETRY_MAINWINDOW,
+            GEOMETRY_LIBRARY,
+            GEOMETRY_INSPECTOR,
+            GEOMETRY_VIEW_TOOLBAR,
+            GEOMETRY_MAIN_TOOLBAR,
+            LAYOUT_TIMELINE_VISIBLE,
+        )
         # Determine if any geometry has been stored to prevent default repositioning
         has_any_geometry = (
-            s.contains("geometry/mainwindow")
-            or s.contains("geometry/library")
-            or s.contains("geometry/inspector")
-            or s.contains("geometry/view_toolbar")
-            or s.contains("geometry/main_toolbar")
+            s.contains(GEOMETRY_MAINWINDOW)
+            or s.contains(GEOMETRY_LIBRARY)
+            or s.contains(GEOMETRY_INSPECTOR)
+            or s.contains(GEOMETRY_VIEW_TOOLBAR)
+            or s.contains(GEOMETRY_MAIN_TOOLBAR)
         )
-        if s.contains("geometry/mainwindow"):
-            self.win.restoreGeometry(s.value("geometry/mainwindow"))
+        if s.contains(GEOMETRY_MAINWINDOW):
+            self.win.restoreGeometry(s.value(GEOMETRY_MAINWINDOW))
         # Mark settings as loaded if we restored any geometry so panels.position_overlays skips defaults
         if has_any_geometry:
             self.win._settings_loaded = True
-        if s.contains("geometry/library"):
-            self.win.library_overlay.setGeometry(s.value("geometry/library"))
+        if s.contains(GEOMETRY_LIBRARY):
+            self.win.library_overlay.setGeometry(s.value(GEOMETRY_LIBRARY))
         self.win.set_library_overlay_visible(True)
 
-        if s.contains("geometry/inspector"):
-            self.win.inspector_overlay.setGeometry(s.value("geometry/inspector"))
+        if s.contains(GEOMETRY_INSPECTOR):
+            self.win.inspector_overlay.setGeometry(s.value(GEOMETRY_INSPECTOR))
         self.win.set_inspector_overlay_visible(True)
         # Ensure side overlays are above the view after geometry restore
         try:
@@ -102,22 +124,22 @@ class SettingsManager:
             self.win.inspector_overlay.raise_()
         except (RuntimeError, AttributeError):
             logging.debug("Failed to raise side overlays after load")
-        if s.contains("layout/timeline_visible"):
-            is_visible = _bool(s.value("layout/timeline_visible"), True)
+        if s.contains(LAYOUT_TIMELINE_VISIBLE):
+            is_visible = _bool(s.value(LAYOUT_TIMELINE_VISIBLE), True)
             self.win.timeline_dock.setVisible(is_visible)
         if (
             hasattr(self.win.view, "_overlay")
             and self.win.view._overlay
-            and s.contains("geometry/view_toolbar")
+            and s.contains(GEOMETRY_VIEW_TOOLBAR)
         ):
-            self.win.view._overlay.setGeometry(s.value("geometry/view_toolbar"))
+            self.win.view._overlay.setGeometry(s.value(GEOMETRY_VIEW_TOOLBAR))
         if (
             hasattr(self.win.view, "_main_tools_overlay")
             and self.win.view._main_tools_overlay
-            and s.contains("geometry/main_toolbar")
+            and s.contains(GEOMETRY_MAIN_TOOLBAR)
         ):
             self.win.view._main_tools_overlay.setGeometry(
-                s.value("geometry/main_toolbar")
+                s.value(GEOMETRY_MAIN_TOOLBAR)
             )
 
         # Ensure toolbars are always on top
@@ -140,7 +162,18 @@ class SettingsManager:
         for key, action in self.win.shortcuts.items():
             seq = s.value(key)
             if seq:
-                action.setShortcut(seq)
+                try:
+                    ks = QKeySequence(seq)
+                    if ks.isEmpty():
+                        logging.warning(
+                            "Ignoring invalid shortcut sequence for %s: %r", key, seq
+                        )
+                    else:
+                        action.setShortcut(ks)
+                except Exception as e:
+                    logging.warning(
+                        "Failed to apply shortcut for %s: %r (%s)", key, seq, e
+                    )
         s.endGroup()
 
     def clear(self) -> None:
@@ -153,13 +186,21 @@ class SettingsManager:
         """
         s = QSettings(self.org, self.app)
         # Only clear geometry/layout; keep theme, icons, menu orders, timeline colors
+        from ui.settings_keys import (
+            GEOMETRY_MAINWINDOW,
+            GEOMETRY_LIBRARY,
+            GEOMETRY_INSPECTOR,
+            GEOMETRY_VIEW_TOOLBAR,
+            GEOMETRY_MAIN_TOOLBAR,
+            LAYOUT_TIMELINE_VISIBLE,
+        )
         for key in [
-            "geometry/mainwindow",
-            "geometry/library",
-            "geometry/inspector",
-            "geometry/view_toolbar",
-            "geometry/main_toolbar",
-            "layout/timeline_visible",
+            GEOMETRY_MAINWINDOW,
+            GEOMETRY_LIBRARY,
+            GEOMETRY_INSPECTOR,
+            GEOMETRY_VIEW_TOOLBAR,
+            GEOMETRY_MAIN_TOOLBAR,
+            LAYOUT_TIMELINE_VISIBLE,
         ]:
             s.remove(key)
 
@@ -167,16 +208,38 @@ class SettingsManager:
         """Apply settings from the dialog widgets into QSettings and refresh UI without closing the dialog."""
         try:
             # icon dir / size
+            from ui.settings_keys import UI_ICON_DIR, UI_ICON_SIZE
             icon_dir = dlg.icon_dir_edit.text().strip()
-            s.setValue("ui/icon_dir", icon_dir if icon_dir else "")
-            s.setValue("ui/icon_size", int(dlg.icon_size_spin.value()))
+            s.setValue(UI_ICON_DIR, icon_dir if icon_dir else "")
+            s.setValue(UI_ICON_SIZE, int(dlg.icon_size_spin.value()))
             # font family
+            from ui.settings_keys import (
+                UI_FONT_FAMILY,
+                UI_THEME,
+                UI_CUSTOM_STYLESHEET,
+                UI_THEME_FILE,
+                UI_CUSTOM_PARAM,
+                UI_CUSTOM_PARAMS_GROUP,
+                UI_STYLE_SCENE_BG,
+                UI_ICON_COLOR_NORMAL,
+                UI_ICON_COLOR_HOVER,
+                UI_ICON_COLOR_ACTIVE,
+                TIMELINE_BG,
+                TIMELINE_RULER_BG,
+                TIMELINE_TRACK_BG,
+                TIMELINE_TICK,
+                TIMELINE_TICK_MAJOR,
+                TIMELINE_PLAYHEAD,
+                TIMELINE_KF,
+                TIMELINE_KF_HOVER,
+                TIMELINE_INOUT_ALPHA,
+            )
             s.setValue(
-                "ui/font_family", dlg.font_family_edit.text().strip() or "Poppins"
+                UI_FONT_FAMILY, dlg.font_family_edit.text().strip() or "Poppins"
             )
             # theme
             theme = dlg.preset_combo.currentText().strip().lower() or "light"
-            s.setValue("ui/theme", theme)
+            s.setValue(UI_THEME, theme)
             if theme == "custom":
                 params = {
                     "bg_color": dlg.bg_edit.text() or "#E2E8F0",
@@ -222,12 +285,12 @@ class SettingsManager:
                     "checkbox_checked_hover": dlg.cb_ch_hover_edit.text() or "#F56565",
                 }
                 css = build_stylesheet(params)
-                s.setValue("ui/custom_stylesheet", css)
+                s.setValue(UI_CUSTOM_STYLESHEET, css)
                 # Save to theme file for persistence beyond resets
                 from pathlib import Path
 
                 try:
-                    theme_path = s.value("ui/theme_file") or str(
+                    theme_path = s.value(UI_THEME_FILE) or str(
                         Path.home() / ".config/JaJa/Macronotron/theme.json"
                     )
                     p = Path(str(theme_path))
@@ -235,7 +298,7 @@ class SettingsManager:
                     import json
 
                     p.write_text(json.dumps(params, indent=2), encoding="utf-8")
-                    s.setValue("ui/theme_file", str(p))
+                    s.setValue(UI_THEME_FILE, str(p))
                 except Exception:
                     logging.exception("Failed to write theme file")
                 # Keep QSettings copy for compatibility
@@ -245,7 +308,7 @@ class SettingsManager:
                 s.endGroup()
             # scene bg
             scene_bg = dlg.scene_bg_edit.text().strip()
-            s.setValue("ui/style/scene_bg", scene_bg)
+            s.setValue(UI_STYLE_SCENE_BG, scene_bg)
             if scene_bg:
                 from PySide6.QtGui import QColor
 
@@ -254,29 +317,29 @@ class SettingsManager:
             # icon colors
             if hasattr(dlg, "icon_norm_edit"):
                 s.setValue(
-                    "ui/icon_color_normal",
+                    UI_ICON_COLOR_NORMAL,
                     dlg.icon_norm_edit.text().strip() or "#4A5568",
                 )
                 s.setValue(
-                    "ui/icon_color_hover",
+                    UI_ICON_COLOR_HOVER,
                     dlg.icon_hover_edit.text().strip() or "#E53E3E",
                 )
                 s.setValue(
-                    "ui/icon_color_active",
+                    UI_ICON_COLOR_ACTIVE,
                     dlg.icon_active_edit.text().strip() or "#FFFFFF",
                 )
             # timeline colors
-            s.setValue("timeline/bg", dlg.tl_bg.text().strip() or "#1E1E1E")
-            s.setValue("timeline/ruler_bg", dlg.tl_ruler_bg.text().strip() or "#2C2C2C")
-            s.setValue("timeline/track_bg", dlg.tl_track_bg.text().strip() or "#242424")
-            s.setValue("timeline/tick", dlg.tl_tick.text().strip() or "#8A8A8A")
+            s.setValue(TIMELINE_BG, dlg.tl_bg.text().strip() or "#1E1E1E")
+            s.setValue(TIMELINE_RULER_BG, dlg.tl_ruler_bg.text().strip() or "#2C2C2C")
+            s.setValue(TIMELINE_TRACK_BG, dlg.tl_track_bg.text().strip() or "#242424")
+            s.setValue(TIMELINE_TICK, dlg.tl_tick.text().strip() or "#8A8A8A")
             s.setValue(
-                "timeline/tick_major", dlg.tl_tick_major.text().strip() or "#E0E0E0"
+                TIMELINE_TICK_MAJOR, dlg.tl_tick_major.text().strip() or "#E0E0E0"
             )
-            s.setValue("timeline/playhead", dlg.tl_playhead.text().strip() or "#65B0FF")
-            s.setValue("timeline/kf", dlg.tl_kf.text().strip() or "#FFC107")
-            s.setValue("timeline/kf_hover", dlg.tl_kf_hover.text().strip() or "#FFE082")
-            s.setValue("timeline/inout_alpha", int(dlg.tl_inout_alpha.value()))
+            s.setValue(TIMELINE_PLAYHEAD, dlg.tl_playhead.text().strip() or "#65B0FF")
+            s.setValue(TIMELINE_KF, dlg.tl_kf.text().strip() or "#FFC107")
+            s.setValue(TIMELINE_KF_HOVER, dlg.tl_kf_hover.text().strip() or "#FFE082")
+            s.setValue(TIMELINE_INOUT_ALPHA, int(dlg.tl_inout_alpha.value()))
             # Refresh icons and stylesheet
             try:
                 app_icons.clear_cache()
@@ -572,14 +635,15 @@ class SettingsManager:
             dlg.set_shortcut_actions(win.shortcuts)
 
         s = QSettings(self.org, self.app)
-        icon_dir = s.value("ui/icon_dir")
+        from ui.settings_keys import UI_ICON_DIR, UI_ICON_SIZE, UI_THEME, UI_THEME_FILE, UI_STYLE_SCENE_BG, UI_FONT_FAMILY, UI_MENU_CUSTOM_VISIBLE
+        icon_dir = s.value(UI_ICON_DIR)
         if icon_dir:
             try:
                 dlg.icon_dir_edit.setText(str(icon_dir))
             except (RuntimeError, AttributeError):
                 logging.exception("Failed to set icon directory text")
         try:
-            dlg.icon_size_spin.setValue(_int(s.value("ui/icon_size"), 32))
+            dlg.icon_size_spin.setValue(_int(s.value(UI_ICON_SIZE), 32))
         except (TypeError, ValueError):
             dlg.icon_size_spin.setValue(32)
         theme = str(s.value("ui/theme", "dark")).lower()
@@ -788,10 +852,16 @@ class SettingsManager:
 
         # Onion values
         try:
-            dlg.prev_count.setValue(int(s.value("onion/prev_count", 2)))
-            dlg.next_count.setValue(int(s.value("onion/next_count", 1)))
-            dlg.opacity_prev.setValue(float(s.value("onion/opacity_prev", 0.25)))
-            dlg.opacity_next.setValue(float(s.value("onion/opacity_next", 0.18)))
+            from ui.settings_keys import (
+                ONION_PREV_COUNT,
+                ONION_NEXT_COUNT,
+                ONION_OPACITY_PREV,
+                ONION_OPACITY_NEXT,
+            )
+            dlg.prev_count.setValue(int(s.value(ONION_PREV_COUNT, 2)))
+            dlg.next_count.setValue(int(s.value(ONION_NEXT_COUNT, 1)))
+            dlg.opacity_prev.setValue(float(s.value(ONION_OPACITY_PREV, 0.25)))
+            dlg.opacity_next.setValue(float(s.value(ONION_OPACITY_NEXT, 0.18)))
         except (ValueError, TypeError):
             logging.exception("Failed to load onion settings")
 

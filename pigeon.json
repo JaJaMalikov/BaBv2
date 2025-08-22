@@ -1,0 +1,1529 @@
+{
+  "version": 1,
+  "settings": {
+    "start_frame": 0,
+    "end_frame": 100,
+    "fps": 24,
+    "scene_width": 1536,
+    "scene_height": 1024,
+    "background_path": "/home/jaja/Documents/BaBv2/BaBv2/dev/assets/background/bureaumanu.png"
+  },
+  "puppets": [
+    "manu"
+  ],
+  "objects": {
+    "lunettes_manu": {
+      "name": "lunettes_manu",
+      "obj_type": "svg",
+      "file_path": "/home/jaja/Documents/BaBv2/BaBv2/dev/assets/objets/lunettes_manu.svg",
+      "x": 4.982129596635673,
+      "y": 61.99132028821515,
+      "rotation": 0.0,
+      "scale": 1.0,
+      "z": 0,
+      "attached_to": [
+        "manu",
+        "tete"
+      ],
+      "color": null,
+      "cone_angle": null,
+      "cone_reach": null
+    }
+  },
+  "keyframes": [
+    {
+      "index": 0,
+      "objects": {
+        "lunettes_manu": {
+          "name": "lunettes_manu",
+          "obj_type": "svg",
+          "file_path": "/home/jaja/Documents/BaBv2/BaBv2/dev/assets/objets/lunettes_manu.svg",
+          "x": 4.982129596635673,
+          "y": 61.99132028821515,
+          "rotation": 0.0,
+          "scale": 1.0,
+          "z": 0,
+          "attached_to": [
+            "manu",
+            "tete"
+          ],
+          "color": null,
+          "cone_angle": null,
+          "cone_reach": null
+        }
+      },
+      "puppets": {
+        "manu": {
+          "torse": {
+            "rotation": 0.0,
+            "pos": [
+              696.302992527044,
+              640.5083430114482
+            ]
+          },
+          "poignet_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              864.5481690861117,
+              632.0395085956076
+            ]
+          },
+          "coude_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              909.499758764591,
+              694.5563430114482
+            ]
+          },
+          "avant_bras_gauche": {
+            "rotation": -125.71733472698155,
+            "pos": [
+              895.499758764591,
+              680.5563430114482
+            ]
+          },
+          "haut_bras_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              815.499758764591,
+              680.5563430114482
+            ]
+          },
+          "main_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              862.5481690861117,
+              602.9915085956076
+            ]
+          },
+          "epaule_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              829.499758764591,
+              694.5563430114482
+            ]
+          },
+          "poignet_droite": {
+            "rotation": 0.0,
+            "pos": [
+              670.6213786404968,
+              632.128383786732
+            ]
+          },
+          "coude_droite": {
+            "rotation": 0.0,
+            "pos": [
+              625.5457587645909,
+              694.5563430114482
+            ]
+          },
+          "avant_bras_droite": {
+            "rotation": -234.16912702191166,
+            "pos": [
+              546.5453587645909,
+              680.5563430114482
+            ]
+          },
+          "haut_bras_droite": {
+            "rotation": 0.0,
+            "pos": [
+              626.5457587645909,
+              680.5563430114482
+            ]
+          },
+          "main_droite": {
+            "rotation": 0.0,
+            "pos": [
+              605.5757556404968,
+              603.080383786732
+            ]
+          },
+          "epaule_droite": {
+            "rotation": 0.0,
+            "pos": [
+              705.5457587645909,
+              694.5563430114482
+            ]
+          },
+          "genou_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              888.115631467032,
+              903.4869117754749
+            ]
+          },
+          "cuisse_gauche": {
+            "rotation": -55.78439291132696,
+            "pos": [
+              778.499758764591,
+              841.5083430114482
+            ]
+          },
+          "tibia_gauche": {
+            "rotation": 89.18733301915813,
+            "pos": [
+              871.115631467032,
+              886.4869117754749
+            ]
+          },
+          "pied_gauche": {
+            "rotation": -27.541303849500498,
+            "pos": [
+              810.5600595767603,
+              984.8071556702739
+            ]
+          },
+          "cheville_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              829.7601320704887,
+              991.9777909110109
+            ]
+          },
+          "hanche_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              795.499758764591,
+              840.5083430114482
+            ]
+          },
+          "genou_droite": {
+            "rotation": 0.0,
+            "pos": [
+              639.626727337981,
+              893.1213039290072
+            ]
+          },
+          "cuisse_droite": {
+            "rotation": 61.98137344147541,
+            "pos": [
+              721.499758764591,
+              841.5083430114482
+            ]
+          },
+          "tibia_droite": {
+            "rotation": -89.14711363701693,
+            "pos": [
+              622.626727337981,
+              876.1213039290072
+            ]
+          },
+          "cheville_droite": {
+            "rotation": 0.0,
+            "pos": [
+              688.0227256770182,
+              987.4283945678765
+            ]
+          },
+          "hanche_droite": {
+            "rotation": 0.0,
+            "pos": [
+              738.499758764591,
+              840.5083430114482
+            ]
+          },
+          "pied_droite": {
+            "rotation": 18.869128806909544,
+            "pos": [
+              611.0227256770182,
+              980.2577593271395
+            ]
+          },
+          "cou": {
+            "rotation": 0.0,
+            "pos": [
+              767.499758764591,
+              670.5083430114482
+            ]
+          },
+          "tete": {
+            "rotation": 0.0,
+            "pos": [
+              711.3006986861926,
+              529.3083430114482
+            ]
+          },
+          "main_gauche_rev": {
+            "rotation": 0.0,
+            "pos": [
+              862.147171561252,
+              612.5925893418271
+            ]
+          },
+          "main_gauche_f": {
+            "rotation": 0.0,
+            "pos": [
+              823.5478602676611,
+              606.9916653968185
+            ]
+          },
+          "main_droite_rev": {
+            "rotation": 0.0,
+            "pos": [
+              605.1752093067478,
+              612.6814638736136
+            ]
+          },
+          "main_droite_f": {
+            "rotation": 0.0,
+            "pos": [
+              655.5757876632578,
+              607.0805405879429
+            ]
+          },
+          "_variants": {
+            "main_gauche": "main_gauche",
+            "main_droite": "main_droite"
+          }
+        }
+      }
+    },
+    {
+      "index": 10,
+      "objects": {
+        "lunettes_manu": {
+          "name": "lunettes_manu",
+          "obj_type": "svg",
+          "file_path": "/home/jaja/Documents/BaBv2/BaBv2/dev/assets/objets/lunettes_manu.svg",
+          "x": 4.982129596635673,
+          "y": 61.99132028821515,
+          "rotation": 0.0,
+          "scale": 1.0,
+          "z": 0,
+          "attached_to": [
+            "manu",
+            "tete"
+          ],
+          "color": null,
+          "cone_angle": null,
+          "cone_reach": null
+        }
+      },
+      "puppets": {
+        "manu": {
+          "torse": {
+            "rotation": 0.0,
+            "pos": [
+              696.3029925270441,
+              574.9999255030307
+            ]
+          },
+          "poignet_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              913.334724860981,
+              496.30494655643196
+            ]
+          },
+          "coude_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              872.2182128264458,
+              561.4081910079485
+            ]
+          },
+          "avant_bras_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              858.2182128264458,
+              547.4081910079485
+            ]
+          },
+          "haut_bras_gauche": {
+            "rotation": -57.72519026704925,
+            "pos": [
+              815.499758764591,
+              615.0479255030307
+            ]
+          },
+          "main_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              911.334724860981,
+              467.25694655643196
+            ]
+          },
+          "epaule_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              829.499758764591,
+              629.0479255030307
+            ]
+          },
+          "poignet_droite": {
+            "rotation": 0.0,
+            "pos": [
+              607.1856820684682,
+              506.67790910811124
+            ]
+          },
+          "coude_droite": {
+            "rotation": 0.0,
+            "pos": [
+              655.4261021542268,
+              566.6939358852109
+            ]
+          },
+          "avant_bras_droite": {
+            "rotation": 0.0,
+            "pos": [
+              576.4257021542268,
+              552.6939358852109
+            ]
+          },
+          "haut_bras_droite": {
+            "rotation": 51.20794718428003,
+            "pos": [
+              626.5457587645909,
+              615.0479255030307
+            ]
+          },
+          "main_droite": {
+            "rotation": 0.0,
+            "pos": [
+              542.1400590684682,
+              477.62990910811124
+            ]
+          },
+          "epaule_droite": {
+            "rotation": 0.0,
+            "pos": [
+              705.5457587645909,
+              629.0479255030307
+            ]
+          },
+          "genou_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              795.499758764591,
+              886.9999255030307
+            ]
+          },
+          "cuisse_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              778.499758764591,
+              775.9999255030307
+            ]
+          },
+          "tibia_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              778.499758764591,
+              869.9999255030307
+            ]
+          },
+          "pied_gauche": {
+            "rotation": 1.706461489864754,
+            "pos": [
+              776.2996862708626,
+              985.8292902622937
+            ]
+          },
+          "cheville_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              795.499758764591,
+              992.9999255030307
+            ]
+          },
+          "hanche_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              795.499758764591,
+              774.9999255030307
+            ]
+          },
+          "genou_droite": {
+            "rotation": 0.0,
+            "pos": [
+              738.499758764591,
+              886.9999255030307
+            ]
+          },
+          "cuisse_droite": {
+            "rotation": 0.0,
+            "pos": [
+              721.499758764591,
+              775.9999255030307
+            ]
+          },
+          "tibia_droite": {
+            "rotation": 0.0,
+            "pos": [
+              721.499758764591,
+              869.9999255030307
+            ]
+          },
+          "cheville_droite": {
+            "rotation": 0.0,
+            "pos": [
+              738.499758764591,
+              992.9999255030307
+            ]
+          },
+          "hanche_droite": {
+            "rotation": 0.0,
+            "pos": [
+              738.499758764591,
+              774.9999255030307
+            ]
+          },
+          "pied_droite": {
+            "rotation": 0.5050812707600159,
+            "pos": [
+              661.499758764591,
+              985.8292902622937
+            ]
+          },
+          "cou": {
+            "rotation": 0.0,
+            "pos": [
+              767.499758764591,
+              604.9999255030307
+            ]
+          },
+          "tete": {
+            "rotation": 0.0,
+            "pos": [
+              711.3006986861926,
+              463.7999255030307
+            ]
+          },
+          "main_gauche_rev": {
+            "rotation": 0.0,
+            "pos": [
+              910.9337273361214,
+              476.8580273026515
+            ]
+          },
+          "main_gauche_f": {
+            "rotation": 0.0,
+            "pos": [
+              872.3344160425305,
+              471.2571033576428
+            ]
+          },
+          "main_droite_rev": {
+            "rotation": 0.0,
+            "pos": [
+              541.7395127347191,
+              487.2309891949928
+            ]
+          },
+          "main_droite_f": {
+            "rotation": 0.0,
+            "pos": [
+              592.1400910912291,
+              481.63006590932207
+            ]
+          },
+          "_variants": {
+            "main_gauche": "main_gauche_rev",
+            "main_droite": "main_droite_rev"
+          }
+        }
+      }
+    },
+    {
+      "index": 20,
+      "objects": {
+        "lunettes_manu": {
+          "name": "lunettes_manu",
+          "obj_type": "svg",
+          "file_path": "/home/jaja/Documents/BaBv2/BaBv2/dev/assets/objets/lunettes_manu.svg",
+          "x": 4.982129596635673,
+          "y": 61.99132028821515,
+          "rotation": 0.0,
+          "scale": 1.0,
+          "z": 0,
+          "attached_to": [
+            "manu",
+            "tete"
+          ],
+          "color": null,
+          "cone_angle": null,
+          "cone_reach": null
+        }
+      },
+      "puppets": {
+        "manu": {
+          "torse": {
+            "rotation": 0.0,
+            "pos": [
+              704.9225211465728,
+              525.0066595097647
+            ]
+          },
+          "poignet_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              893.6494309287478,
+              721.4521491989647
+            ]
+          },
+          "coude_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              883.1614015224848,
+              645.1697708985121
+            ]
+          },
+          "avant_bras_gauche": {
+            "rotation": 26.436866257456785,
+            "pos": [
+              869.1614015224848,
+              631.1697708985121
+            ]
+          },
+          "haut_bras_gauche": {
+            "rotation": 55.73464520281336,
+            "pos": [
+              824.1192873841196,
+              565.0546595097646
+            ]
+          },
+          "main_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              891.6494309287478,
+              692.4041491989647
+            ]
+          },
+          "epaule_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              838.1192873841196,
+              579.0546595097646
+            ]
+          },
+          "poignet_droite": {
+            "rotation": 0.0,
+            "pos": [
+              663.1401605590124,
+              725.975249119188
+            ]
+          },
+          "coude_droite": {
+            "rotation": 0.0,
+            "pos": [
+              678.028719844492,
+              650.4279632476045
+            ]
+          },
+          "avant_bras_droite": {
+            "rotation": -15.70450748980113,
+            "pos": [
+              599.028319844492,
+              636.4279632476045
+            ]
+          },
+          "haut_bras_droite": {
+            "rotation": 296.8532622024168,
+            "pos": [
+              635.1652873841196,
+              565.0546595097646
+            ]
+          },
+          "main_droite": {
+            "rotation": 0.0,
+            "pos": [
+              598.0945375590125,
+              696.927249119188
+            ]
+          },
+          "epaule_droite": {
+            "rotation": 0.0,
+            "pos": [
+              714.1652873841196,
+              579.0546595097646
+            ]
+          },
+          "genou_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              804.1192873841196,
+              837.0066595097646
+            ]
+          },
+          "cuisse_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              787.1192873841196,
+              726.0066595097646
+            ]
+          },
+          "tibia_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              787.1192873841196,
+              820.0066595097646
+            ]
+          },
+          "pied_gauche": {
+            "rotation": 28.75777922500518,
+            "pos": [
+              784.9192148903912,
+              935.8360242690277
+            ]
+          },
+          "cheville_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              804.1192873841196,
+              943.0066595097646
+            ]
+          },
+          "hanche_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              804.1192873841196,
+              725.0066595097646
+            ]
+          },
+          "genou_droite": {
+            "rotation": 0.0,
+            "pos": [
+              747.1192873841196,
+              837.0066595097646
+            ]
+          },
+          "cuisse_droite": {
+            "rotation": 0.0,
+            "pos": [
+              730.1192873841196,
+              726.0066595097646
+            ]
+          },
+          "tibia_droite": {
+            "rotation": 0.0,
+            "pos": [
+              730.1192873841196,
+              820.0066595097646
+            ]
+          },
+          "cheville_droite": {
+            "rotation": 0.0,
+            "pos": [
+              747.1192873841196,
+              943.0066595097646
+            ]
+          },
+          "hanche_droite": {
+            "rotation": 0.0,
+            "pos": [
+              747.1192873841196,
+              725.0066595097646
+            ]
+          },
+          "pied_droite": {
+            "rotation": -28.66670799072199,
+            "pos": [
+              670.1192873841196,
+              935.8360242690277
+            ]
+          },
+          "cou": {
+            "rotation": 0.0,
+            "pos": [
+              776.1192873841196,
+              555.0066595097646
+            ]
+          },
+          "tete": {
+            "rotation": 0.0,
+            "pos": [
+              719.9202273057213,
+              413.80665950976464
+            ]
+          },
+          "main_gauche_rev": {
+            "rotation": 0.0,
+            "pos": [
+              891.2484334038882,
+              702.0052299451843
+            ]
+          },
+          "main_gauche_f": {
+            "rotation": 0.0,
+            "pos": [
+              852.6491221102973,
+              696.4043060001756
+            ]
+          },
+          "main_droite_rev": {
+            "rotation": 0.0,
+            "pos": [
+              597.6939912252634,
+              706.5283292060695
+            ]
+          },
+          "main_droite_f": {
+            "rotation": 0.0,
+            "pos": [
+              648.0945695817734,
+              700.9274059203989
+            ]
+          },
+          "_variants": {
+            "main_gauche": "main_gauche_rev",
+            "main_droite": "main_droite_rev"
+          }
+        }
+      }
+    },
+    {
+      "index": 30,
+      "objects": {
+        "lunettes_manu": {
+          "name": "lunettes_manu",
+          "obj_type": "svg",
+          "file_path": "/home/jaja/Documents/BaBv2/BaBv2/dev/assets/objets/lunettes_manu.svg",
+          "x": 4.982129596635673,
+          "y": 61.99132028821515,
+          "rotation": 0.0,
+          "scale": 1.0,
+          "z": 0,
+          "attached_to": [
+            "manu",
+            "tete"
+          ],
+          "color": null,
+          "cone_angle": null,
+          "cone_reach": null
+        }
+      },
+      "puppets": {
+        "manu": {
+          "torse": {
+            "rotation": 0.0,
+            "pos": [
+              706.6464268704784,
+              468.11777062087583
+            ]
+          },
+          "poignet_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              926.8420353571191,
+              399.88760929421073
+            ]
+          },
+          "coude_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              865.4612587788115,
+              446.3784714785571
+            ]
+          },
+          "avant_bras_gauche": {
+            "rotation": 34.18249991686602,
+            "pos": [
+              851.4612587788115,
+              432.3784714785571
+            ]
+          },
+          "haut_bras_gauche": {
+            "rotation": -71.32341787943574,
+            "pos": [
+              825.8431931080254,
+              508.1657706208757
+            ]
+          },
+          "main_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              924.8420353571191,
+              370.83960929421073
+            ]
+          },
+          "epaule_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              839.8431931080254,
+              522.1657706208757
+            ]
+          },
+          "poignet_droite": {
+            "rotation": 0.0,
+            "pos": [
+              626.0653425859837,
+              404.15667797721596
+            ]
+          },
+          "coude_droite": {
+            "rotation": 0.0,
+            "pos": [
+              690.5104414752024,
+              446.29799771590973
+            ]
+          },
+          "avant_bras_droite": {
+            "rotation": -38.323155166353985,
+            "pos": [
+              611.5100414752023,
+              432.29799771590973
+            ]
+          },
+          "haut_bras_droite": {
+            "rotation": 71.50424497327623,
+            "pos": [
+              636.8891931080253,
+              508.1657706208757
+            ]
+          },
+          "main_droite": {
+            "rotation": 0.0,
+            "pos": [
+              561.0197195859837,
+              375.10867797721596
+            ]
+          },
+          "epaule_droite": {
+            "rotation": 0.0,
+            "pos": [
+              715.8891931080253,
+              522.1657706208757
+            ]
+          },
+          "genou_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              805.8431931080254,
+              780.1177706208757
+            ]
+          },
+          "cuisse_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              788.8431931080254,
+              669.1177706208757
+            ]
+          },
+          "tibia_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              788.8431931080254,
+              763.1177706208757
+            ]
+          },
+          "pied_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              786.643120614297,
+              878.9471353801388
+            ]
+          },
+          "cheville_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              805.8431931080254,
+              886.1177706208757
+            ]
+          },
+          "hanche_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              805.8431931080254,
+              668.1177706208757
+            ]
+          },
+          "genou_droite": {
+            "rotation": 0.0,
+            "pos": [
+              748.8431931080254,
+              780.1177706208757
+            ]
+          },
+          "cuisse_droite": {
+            "rotation": 0.0,
+            "pos": [
+              731.8431931080254,
+              669.1177706208757
+            ]
+          },
+          "tibia_droite": {
+            "rotation": 0.0,
+            "pos": [
+              731.8431931080254,
+              763.1177706208757
+            ]
+          },
+          "cheville_droite": {
+            "rotation": 0.0,
+            "pos": [
+              748.8431931080254,
+              886.1177706208757
+            ]
+          },
+          "hanche_droite": {
+            "rotation": 0.0,
+            "pos": [
+              748.8431931080254,
+              668.1177706208757
+            ]
+          },
+          "pied_droite": {
+            "rotation": 0.0,
+            "pos": [
+              671.8431931080254,
+              878.9471353801388
+            ]
+          },
+          "cou": {
+            "rotation": 0.0,
+            "pos": [
+              777.8431931080254,
+              498.1177706208758
+            ]
+          },
+          "tete": {
+            "rotation": 0.0,
+            "pos": [
+              721.644133029627,
+              356.9177706208758
+            ]
+          },
+          "main_gauche_rev": {
+            "rotation": 0.0,
+            "pos": [
+              924.4410378322594,
+              380.4406900404303
+            ]
+          },
+          "main_gauche_f": {
+            "rotation": 0.0,
+            "pos": [
+              885.8417265386686,
+              374.8397660954216
+            ]
+          },
+          "main_droite_rev": {
+            "rotation": 0.0,
+            "pos": [
+              560.6191732522346,
+              384.7097580640975
+            ]
+          },
+          "main_droite_f": {
+            "rotation": 0.0,
+            "pos": [
+              611.0197516087446,
+              379.10883477842685
+            ]
+          },
+          "_variants": {
+            "main_gauche": "main_gauche_rev",
+            "main_droite": "main_droite_rev"
+          }
+        }
+      }
+    },
+    {
+      "index": 40,
+      "objects": {
+        "lunettes_manu": {
+          "name": "lunettes_manu",
+          "obj_type": "svg",
+          "file_path": "/home/jaja/Documents/BaBv2/BaBv2/dev/assets/objets/lunettes_manu.svg",
+          "x": 4.982129596635673,
+          "y": 61.99132028821515,
+          "rotation": 0.0,
+          "scale": 1.0,
+          "z": 0,
+          "attached_to": [
+            "manu",
+            "tete"
+          ],
+          "color": null,
+          "cone_angle": null,
+          "cone_reach": null
+        }
+      },
+      "puppets": {
+        "manu": {
+          "torse": {
+            "rotation": 0.0,
+            "pos": [
+              779.050467274519,
+              302.6228211259263
+            ]
+          },
+          "poignet_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              967.777377056694,
+              499.0683108151264
+            ]
+          },
+          "coude_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              957.289347650431,
+              422.7859325146738
+            ]
+          },
+          "avant_bras_gauche": {
+            "rotation": 26.436866257456785,
+            "pos": [
+              943.289347650431,
+              408.7859325146738
+            ]
+          },
+          "haut_bras_gauche": {
+            "rotation": 55.73464520281336,
+            "pos": [
+              898.2472335120658,
+              342.6708211259263
+            ]
+          },
+          "main_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              965.777377056694,
+              470.0203108151264
+            ]
+          },
+          "epaule_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              912.2472335120658,
+              356.6708211259263
+            ]
+          },
+          "poignet_droite": {
+            "rotation": 0.0,
+            "pos": [
+              737.2681066869586,
+              503.59141073534965
+            ]
+          },
+          "coude_droite": {
+            "rotation": 0.0,
+            "pos": [
+              752.1566659724382,
+              428.0441248637661
+            ]
+          },
+          "avant_bras_droite": {
+            "rotation": -15.70450748980113,
+            "pos": [
+              673.1562659724382,
+              414.0441248637661
+            ]
+          },
+          "haut_bras_droite": {
+            "rotation": 296.8532622024168,
+            "pos": [
+              709.2932335120657,
+              342.6708211259263
+            ]
+          },
+          "main_droite": {
+            "rotation": 0.0,
+            "pos": [
+              672.2224836869586,
+              474.54341073534965
+            ]
+          },
+          "epaule_droite": {
+            "rotation": 0.0,
+            "pos": [
+              788.2932335120657,
+              356.6708211259263
+            ]
+          },
+          "genou_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              878.2472335120658,
+              614.6228211259263
+            ]
+          },
+          "cuisse_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              861.2472335120658,
+              503.6228211259263
+            ]
+          },
+          "tibia_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              861.2472335120658,
+              597.6228211259263
+            ]
+          },
+          "pied_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              859.0471610183374,
+              713.4521858851894
+            ]
+          },
+          "cheville_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              878.2472335120658,
+              720.6228211259263
+            ]
+          },
+          "hanche_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              878.2472335120658,
+              502.6228211259263
+            ]
+          },
+          "genou_droite": {
+            "rotation": 0.0,
+            "pos": [
+              821.2472335120658,
+              614.6228211259263
+            ]
+          },
+          "cuisse_droite": {
+            "rotation": 0.0,
+            "pos": [
+              804.2472335120658,
+              503.6228211259263
+            ]
+          },
+          "tibia_droite": {
+            "rotation": 0.0,
+            "pos": [
+              804.2472335120658,
+              597.6228211259263
+            ]
+          },
+          "cheville_droite": {
+            "rotation": 0.0,
+            "pos": [
+              821.2472335120658,
+              720.6228211259263
+            ]
+          },
+          "hanche_droite": {
+            "rotation": 0.0,
+            "pos": [
+              821.2472335120658,
+              502.6228211259263
+            ]
+          },
+          "pied_droite": {
+            "rotation": 0.0,
+            "pos": [
+              744.2472335120658,
+              713.4521858851894
+            ]
+          },
+          "cou": {
+            "rotation": 0.0,
+            "pos": [
+              850.2472335120658,
+              332.6228211259263
+            ]
+          },
+          "tete": {
+            "rotation": 0.0,
+            "pos": [
+              794.0481734336674,
+              191.4228211259263
+            ]
+          },
+          "main_gauche_rev": {
+            "rotation": 0.0,
+            "pos": [
+              965.3763795318343,
+              479.62139156134594
+            ]
+          },
+          "main_gauche_f": {
+            "rotation": 0.0,
+            "pos": [
+              926.7770682382435,
+              474.0204676163372
+            ]
+          },
+          "main_droite_rev": {
+            "rotation": 0.0,
+            "pos": [
+              671.8219373532096,
+              484.1444908222312
+            ]
+          },
+          "main_droite_f": {
+            "rotation": 0.0,
+            "pos": [
+              722.2225157097196,
+              478.54356753656054
+            ]
+          },
+          "_variants": {
+            "main_gauche": "main_gauche_rev",
+            "main_droite": "main_droite_rev"
+          }
+        }
+      }
+    },
+    {
+      "index": 50,
+      "objects": {
+        "lunettes_manu": {
+          "name": "lunettes_manu",
+          "obj_type": "svg",
+          "file_path": "/home/jaja/Documents/BaBv2/BaBv2/dev/assets/objets/lunettes_manu.svg",
+          "x": 4.982129596635673,
+          "y": 61.99132028821515,
+          "rotation": 0.0,
+          "scale": 1.0,
+          "z": 0,
+          "attached_to": [
+            "manu",
+            "tete"
+          ],
+          "color": null,
+          "cone_angle": null,
+          "cone_reach": null
+        }
+      },
+      "puppets": {
+        "manu": {
+          "torse": {
+            "rotation": 0.0,
+            "pos": [
+              779.0504672745188,
+              300.8989154020204
+            ]
+          },
+          "poignet_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              999.2460757611595,
+              232.66875407535545
+            ]
+          },
+          "coude_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              937.8652991828519,
+              279.1596162597018
+            ]
+          },
+          "avant_bras_gauche": {
+            "rotation": 34.18249991686602,
+            "pos": [
+              923.8652991828519,
+              265.1596162597018
+            ]
+          },
+          "haut_bras_gauche": {
+            "rotation": -71.32341787943574,
+            "pos": [
+              898.2472335120658,
+              340.9469154020204
+            ]
+          },
+          "main_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              997.2460757611595,
+              203.62075407535545
+            ]
+          },
+          "epaule_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              912.2472335120658,
+              354.9469154020204
+            ]
+          },
+          "poignet_droite": {
+            "rotation": 0.0,
+            "pos": [
+              698.4693829900241,
+              236.93782275836062
+            ]
+          },
+          "coude_droite": {
+            "rotation": 0.0,
+            "pos": [
+              762.9144818792428,
+              279.0791424970544
+            ]
+          },
+          "avant_bras_droite": {
+            "rotation": -38.323155166353985,
+            "pos": [
+              683.9140818792428,
+              265.0791424970544
+            ]
+          },
+          "haut_bras_droite": {
+            "rotation": 71.50424497327623,
+            "pos": [
+              709.2932335120657,
+              340.9469154020204
+            ]
+          },
+          "main_droite": {
+            "rotation": 0.0,
+            "pos": [
+              633.4237599900241,
+              207.88982275836062
+            ]
+          },
+          "epaule_droite": {
+            "rotation": 0.0,
+            "pos": [
+              788.2932335120657,
+              354.9469154020204
+            ]
+          },
+          "genou_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              878.2472335120658,
+              612.8989154020204
+            ]
+          },
+          "cuisse_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              861.2472335120658,
+              501.8989154020204
+            ]
+          },
+          "tibia_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              861.2472335120658,
+              595.8989154020204
+            ]
+          },
+          "pied_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              859.0471610183374,
+              711.7282801612835
+            ]
+          },
+          "cheville_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              878.2472335120658,
+              718.8989154020204
+            ]
+          },
+          "hanche_gauche": {
+            "rotation": 0.0,
+            "pos": [
+              878.2472335120658,
+              500.8989154020204
+            ]
+          },
+          "genou_droite": {
+            "rotation": 0.0,
+            "pos": [
+              821.2472335120658,
+              612.8989154020204
+            ]
+          },
+          "cuisse_droite": {
+            "rotation": 0.0,
+            "pos": [
+              804.2472335120658,
+              501.8989154020204
+            ]
+          },
+          "tibia_droite": {
+            "rotation": 0.0,
+            "pos": [
+              804.2472335120658,
+              595.8989154020204
+            ]
+          },
+          "cheville_droite": {
+            "rotation": 0.0,
+            "pos": [
+              821.2472335120658,
+              718.8989154020204
+            ]
+          },
+          "hanche_droite": {
+            "rotation": 0.0,
+            "pos": [
+              821.2472335120658,
+              500.8989154020204
+            ]
+          },
+          "pied_droite": {
+            "rotation": 0.0,
+            "pos": [
+              744.2472335120658,
+              711.7282801612835
+            ]
+          },
+          "cou": {
+            "rotation": 0.0,
+            "pos": [
+              850.2472335120658,
+              330.8989154020204
+            ]
+          },
+          "tete": {
+            "rotation": 0.0,
+            "pos": [
+              794.0481734336674,
+              189.69891540202042
+            ]
+          },
+          "main_gauche_rev": {
+            "rotation": 0.0,
+            "pos": [
+              996.8450782362999,
+              213.22183482157502
+            ]
+          },
+          "main_gauche_f": {
+            "rotation": 0.0,
+            "pos": [
+              958.245766942709,
+              207.6209108765663
+            ]
+          },
+          "main_droite_rev": {
+            "rotation": 0.0,
+            "pos": [
+              633.0232136562751,
+              217.49090284524218
+            ]
+          },
+          "main_droite_f": {
+            "rotation": 0.0,
+            "pos": [
+              683.423792012785,
+              211.8899795595715
+            ]
+          },
+          "_variants": {
+            "main_gauche": "main_gauche_rev",
+            "main_droite": "main_droite_rev"
+          }
+        }
+      }
+    }
+  ],
+  "puppets_data": {
+    "manu": {
+      "path": "/home/jaja/Documents/BaBv2/BaBv2/dev/assets/pantins/manu.svg",
+      "scale": 1.0,
+      "position": [
+        779.0504672745188,
+        300.8989154020204
+      ],
+      "rotation": 0.0,
+      "z_offset": 0
+    }
+  }
+}

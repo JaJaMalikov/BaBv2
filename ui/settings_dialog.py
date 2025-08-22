@@ -872,9 +872,10 @@ class SettingsDialog(QDialog):
     def _save_params_as_custom(self) -> None:
         """Saves the current style parameters as a custom theme."""
         css = build_stylesheet(self._params_from_ui())
-        s = QSettings("JaJa", "Macronotron")
-        s.setValue("ui/custom_stylesheet", css)
-        s.setValue("ui/theme", "custom")
+        from ui.settings_keys import ORG, APP, UI_CUSTOM_STYLESHEET, UI_THEME
+        s = QSettings(ORG, APP)
+        s.setValue(UI_CUSTOM_STYLESHEET, css)
+        s.setValue(UI_THEME, "custom")
 
     def _update_swatch(self, edit: QLineEdit) -> None:
         """
@@ -1131,20 +1132,24 @@ class SettingsDialog(QDialog):
 
         self.list_icons.clear()
         # Uniform grid for cleaner alignment
-        icon_h = max(
-            16, int(QSettings("JaJa", "Macronotron").value("ui/icon_size", 32))
-        )
+        from ui.settings_keys import ORG, APP, UI_ICON_SIZE, UI_ICON_OVERRIDE
+        raw = QSettings(ORG, APP).value(UI_ICON_SIZE, 32)
+        try:
+            from ui.ui_profile import _int as _to_int
+        except Exception:
+            _to_int = lambda v, d=32: int(v) if v is not None else d  # type: ignore
+        icon_h = max(16, min(128, int(_to_int(raw, 32))))
         cell_w = max(64, icon_h + 48)
         cell_h = max(64, icon_h + 32)
         self.list_icons.setIconSize(QSize(icon_h, icon_h))
         self.list_icons.setGridSize(QSize(cell_w, cell_h))
-        s = QSettings("JaJa", "Macronotron")
+        s = QSettings(ORG, APP)
         for key in self._icon_keys:
             icon = get_icon(key)
             it = QListWidgetItem(icon, key)
             it.setData(Qt.UserRole, key)
             # Mark custom ones with asterisk and tooltip
-            path = s.value(f"ui/icon_override/{key}")
+            path = s.value(UI_ICON_OVERRIDE(key))
             if path:
                 it.setText(f"{key} *")
                 it.setToolTip(str(path))
@@ -1166,8 +1171,9 @@ class SettingsDialog(QDialog):
             return
         key = current.data(Qt.UserRole)
         self.lbl_key.setText(str(key))
-        s = QSettings("JaJa", "Macronotron")
-        self.lbl_path.setText(str(s.value(f"ui/icon_override/{key}") or ""))
+        from ui.settings_keys import ORG, APP, UI_ICON_OVERRIDE
+        s = QSettings(ORG, APP)
+        self.lbl_path.setText(str(s.value(UI_ICON_OVERRIDE(key)) or ""))
 
     def _choose_icon_file(self) -> None:
         """Opens a file dialog to choose an icon file."""
@@ -1182,8 +1188,9 @@ class SettingsDialog(QDialog):
         )
         if not path:
             return
-        s = QSettings("JaJa", "Macronotron")
-        s.setValue(f"ui/icon_override/{key}", path)
+        from ui.settings_keys import ORG, APP, UI_ICON_OVERRIDE
+        s = QSettings(ORG, APP)
+        s.setValue(UI_ICON_OVERRIDE(key), path)
         self.lbl_path.setText(path)
         self._refresh_icons_runtime()
         self._populate_icons_list()
@@ -1194,8 +1201,9 @@ class SettingsDialog(QDialog):
         if not item:
             return
         key = item.data(Qt.UserRole)
-        s = QSettings("JaJa", "Macronotron")
-        s.remove(f"ui/icon_override/{key}")
+        from ui.settings_keys import ORG, APP, UI_ICON_OVERRIDE
+        s = QSettings(ORG, APP)
+        s.remove(UI_ICON_OVERRIDE(key))
         self.lbl_path.setText("")
         self._refresh_icons_runtime()
         self._populate_icons_list()

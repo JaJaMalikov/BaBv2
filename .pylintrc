@@ -1,5 +1,43 @@
 [MASTER]
+ignore=venv,env,.venv,.env,.git,__pycache__
 
-init-hook='import sys; sys.path.append("/home/jaja/.pyenv/versions/pyside6/lib/python3.13/site-packages")'
-suggestion-mode=yes
+[MESSAGES CONTROL]
+disable=
+    missing-docstring,
+    too-few-public-methods,  # common for Qt widgets/dataclasses
+    too-many-instance-attributes,
+    too-many-arguments,
+    invalid-name,  # Qt signals/slots and short vars (x,y,w,h)
+    consider-using-f-string,
+    broad-except,
+
+[REPORTS]
+output-format=colorized
+reports=no
+
+[FORMAT]
+max-line-length=100
+
+[BASIC]
+# Follow project conventions (snake_case for Python-side signals/methods; Qt-native can be camelCase)
+method-naming-style=snake_case
+function-naming-style=snake_case
+argument-naming-style=snake_case
+attr-naming-style=snake_case
+variable-naming-style=snake_case
+const-naming-style=UPPER_CASE
+
+# Allow common short names used in UI geometry and loops
+good-names=i,j,k,x,y,w,h,dt,dx,dy
+
+[TYPECHECK]
 ignored-modules=PySide6
+
+[SIMILARITIES]
+min-similarity-lines=10
+
+[DESIGN]
+max-attributes=16
+
+[EXCEPTIONS]
+overgeneral-exceptions=Exception

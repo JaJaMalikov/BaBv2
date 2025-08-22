@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
@@ -94,6 +95,7 @@ def export_scene(win: "MainWindow", file_path: str) -> None:
             logging.debug("Snapshot on export ignored: %s", e)
 
     puppets_data: Dict[str, Dict[str, Any]] = {}
+    scene_dir = Path(file_path).parent
     for name, puppet in win.scene_model.puppets.items():
         root_members: List[Any] = puppet.get_root_members()
         if not root_members:
@@ -102,8 +104,21 @@ def export_scene(win: "MainWindow", file_path: str) -> None:
             f"{name}:{root_members[0].name}"
         )
         if root_piece:
+            abs_path_str = win.object_manager.puppet_paths.get(name)
+            rel_or_abs = abs_path_str
+            try:
+                if abs_path_str:
+                    abs_path = Path(abs_path_str)
+                    # Normalize to absolute for hint
+                    abs_path_str = str(abs_path.resolve())
+                    # Prefer relative path against scene location when possible
+                    rel_or_abs = os.path.relpath(abs_path_str, str(scene_dir))
+            except Exception:  # pylint: disable=broad-except
+                # Keep original path on failure
+                rel_or_abs = abs_path_str
             puppets_data[name] = {
-                "path": win.object_manager.puppet_paths.get(name),
+                "path": rel_or_abs,
+                "abs_path": abs_path_str,
                 "scale": win.object_manager.puppet_scales.get(name, 1.0),
                 "position": [root_piece.x(), root_piece.y()],
                 "rotation": win.scene_controller.get_puppet_rotation(name),
@@ -139,10 +154,40 @@ def import_scene(win: MainWindow, file_path: str) -> None:
         create_blank_scene(win, add_default_puppet=False)
         win.scene_model.from_dict(data)
         puppets_data = data.get("puppets_data", {})
+        scene_dir = Path(file_path).parent
         for name, p_data in puppets_data.items():
-            puppet_path = p_data.get("path")
-            if puppet_path and Path(puppet_path).exists():
-                win.scene_controller.add_puppet(puppet_path, name)
+            raw_path = p_data.get("path")
+            abs_hint = p_data.get("abs_path")
+            resolved_path: Optional[str] = None
+            try:
+                if raw_path:
+                    p = Path(raw_path)
+                    if p.is_absolute():
+                        # If absolute but missing, do NOT fallback to abs_hint (tests expect skip)
+                        if p.exists():
+                            resolved_path = str(p.resolve())
+                    else:
+                        candidate = scene_dir / p
+                        if candidate.exists():
+                            resolved_path = str(candidate)
+                        elif p.exists():
+                            resolved_path = str(p.resolve())
+                    # If still unresolved and raw_path was relative, try abs_hint
+                    if resolved_path is None and not p.is_absolute() and abs_hint:
+                        ah = Path(abs_hint)
+                        if ah.exists():
+                            resolved_path = str(ah.resolve())
+                else:
+                    # No raw path provided; try abs_hint
+                    if abs_hint:
+                        ah = Path(abs_hint)
+                        if ah.exists():
+                            resolved_path = str(ah.resolve())
+            except Exception:  # pylint: disable=broad-except
+                logging.exception("Error resolving puppet path for '%s'", name)
+
+            if resolved_path:
+                win.scene_controller.add_puppet(resolved_path, name)
                 scale = p_data.get("scale", 1.0)
                 if scale != 1.0:
                     win.scene_controller.scale_puppet(name, scale)
@@ -168,6 +213,12 @@ def import_scene(win: MainWindow, file_path: str) -> None:
                         win.scene_controller.set_puppet_z_offset(name, zoff)
                 except (TypeError, ValueError):
                     logging.exception("Invalid z_offset value in puppets_data")
+            else:
+                logging.info(
+                    "Puppet path missing or invalid for '%s': %s; skipping puppet re-add",
+                    name,
+                    raw_path,
+                )
 
         for obj in win.scene_model.objects.values():
             try:

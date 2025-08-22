@@ -39,8 +39,31 @@ TOOLBAR_H: int = 30
 
 
 def _c(val: str, default: str) -> QColor:
-    s = QSettings("JaJa", "Macronotron")
-    v = s.value(f"timeline/{val}")
+    from ui.settings_keys import (
+        ORG,
+        APP,
+        TIMELINE_BG,
+        TIMELINE_RULER_BG,
+        TIMELINE_TRACK_BG,
+        TIMELINE_TICK,
+        TIMELINE_TICK_MAJOR,
+        TIMELINE_PLAYHEAD,
+        TIMELINE_KF,
+        TIMELINE_KF_HOVER,
+    )
+    key_map = {
+        "bg": TIMELINE_BG,
+        "ruler_bg": TIMELINE_RULER_BG,
+        "track_bg": TIMELINE_TRACK_BG,
+        "tick": TIMELINE_TICK,
+        "tick_major": TIMELINE_TICK_MAJOR,
+        "playhead": TIMELINE_PLAYHEAD,
+        "kf": TIMELINE_KF,
+        "kf_hover": TIMELINE_KF_HOVER,
+    }
+    key = key_map.get(val, f"timeline/{val}")
+    s = QSettings(ORG, APP)
+    v = s.value(key)
     if not v:
         return QColor(default)
     col = QColor(str(v))
@@ -53,8 +76,9 @@ def _c(val: str, default: str) -> QColor:
 
 
 def _alpha(default: int) -> int:
-    s = QSettings("JaJa", "Macronotron")
-    v = s.value("timeline/inout_alpha")
+    from ui.settings_keys import ORG, APP, TIMELINE_INOUT_ALPHA
+    s = QSettings(ORG, APP)
+    v = s.value(TIMELINE_INOUT_ALPHA)
     if v is None:
         return default
     try:

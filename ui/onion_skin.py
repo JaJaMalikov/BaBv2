@@ -11,6 +11,8 @@ import logging
 import math
 from typing import Dict, Optional, Any, List
 
+logger = logging.getLogger(__name__)
+
 from PySide6.QtWidgets import QGraphicsItem, QGraphicsPixmapItem
 from PySide6.QtSvgWidgets import QGraphicsSvgItem
 from PySide6.QtGui import QPixmap
@@ -57,7 +59,7 @@ class OnionSkinManager:
                 if it and it.parentItem() is None and it.scene() is self.win.scene:
                     self.win.scene.removeItem(it)
             except RuntimeError as e:
-                logging.debug("Failed removing onion item: %s", e)
+                logger.debug("Failed removing onion item: %s", e)
         self._onion_items.clear()
 
     def update(self) -> None:
@@ -240,7 +242,7 @@ class OnionSkinManager:
                         self.win.scene.addItem(item)
                         self._onion_items.append(item)
                 except (RuntimeError, AttributeError, KeyError) as e:
-                    logging.error("Onion attach failed for object %s: %s", name, e)
+                    logger.error("Onion attach failed for object %s: %s", name, e)
             else:
                 item.setScale(st.get("scale", getattr(base_obj, "scale", 1.0)))
                 item.setRotation(st.get("rotation", getattr(base_obj, "rotation", 0.0)))
@@ -252,7 +254,7 @@ class OnionSkinManager:
                 self.win.scene.addItem(item)
                 self._onion_items.append(item)
         except (RuntimeError, OSError, KeyError) as e:
-            logging.error("Onion object clone failed for %s: %s", name, e)
+            logger.error("Onion object clone failed for %s: %s", name, e)
 
     # --- Implementation ---
     def _add_onion_for_frame(
