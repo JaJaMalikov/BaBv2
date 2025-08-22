@@ -14,6 +14,20 @@ from ui.ui_profile import UIProfile
 
 from . import settings_geometry, settings_shortcuts, settings_theme
 
+# QSettings keys used here (maintenance):
+# UI_THEME, UI_THEME_FILE, UI_CUSTOM_PARAM handle theme configuration.
+# ONION_PREV_COUNT, ONION_NEXT_COUNT, ONION_OPACITY_PREV, ONION_OPACITY_NEXT
+# manage onion skin defaults.
+from ui.settings_keys import (
+    UI_THEME,
+    UI_THEME_FILE,
+    UI_CUSTOM_PARAM,
+    ONION_PREV_COUNT,
+    ONION_NEXT_COUNT,
+    ONION_OPACITY_PREV,
+    ONION_OPACITY_NEXT,
+)
+
 
 class SettingsManager:
     """Encapsulates the saving and restoring of UI settings (geometries, visibility)."""
@@ -161,7 +175,6 @@ class SettingsManager:
             dlg.set_shortcut_actions(win.shortcuts)
 
         s = QSettings(self.org, self.app)
-        from ui.settings_keys import UI_THEME, UI_THEME_FILE, UI_CUSTOM_PARAM
 
         theme = str(s.value(UI_THEME, "dark")).lower()
         if theme == "custom":
@@ -207,12 +220,6 @@ class SettingsManager:
 
         # Onion values
         try:
-            from ui.settings_keys import (
-                ONION_PREV_COUNT,
-                ONION_NEXT_COUNT,
-                ONION_OPACITY_PREV,
-                ONION_OPACITY_NEXT,
-            )
             dlg.prev_count.setValue(int(s.value(ONION_PREV_COUNT, 2)))
             dlg.next_count.setValue(int(s.value(ONION_NEXT_COUNT, 1)))
             dlg.opacity_prev.setValue(float(s.value(ONION_OPACITY_PREV, 0.25)))
