@@ -9,44 +9,65 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import QSettings
 
 
-DEFAULT_CUSTOM_PARAMS: Dict[str, Any] = {
-    "bg_color": "#E2E8F0",
-    "text_color": "#1A202C",
-    "accent_color": "#E53E3E",
-    "hover_color": "#E3E6FD",
-    "panel_bg": "#F7F8FC",
-    "panel_opacity": 0.9,
-    "panel_border": "#D0D5DD",
-    "header_bg": "",
-    "header_text": "#1A202C",
-    "header_border": "#D0D5DD",
-    "group_title_color": "#2D3748",
-    "tooltip_bg": "#F7F8FC",
-    "tooltip_text": "#1A202C",
-    "tooltip_border": "#D0D5DD",
-    "radius": 12,
-    "font_size": 10,
-    "font_family": "Poppins",
+@dataclass(frozen=True)
+class ThemeParam:
+    """Definition of a single customizable theme value."""
+
+    key: str
+    widget: str
+    default: Any
+    fallback: Optional[str] = None
+    percent: bool = False  # Indicates a spin box storing percent (0-100)
+
+
+# Order matters for fallback resolution (base colors before dependants)
+THEME_PARAMS: List[ThemeParam] = [
+    ThemeParam("bg_color", "bg_edit", "#E2E8F0"),
+    ThemeParam("text_color", "text_edit", "#1A202C"),
+    ThemeParam("accent_color", "accent_edit", "#E53E3E"),
+    ThemeParam("hover_color", "hover_edit", "#E3E6FD"),
+    ThemeParam("panel_bg", "panel_edit", "#F7F8FC"),
+    ThemeParam("panel_opacity", "opacity_spin", 0.9, percent=True),
+    ThemeParam("panel_border", "border_edit", "#D0D5DD"),
+    ThemeParam("header_bg", "header_bg_edit", ""),
+    ThemeParam("header_text", "header_text_edit", "#1A202C", fallback="text_color"),
+    ThemeParam("header_border", "header_border_edit", "#D0D5DD", fallback="panel_border"),
+    ThemeParam("group_title_color", "group_edit", "#2D3748"),
+    ThemeParam("tooltip_bg", "tooltip_bg_edit", "#F7F8FC", fallback="panel_bg"),
+    ThemeParam("tooltip_text", "tooltip_text_edit", "#1A202C", fallback="text_color"),
+    ThemeParam("tooltip_border", "border_edit", "#D0D5DD", fallback="panel_border"),
+    ThemeParam("radius", "radius_spin", 12),
+    ThemeParam("font_size", "font_spin", 10),
+    ThemeParam("font_family", "font_family_edit", "Poppins"),
     # Inputs/lists/checkboxes exposed
-    "input_bg": "#EDF2F7",
-    "input_border": "#CBD5E0",
-    "input_text": "#1A202C",
-    "input_focus_bg": "#FFFFFF",
-    "input_focus_border": "#E53E3E",
-    "list_hover_bg": "#E2E8F0",
-    "list_selected_bg": "#E53E3E",
-    "list_selected_text": "#FFFFFF",
-    "checkbox_unchecked_bg": "#EDF2F7",
-    "checkbox_unchecked_border": "#A0AEC0",
-    "checkbox_checked_bg": "#E53E3E",
-    "checkbox_checked_border": "#C53030",
-    "checkbox_checked_hover": "#F56565",
-}
+    ThemeParam("input_bg", "input_bg_edit", "#EDF2F7"),
+    ThemeParam("input_border", "input_border_edit", "#CBD5E0"),
+    ThemeParam("input_text", "input_text_edit", "#1A202C", fallback="text_color"),
+    ThemeParam("input_focus_bg", "input_focus_bg_edit", "#FFFFFF"),
+    ThemeParam(
+        "input_focus_border", "input_focus_border_edit", "#E53E3E", fallback="accent_color"
+    ),
+    ThemeParam("list_hover_bg", "list_hover_edit", "#E2E8F0"),
+    ThemeParam(
+        "list_selected_bg", "list_sel_bg_edit", "#E53E3E", fallback="accent_color"
+    ),
+    ThemeParam("list_selected_text", "list_sel_text_edit", "#FFFFFF"),
+    ThemeParam("checkbox_unchecked_bg", "cb_un_bg_edit", "#EDF2F7"),
+    ThemeParam("checkbox_unchecked_border", "cb_un_border_edit", "#A0AEC0"),
+    ThemeParam(
+        "checkbox_checked_bg", "cb_ch_bg_edit", "#E53E3E", fallback="accent_color"
+    ),
+    ThemeParam("checkbox_checked_border", "cb_ch_border_edit", "#C53030"),
+    ThemeParam("checkbox_checked_hover", "cb_ch_hover_edit", "#F56565"),
+]
+
+
+DEFAULT_CUSTOM_PARAMS: Dict[str, Any] = {p.key: p.default for p in THEME_PARAMS}
 
 
 @dataclass

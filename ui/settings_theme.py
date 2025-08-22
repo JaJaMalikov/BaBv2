@@ -11,6 +11,7 @@ from PySide6.QtWidgets import QApplication
 import ui.icons as app_icons
 from ui.styles import apply_stylesheet, build_stylesheet
 from ui.ui_profile import UIProfile, _bool
+from .theme_settings import DEFAULT_CUSTOM_PARAMS, THEME_PARAMS
 
 
 def get_bool_setting(s: QSettings, key: str, default: bool = True) -> bool:
@@ -51,31 +52,7 @@ def export_profile_from_dialog(dlg: Any) -> None:
         prof.theme.preset = dlg.preset_combo.currentText().strip().lower()
         prof.theme.font_family = dlg.font_family_edit.text().strip() or "Poppins"
         if prof.theme.preset == "custom":
-            prof.theme.custom_params.update(
-                {
-                    "bg_color": dlg.bg_edit.text() or "#E2E8F0",
-                    "text_color": dlg.text_edit.text() or "#1A202C",
-                    "accent_color": dlg.accent_edit.text() or "#E53E3E",
-                    "hover_color": dlg.hover_edit.text() or "#E3E6FD",
-                    "panel_bg": dlg.panel_edit.text() or "#F7F8FC",
-                    "panel_opacity": (dlg.opacity_spin.value() / 100.0),
-                    "panel_border": dlg.border_edit.text() or "#D0D5DD",
-                    "header_bg": dlg.header_bg_edit.text() or "",
-                    "header_text": dlg.header_text_edit.text()
-                    or dlg.text_edit.text()
-                    or "#1A202C",
-                    "header_border": dlg.header_border_edit.text()
-                    or dlg.border_edit.text()
-                    or "#D0D5DD",
-                    "group_title_color": dlg.group_edit.text() or "#2D3748",
-                    "tooltip_bg": dlg.tooltip_bg_edit.text() or "#F7F8FC",
-                    "tooltip_text": dlg.tooltip_text_edit.text() or "#1A202C",
-                    "tooltip_border": dlg.border_edit.text() or "#D0D5DD",
-                    "radius": dlg.radius_spin.value(),
-                    "font_size": dlg.font_spin.value(),
-                    "font_family": dlg.font_family_edit.text() or "Poppins",
-                }
-            )
+            prof.theme.custom_params.update(dlg._params_from_ui())
         prof.icon_dir = dlg.icon_dir_edit.text().strip() or None
         prof.icon_size = int(dlg.icon_size_spin.value())
         if hasattr(dlg, "icon_norm_edit"):
@@ -140,34 +117,20 @@ def import_profile_into_dialog(dlg: Any) -> None:
         dlg.font_family_edit.setText(prof.theme.font_family or "Poppins")
         if prof.theme.preset == "custom":
             cp = prof.theme.custom_params
-            dlg.bg_edit.setText(str(cp.get("bg_color", "#E2E8F0")))
-            dlg.text_edit.setText(str(cp.get("text_color", "#1A202C")))
-            dlg.accent_edit.setText(str(cp.get("accent_color", "#E53E3E")))
-            dlg.hover_edit.setText(str(cp.get("hover_color", "#E3E6FD")))
-            dlg.panel_edit.setText(str(cp.get("panel_bg", "#F7F8FC")))
-            dlg.border_edit.setText(str(cp.get("panel_border", "#D0D5DD")))
-            dlg.header_bg_edit.setText(str(cp.get("header_bg", "")))
-            dlg.header_text_edit.setText(
-                str(cp.get("header_text", dlg.text_edit.text()))
-            )
-            dlg.header_border_edit.setText(
-                str(cp.get("header_border", dlg.border_edit.text()))
-            )
-            dlg.group_edit.setText(str(cp.get("group_title_color", "#2D3748")))
-            dlg.tooltip_bg_edit.setText(
-                str(cp.get("tooltip_bg", dlg.panel_edit.text()))
-            )
-            dlg.tooltip_text_edit.setText(
-                str(cp.get("tooltip_text", dlg.text_edit.text()))
-            )
-            try:
-                dlg.opacity_spin.setValue(
-                    int(float(cp.get("panel_opacity", 0.9)) * 100)
-                )
-            except Exception:
-                dlg.opacity_spin.setValue(90)
-            dlg.radius_spin.setValue(int(cp.get("radius", 12)))
-            dlg.font_spin.setValue(int(cp.get("font_size", 10)))
+            for p in THEME_PARAMS:
+                widget = getattr(dlg, p.widget, None)
+                if widget is None:
+                    continue
+                val = cp.get(p.key, DEFAULT_CUSTOM_PARAMS[p.key])
+                if p.percent:
+                    try:
+                        widget.setValue(int(float(val) * 100))
+                    except Exception:
+                        widget.setValue(int(p.default * 100))
+                elif hasattr(widget, "setValue"):
+                    widget.setValue(int(val))
+                else:
+                    widget.setText(str(val))
         dlg.icon_dir_edit.setText(str(prof.icon_dir or ""))
         dlg.icon_size_spin.setValue(int(prof.icon_size))
         if hasattr(dlg, "icon_norm_edit"):

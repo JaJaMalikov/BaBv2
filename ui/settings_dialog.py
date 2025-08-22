@@ -45,6 +45,7 @@ from PySide6.QtWidgets import (
 
 from ui.draggable_widget import DraggableHeader, PanelOverlay
 from ui.styles import build_stylesheet
+from .theme_settings import DEFAULT_CUSTOM_PARAMS, THEME_PARAMS
 
 
 class IconStrip(QListWidget):
@@ -786,32 +787,20 @@ class SettingsDialog(QDialog):
 
     def _params_from_ui(self) -> dict:
         """Returns a dictionary of style parameters from the UI controls."""
-        return {
-            "bg_color": self.bg_edit.text() or "#E2E8F0",
-            "text_color": self.text_edit.text() or "#1A202C",
-            "accent_color": self.accent_edit.text() or "#E53E3E",
-            "hover_color": self.hover_edit.text() or "#E3E6FD",
-            "panel_bg": self.panel_edit.text() or "#F7F8FC",
-            "panel_opacity": (self.opacity_spin.value() / 100.0),
-            "panel_border": self.border_edit.text() or "#D0D5DD",
-            "header_bg": self.header_bg_edit.text() or "",
-            "header_text": self.header_text_edit.text()
-            or self.text_edit.text()
-            or "#1A202C",
-            "header_border": self.header_border_edit.text()
-            or self.border_edit.text()
-            or "#D0D5DD",
-            "group_title_color": self.group_edit.text() or "#2D3748",
-            "tooltip_bg": self.tooltip_bg_edit.text()
-            or self.panel_edit.text()
-            or "#F7F8FC",
-            "tooltip_text": self.tooltip_text_edit.text()
-            or self.text_edit.text()
-            or "#1A202C",
-            "radius": self.radius_spin.value(),
-            "font_size": self.font_spin.value(),
-            "font_family": self.font_family_edit.text() or "Poppins",
-        }
+        params: dict[str, Any] = {}
+        for p in THEME_PARAMS:
+            widget = getattr(self, p.widget, None)
+            if widget is None:
+                continue
+            val = widget.value() if hasattr(widget, "value") else widget.text()
+            if p.percent:
+                val = val / 100.0
+            if isinstance(val, str) and not val and p.fallback:
+                val = params.get(p.fallback, DEFAULT_CUSTOM_PARAMS[p.key])
+            if isinstance(val, str) and not val:
+                val = DEFAULT_CUSTOM_PARAMS[p.key]
+            params[p.key] = val
+        return params
 
     def _load_preset_values(self, name: str) -> None:
         """
