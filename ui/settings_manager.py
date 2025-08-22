@@ -11,6 +11,10 @@ from PySide6.QtWidgets import QApplication
 import ui.icons as app_icons
 from ui.styles import apply_stylesheet
 from ui.ui_profile import UIProfile
+from ui.icon_list_utils import (
+    populate_icon_list as _populate_icon_list,
+    extract_icon_list as _extract_icon_list,
+)
 
 from . import settings_geometry, settings_shortcuts, settings_theme
 
@@ -267,3 +271,7 @@ class SettingsManager:
                 apply_stylesheet(QApplication.instance())
             except Exception:
                 logging.exception("Failed to persist UIProfile from dialog")
+
+
+SettingsManager.populate_icon_list = staticmethod(_populate_icon_list)
+SettingsManager.extract_icon_list = staticmethod(_extract_icon_list)

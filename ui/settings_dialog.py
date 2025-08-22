@@ -46,6 +46,10 @@ from PySide6.QtWidgets import (
 from ui.draggable_widget import DraggableHeader, PanelOverlay
 from ui.styles import build_stylesheet
 from .theme_settings import DEFAULT_CUSTOM_PARAMS, THEME_PARAMS
+from ui.icon_list_utils import (
+    populate_icon_list as _populate_icon_list,
+    extract_icon_list as _extract_icon_list,
+)
 
 
 class IconStrip(QListWidget):
@@ -1016,65 +1020,22 @@ class SettingsDialog(QDialog):
         # Custom can use both
         self._custom_specs = self._main_specs + self._quick_specs
 
+    @staticmethod
     def populate_icon_list(
-        self,
         lw: QListWidget,
         order_keys: list[str],
         visibility_map: dict[str, bool],
         specs: list[tuple[str, str, QIcon]],
     ) -> None:
-        """
-        Populates an icon list with items.
+        """Delegate to :mod:`ui.icon_list_utils.populate_icon_list`."""
+        _populate_icon_list(lw, order_keys, visibility_map, specs)
 
-        Args:
-            lw: The list widget to populate.
-            order_keys: The order of the icons.
-            visibility_map: A map of icon visibility.
-            specs: The specifications for the icons.
-        """
-        lw.clear()
-        spec_map = {
-            k: (label, icon)
-            for (k, label, icon) in [(k, lbl, ic) for (k, lbl, ic) in specs]
-        }
-        for key in order_keys:
-            if key not in spec_map:
-                continue
-            label, icon = spec_map[key]
-            # Icon with label under it
-            item = QListWidgetItem(icon, label)
-            item.setData(Qt.UserRole, key)
-            item.setFlags(
-                item.flags()
-                | Qt.ItemIsUserCheckable
-                | Qt.ItemIsEnabled
-                | Qt.ItemIsDragEnabled
-                | Qt.ItemIsSelectable
-            )
-            item.setCheckState(
-                Qt.Checked if visibility_map.get(key, True) else Qt.Unchecked
-            )
-            lw.addItem(item)
-        # No special height handling
-
-    def extract_icon_list(self, lw: QListWidget) -> tuple[list[str], dict[str, bool]]:
-        """
-        Extracts the order and visibility of icons from a list widget.
-
-        Args:
-            lw: The list widget to extract from.
-
-        Returns:
-            A tuple containing the order of the icons and a map of their visibility.
-        """
-        order: list[str] = []
-        vis: dict[str, bool] = {}
-        for i in range(lw.count()):
-            it = lw.item(i)
-            key = it.data(Qt.UserRole)
-            order.append(key)
-            vis[key] = it.checkState() == Qt.Checked
-        return order, vis
+    @staticmethod
+    def extract_icon_list(
+        lw: QListWidget,
+    ) -> tuple[list[str], dict[str, bool]]:
+        """Delegate to :mod:`ui.icon_list_utils.extract_icon_list`."""
+        return _extract_icon_list(lw)
 
     def _init_icons_tab(self) -> None:
         """Initializes the icons tab with only actually used icon keys."""
