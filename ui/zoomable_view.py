@@ -316,12 +316,12 @@ class ZoomableView(QGraphicsView):
         lay: QHBoxLayout = QHBoxLayout(self._custom_tools_overlay)
         lay.setContentsMargins(4, 4, 4, 4)
         lay.setSpacing(2)
-        s = QSettings("JaJa", "Macronotron")
+        s = QSettings(ORG, APP)
         try:
             from ui.ui_profile import _int as _to_int
         except Exception:
             _to_int = lambda v, d=32: int(v) if v is not None else d  # type: ignore
-        size_val = _to_int(s.value("ui/icon_size"), 32)
+        size_val = _to_int(s.value(UI_ICON_SIZE), 32)
         icon_size: int = max(16, min(128, int(size_val)))
         button_size: int = max(28, icon_size + 4)
 
@@ -356,20 +356,20 @@ class ZoomableView(QGraphicsView):
         }
         from ui.menu_defaults import CUSTOM_DEFAULT_ORDER
 
-        order = s.value("ui/menu/custom/order") or list(CUSTOM_DEFAULT_ORDER[:5])
+        order = s.value(UI_MENU_ORDER(CUSTOM_MENU)) or list(CUSTOM_DEFAULT_ORDER[:5])
         if isinstance(order, str):
             order = [k for k in order.split(",") if k]
         for key in order:
             btn = pool.get(key)
             if not btn:
                 continue
-            vis = s.value(f"ui/menu/custom/{key}")
-            visible = True if vis is None else (vis in [True, "true", "1"])
+            vis = s.value(UI_MENU_VIS(CUSTOM_MENU, key))
+            visible = True if vis is None else (vis in [True, "true", "1"]) 
             btn.setVisible(visible)
             lay.addWidget(btn)
         # Geometry defaults
-        csize = s.value("ui/default/custom_size")
-        cpos = s.value("ui/default/custom_pos")
+        csize = s.value(UI_DEFAULT_CUSTOM_SIZE)
+        cpos = s.value(UI_DEFAULT_CUSTOM_POS)
         cw, ch = 320, 60
         try:
             if csize:
@@ -381,7 +381,7 @@ class ZoomableView(QGraphicsView):
             self._custom_tools_overlay.setGeometry(int(cpos.x()), int(cpos.y()), cw, ch)
         else:
             self._custom_tools_overlay.setGeometry(10, 110, cw, ch)
-        visible = s.value("ui/menu/custom/visible")
+        visible = s.value(UI_MENU_CUSTOM_VISIBLE)
         self._custom_tools_overlay.setVisible(visible in [True, "true", "1"])
 
     def _set_overlay_collapsed(
@@ -526,7 +526,7 @@ class ZoomableView(QGraphicsView):
 
     def apply_menu_settings_main(self) -> None:
         """Apply visibility settings for main tools overlay based on QSettings."""
-        s = QSettings("JaJa", "Macronotron")
+        s = QSettings(ORG, APP)
 
         # Normalize boolean flags via shared helper to handle QSettings quirks
         try:
@@ -535,7 +535,7 @@ class ZoomableView(QGraphicsView):
             _to_bool = lambda v, d=True: d if v is None else (v in [True, "true", "1"])  # type: ignore
 
         def is_on(key: str, default: bool = True) -> bool:
-            v = s.value(f"ui/menu/main/{key}")
+            v = s.value(UI_MENU_VIS(MAIN_MENU, key))
             return _to_bool(v, default)
 
         mapping = getattr(self, "main_tool_buttons_map", {})
@@ -555,7 +555,7 @@ class ZoomableView(QGraphicsView):
         for key, btn in mapping.items():
             btn.setVisible(is_on(key, defaults.get(key, True)))
         # Reorder according to settings
-        order = s.value("ui/menu/main/order") or list(mapping.keys())
+        order = s.value(UI_MENU_ORDER(MAIN_MENU)) or list(mapping.keys())
         if isinstance(order, str):
             order = [k for k in order.split(",") if k]
         # Clear and re-add in order
@@ -582,7 +582,7 @@ class ZoomableView(QGraphicsView):
 
     def apply_menu_settings_quick(self) -> None:
         """Apply visibility settings for quick overlay buttons based on QSettings."""
-        s = QSettings("JaJa", "Macronotron")
+        s = QSettings(ORG, APP)
 
         # Normalize boolean flags via shared helper to handle QSettings quirks
         try:
@@ -591,7 +591,7 @@ class ZoomableView(QGraphicsView):
             _to_bool = lambda v, d=True: d if v is None else (v in [True, "true", "1"])  # type: ignore
 
         def is_on(key: str, default: bool = True) -> bool:
-            v = s.value(f"ui/menu/quick/{key}")
+            v = s.value(UI_MENU_VIS(QUICK_MENU, key))
             return _to_bool(v, default)
 
         defaults = {
@@ -611,7 +611,7 @@ class ZoomableView(QGraphicsView):
         for key, btn in self.quick_buttons_map.items():
             btn.setVisible(is_on(key, defaults.get(key, True)))
         # Reorder
-        order = s.value("ui/menu/quick/order") or list(self.quick_buttons_map.keys())
+        order = s.value(UI_MENU_ORDER(QUICK_MENU)) or list(self.quick_buttons_map.keys())
         if isinstance(order, str):
             order = [k for k in order.split(",") if k]
         try:

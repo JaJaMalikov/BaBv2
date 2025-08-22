@@ -57,10 +57,22 @@ class SceneVisuals:
                 raise FileNotFoundError(
                     f"Could not load image: {self.win.scene_model.background_path}"
                 )
-            self.win.scene_model.scene_width = pixmap.width()
-            self.win.scene_model.scene_height = pixmap.height()
-            self.win.scene.setSceneRect(0, 0, pixmap.width(), pixmap.height())
-            self.update_scene_visuals()
+            # Route model size changes via the controller/service to respect boundaries.
+            # Avoid recursion by returning early: the resize signal will trigger
+            # update_background() again where sizes already match, and we will proceed.
+            if (
+                int(getattr(self.win.scene_model, "scene_width", 0)) != pixmap.width()
+                or int(getattr(self.win.scene_model, "scene_height", 0))
+                != pixmap.height()
+            ):
+                try:
+                    self.win.scene_controller.set_scene_size(pixmap.width(), pixmap.height())
+                    return
+                except (AttributeError, RuntimeError):
+                    # As an ultimate fallback, keep UI responsive without mutating the model.
+                    self.win.scene.setSceneRect(0, 0, pixmap.width(), pixmap.height())
+                    self.update_scene_visuals()
+            # Create and add the background item when sizes are in sync
             self.background_item = QGraphicsPixmapItem(pixmap)
             self.background_item.setZValue(-10000)
             self.win.scene.addItem(self.background_item)

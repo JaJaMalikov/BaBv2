@@ -49,17 +49,19 @@ class _ObjectItemMixin:
             name = getattr(self, "_obj_name", None)
             try:
                 if mw and name:
-                    obj = mw.scene_model.objects.get(name)
-                    if obj:
-                        obj.x = self.x()
-                        obj.y = self.y()
-                        obj.rotation = self.rotation()
-                        obj.scale = self.scale()
-                        obj.z = int(self.zValue())
-                        # If a keyframe exists at current frame, persist state in it
-                        kf = mw.scene_model.keyframes.get(mw.scene_model.current_frame)
-                        if kf is not None:
-                            kf.objects[name] = obj.to_dict()
+                    # Build a state snapshot from the item and delegate to controller
+                    state = {
+                        "x": float(self.x()),
+                        "y": float(self.y()),
+                        "rotation": float(self.rotation()),
+                        "scale": float(self.scale()),
+                        "z": int(self.zValue()),
+                    }
+                    # Only update model if a keyframe exists at current frame
+                    try:
+                        mw.object_controller.update_object_state_if_keyframe_exists(name, state)
+                    except Exception:  # pylint: disable=broad-except
+                        logging.exception("Failed to propagate item state to controller")
                     # Sync selection with inspector
                     if change == QGraphicsItem.ItemSelectedHasChanged and bool(value):
                         mw.controller.select_object_in_inspector(name)

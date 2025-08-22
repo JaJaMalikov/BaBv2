@@ -1210,8 +1210,9 @@ class SettingsDialog(QDialog):
 
     def _reset_all_icons(self) -> None:
         """Resets all custom icon files."""
-        s = QSettings("JaJa", "Macronotron")
-        s.beginGroup("ui/icon_override")
+        from ui.settings_keys import ORG, APP, UI_ICON_OVERRIDE_GROUP
+        s = QSettings(ORG, APP)
+        s.beginGroup(UI_ICON_OVERRIDE_GROUP)
         s.remove("")
         s.endGroup()
         self._refresh_icons_runtime()

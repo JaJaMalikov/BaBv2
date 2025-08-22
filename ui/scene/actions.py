@@ -58,10 +58,12 @@ def set_scene_size(win) -> None:
         win.scene_controller.set_scene_size(int(width), int(height))
     except (AttributeError, TypeError):
         logging.exception("SceneController set_scene_size failed")
-        # Fallback en cas d'indisponibilité (sécurité)
-        win.scene_model.scene_width = int(width)
-        win.scene_model.scene_height = int(height)
+        # Fallback en cas d'indisponibilité (sécurité): ne pas muter le modèle ici.
+        # Appliquer uniquement côté vue pour garder l'UI fonctionnelle.
         win.scene.setSceneRect(0, 0, int(width), int(height))
-        win._update_scene_visuals()
-        win._update_background()
-        win._update_zoom_status()
+        try:
+            win._update_scene_visuals()
+            win._update_background()
+            win._update_zoom_status()
+        except Exception:  # pylint: disable=broad-except
+            logging.exception("Failed to update UI after scene size fallback")

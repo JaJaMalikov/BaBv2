@@ -39,6 +39,7 @@
     "ORG": "JaJa",
     "APP": "Macronotron"
   },
+  "custom_stylesheet": null,
   "icon_dir": null,
   "icon_size": 32,
   "icon_color_normal": "#4A5568",

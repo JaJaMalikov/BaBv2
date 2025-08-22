@@ -240,7 +240,7 @@ class SettingsManager:
             # theme
             theme = dlg.preset_combo.currentText().strip().lower() or "light"
             s.setValue(UI_THEME, theme)
-            if theme == "custom":
+            if theme == "custom": 
                 params = {
                     "bg_color": dlg.bg_edit.text() or "#E2E8F0",
                     "text_color": dlg.text_edit.text() or "#1A202C",
@@ -302,7 +302,7 @@ class SettingsManager:
                 except Exception:
                     logging.exception("Failed to write theme file")
                 # Keep QSettings copy for compatibility
-                s.beginGroup("ui/custom_params")
+                s.beginGroup(UI_CUSTOM_PARAMS_GROUP)
                 for k, v in params.items():
                     s.setValue(k, v)
                 s.endGroup()
@@ -635,7 +635,7 @@ class SettingsManager:
             dlg.set_shortcut_actions(win.shortcuts)
 
         s = QSettings(self.org, self.app)
-        from ui.settings_keys import UI_ICON_DIR, UI_ICON_SIZE, UI_THEME, UI_THEME_FILE, UI_STYLE_SCENE_BG, UI_FONT_FAMILY, UI_MENU_CUSTOM_VISIBLE
+        from ui.settings_keys import UI_ICON_DIR, UI_ICON_SIZE, UI_THEME, UI_THEME_FILE, UI_STYLE_SCENE_BG, UI_FONT_FAMILY, UI_MENU_CUSTOM_VISIBLE, UI_CUSTOM_PARAMS_GROUP, UI_CUSTOM_PARAM, UI_ICON_COLOR_NORMAL, UI_ICON_COLOR_HOVER, UI_ICON_COLOR_ACTIVE, TIMELINE_BG, TIMELINE_RULER_BG, TIMELINE_TRACK_BG, TIMELINE_TICK, TIMELINE_TICK_MAJOR, TIMELINE_PLAYHEAD, TIMELINE_KF, TIMELINE_KF_HOVER
         icon_dir = s.value(UI_ICON_DIR)
         if icon_dir:
             try:
@@ -646,7 +646,7 @@ class SettingsManager:
             dlg.icon_size_spin.setValue(_int(s.value(UI_ICON_SIZE), 32))
         except (TypeError, ValueError):
             dlg.icon_size_spin.setValue(32)
-        theme = str(s.value("ui/theme", "dark")).lower()
+        theme = str(s.value(UI_THEME, "dark")).lower()
         try:
             presets_map = {
                 "light": "Light",
@@ -659,7 +659,7 @@ class SettingsManager:
                 # Load from theme file if present, else from custom_params
                 from pathlib import Path
 
-                theme_path = s.value("ui/theme_file") or str(
+                theme_path = s.value(UI_THEME_FILE) or str(
                     Path.home() / ".config/JaJa/Macronotron/theme.json"
                 )
                 try:
@@ -673,7 +673,7 @@ class SettingsManager:
                                 s.setValue(f"ui/custom_params/{k}", v)
                 except Exception:
                     logging.exception("Failed to read theme file")
-                s.beginGroup("ui/custom_params")
+                s.beginGroup(UI_CUSTOM_PARAMS_GROUP)
 
                 def _gv(key: str, default: str) -> str:
                     v = s.value(key)
@@ -737,7 +737,7 @@ class SettingsManager:
                     dlg.radius_spin.setValue(_int(s.value("radius"), 12))
                     dlg.font_spin.setValue(_int(s.value("font_size"), 10))
                     dlg.font_family_edit.setText(
-                        _gv("font_family", str(s.value("ui/font_family") or "Poppins"))
+                        _gv("font_family", str(s.value(UI_FONT_FAMILY) or "Poppins"))
                     )
                 except Exception:
                     logging.exception("Failed to load custom params")
@@ -755,7 +755,8 @@ class SettingsManager:
         # Font family default if not set via custom
         try:
             if not dlg.font_family_edit.text().strip():
-                fam = s.value("ui/font_family") or "Poppins"
+                from ui.settings_keys import UI_FONT_FAMILY
+                fam = s.value(UI_FONT_FAMILY) or "Poppins"
                 dlg.font_family_edit.setText(str(fam))
         except (RuntimeError, AttributeError):
             logging.exception("Failed to set font family edit")
@@ -780,8 +781,9 @@ class SettingsManager:
             logging.exception("Failed to load default overlay sizes")
 
         # Menu builder defaults via helpers
+        from ui.settings_keys import UI_MENU_CUSTOM_VISIBLE
         dlg.cb_custom_visible.setChecked(
-            self._get_bool_setting(s, "ui/menu/custom/visible", False)
+            self._get_bool_setting(s, UI_MENU_CUSTOM_VISIBLE, False)
         )
 
         # Populate icon lists with order + visibility
@@ -815,30 +817,40 @@ class SettingsManager:
         try:
             if hasattr(dlg, "icon_norm_edit"):
                 s_ic = QSettings(self.org, self.app)
-                dlg.icon_norm_edit.setText(
-                    str(s_ic.value("ui/icon_color_normal") or "#4A5568")
+                from ui.settings_keys import (
+                    UI_ICON_COLOR_NORMAL,
+                    UI_ICON_COLOR_HOVER,
+                    UI_ICON_COLOR_ACTIVE,
                 )
-                dlg.icon_hover_edit.setText(
-                    str(s_ic.value("ui/icon_color_hover") or "#E53E3E")
-                )
-                dlg.icon_active_edit.setText(
-                    str(s_ic.value("ui/icon_color_active") or "#FFFFFF")
-                )
+                dlg.icon_norm_edit.setText(str(s_ic.value(UI_ICON_COLOR_NORMAL) or "#4A5568"))
+                dlg.icon_hover_edit.setText(str(s_ic.value(UI_ICON_COLOR_HOVER) or "#E53E3E"))
+                dlg.icon_active_edit.setText(str(s_ic.value(UI_ICON_COLOR_ACTIVE) or "#FFFFFF"))
         except Exception:
             logging.exception("Failed to preload icon colors")
 
         # Preload timeline colors
         try:
-            dlg.tl_bg.setText(str(s.value("timeline/bg") or "#1E1E1E"))
-            dlg.tl_ruler_bg.setText(str(s.value("timeline/ruler_bg") or "#2C2C2C"))
-            dlg.tl_track_bg.setText(str(s.value("timeline/track_bg") or "#242424"))
-            dlg.tl_tick.setText(str(s.value("timeline/tick") or "#8A8A8A"))
-            dlg.tl_tick_major.setText(str(s.value("timeline/tick_major") or "#E0E0E0"))
-            dlg.tl_playhead.setText(str(s.value("timeline/playhead") or "#65B0FF"))
-            dlg.tl_kf.setText(str(s.value("timeline/kf") or "#FFC107"))
-            dlg.tl_kf_hover.setText(str(s.value("timeline/kf_hover") or "#FFE082"))
+            from ui.settings_keys import (
+                TIMELINE_BG,
+                TIMELINE_RULER_BG,
+                TIMELINE_TRACK_BG,
+                TIMELINE_TICK,
+                TIMELINE_TICK_MAJOR,
+                TIMELINE_PLAYHEAD,
+                TIMELINE_KF,
+                TIMELINE_KF_HOVER,
+                TIMELINE_INOUT_ALPHA,
+            )
+            dlg.tl_bg.setText(str(s.value(TIMELINE_BG) or "#1E1E1E"))
+            dlg.tl_ruler_bg.setText(str(s.value(TIMELINE_RULER_BG) or "#2C2C2C"))
+            dlg.tl_track_bg.setText(str(s.value(TIMELINE_TRACK_BG) or "#242424"))
+            dlg.tl_tick.setText(str(s.value(TIMELINE_TICK) or "#8A8A8A"))
+            dlg.tl_tick_major.setText(str(s.value(TIMELINE_TICK_MAJOR) or "#E0E0E0"))
+            dlg.tl_playhead.setText(str(s.value(TIMELINE_PLAYHEAD) or "#65B0FF"))
+            dlg.tl_kf.setText(str(s.value(TIMELINE_KF) or "#FFC107"))
+            dlg.tl_kf_hover.setText(str(s.value(TIMELINE_KF_HOVER) or "#FFE082"))
             try:
-                dlg.tl_inout_alpha.setValue(int(s.value("timeline/inout_alpha", 30)))
+                dlg.tl_inout_alpha.setValue(int(s.value(TIMELINE_INOUT_ALPHA, 30)))
             except Exception:
                 dlg.tl_inout_alpha.setValue(30)
         except Exception:
@@ -846,7 +858,8 @@ class SettingsManager:
 
         # Preload scene background color
         try:
-            dlg.scene_bg_edit.setText(str(s.value("ui/style/scene_bg") or ""))
+            from ui.settings_keys import UI_STYLE_SCENE_BG
+            dlg.scene_bg_edit.setText(str(s.value(UI_STYLE_SCENE_BG) or ""))
         except Exception:
             logging.exception("Failed to preload scene background color")
 

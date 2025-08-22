@@ -8,6 +8,7 @@ from typing import Tuple, Optional
 from pathlib import Path
 from PySide6.QtWidgets import QVBoxLayout
 from PySide6.QtCore import QSettings, QRect
+from ui.settings_keys import ORG, APP, UI_DEFAULT_SIZE, UI_DEFAULT_POS
 
 from ui.draggable_widget import PanelOverlay, DraggableHeader
 from ui.views.library.library_widget import LibraryWidget
@@ -58,8 +59,8 @@ def build_side_overlays(
 
 def _get_overlay_geometry(s: QSettings, name: str) -> Optional[QRect]:
     """Get overlay geometry from settings."""
-    size_val = s.value(f"ui/default/{name}_size")
-    pos_val = s.value(f"ui/default/{name}_pos")
+    size_val = s.value(UI_DEFAULT_SIZE(name))
+    pos_val = s.value(UI_DEFAULT_POS(name))
 
     w, h = 290, 550
     if size_val:
@@ -93,7 +94,7 @@ def position_overlays(win) -> None:
 
     margin = 10
     try:
-        s = QSettings("JaJa", "Macronotron")
+        s = QSettings(ORG, APP)
         lib_geom = _get_overlay_geometry(s, "library")
         insp_geom = _get_overlay_geometry(s, "inspector")
 

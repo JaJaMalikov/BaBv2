@@ -101,6 +101,9 @@ class UIProfile:
     version: int = 1
     theme: ThemeSettings = field(default_factory=ThemeSettings)
 
+    # Optional raw stylesheet override used by ui.styles.apply_stylesheet
+    custom_stylesheet: Optional[str] = None
+
     # Icon palette + base icons config
     icon_dir: str | None = None
     icon_size: int = 32
@@ -229,6 +232,7 @@ class UIProfile:
         from ui.settings_keys import (
             TIMELINE_INOUT_ALPHA,
             UI_STYLE_SCENE_BG,
+            UI_CUSTOM_STYLESHEET,
             UI_MENU_CUSTOM_VISIBLE,
             UI_MENU_ORDER,
             UI_MENU_VIS,
@@ -250,6 +254,8 @@ class UIProfile:
 
         # Scene bg
         p.scene_bg = s.value(UI_STYLE_SCENE_BG) or None
+        # Optional custom stylesheet (raw CSS)
+        p.custom_stylesheet = s.value(UI_CUSTOM_STYLESHEET) or None
 
         # Overlay/menu
         p.custom_overlay_visible = _bool(s.value(UI_MENU_CUSTOM_VISIBLE), False)
@@ -318,6 +324,7 @@ class UIProfile:
             TIMELINE_KF_HOVER,
             TIMELINE_INOUT_ALPHA,
             UI_STYLE_SCENE_BG,
+            UI_CUSTOM_STYLESHEET,
             UI_MENU_CUSTOM_VISIBLE,
             UI_MENU_ORDER,
             UI_MENU_VIS,
@@ -345,6 +352,8 @@ class UIProfile:
         s.setValue(TIMELINE_INOUT_ALPHA, int(self.timeline_inout_alpha))
         # Scene
         s.setValue(UI_STYLE_SCENE_BG, self.scene_bg or "")
+        # Optional raw stylesheet override (persist empty when None)
+        s.setValue(UI_CUSTOM_STYLESHEET, self.custom_stylesheet or "")
         # Menus
         s.setValue(UI_MENU_CUSTOM_VISIBLE, bool(self.custom_overlay_visible))
 
@@ -417,6 +426,7 @@ class UIProfile:
             "timeline_kf_hover",
             "timeline_inout_alpha",
             "scene_bg",
+            "custom_stylesheet",
             "custom_overlay_visible",
             "timeline_visible",
         ]:

@@ -9,12 +9,13 @@ s'appuie sur un ``ObjectViewAdapter`` pour toutes les interactions Qt.
 from typing import Dict, Any, Optional
 
 from core.scene_model import SceneModel, SceneObject, Keyframe
+from ui.contracts import ObjectViewAdapterContract
 
 
 class ObjectController:
     """Manipule les objets du modèle de scène."""
 
-    def __init__(self, model: SceneModel, view_adapter: Any) -> None:
+    def __init__(self, model: SceneModel, view_adapter: ObjectViewAdapterContract) -> None:
         self.model = model
         self.view = view_adapter
 
@@ -130,6 +131,24 @@ class ObjectController:
             if fr >= cur and name in kf.objects:
                 del kf.objects[name]
         self.view.hide_object(name)
+
+    # ------------------------------------------------------------------
+    def update_object_state_if_keyframe_exists(self, name: str, state: Dict[str, Any]) -> None:
+        """Met à jour l'état d'un objet si un keyframe existe à la frame courante.
+
+        Déplace la mutation du modèle hors de la vue (QGraphicsItem) vers le contrôleur,
+        tout en conservant le comportement précédent (ne pas créer de keyframe implicite).
+        """
+        cur: int = self.model.current_frame
+        if cur not in self.model.keyframes:
+            return
+        obj = self.model.objects.get(name)
+        if obj is None:
+            return
+        self._update_from_state(obj, state)
+        kf = self.model.keyframes.get(cur)
+        if kf is not None:
+            kf.objects[name] = obj.to_dict()
 
     # ------------------------------------------------------------------
     def _update_from_state(self, obj: SceneObject, state: Dict[str, Any]) -> None:
