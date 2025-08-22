@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import logging
 from typing import Optional, Set, List
 
 from PySide6.QtCore import Qt, Signal, QRectF, QPointF, QRect, QEvent
@@ -38,21 +39,32 @@ TOOLBAR_H: int = 30
 
 
 def _c(val: str, default: str) -> QColor:
-    try:
-        s = QSettings("JaJa", "Macronotron")
-        v = s.value(f"timeline/{val}")
-        return QColor(str(v)) if v else QColor(default)
-    except Exception:
+    s = QSettings("JaJa", "Macronotron")
+    v = s.value(f"timeline/{val}")
+    if not v:
         return QColor(default)
+    col = QColor(str(v))
+    if not col.isValid():
+        logging.warning(
+            "timeline: invalid color for %s=%r; using default %s", val, v, default
+        )
+        return QColor(default)
+    return col
 
 
 def _alpha(default: int) -> int:
-    try:
-        s = QSettings("JaJa", "Macronotron")
-        v = s.value("timeline/inout_alpha")
-        return int(v) if v is not None else default
-    except Exception:
+    s = QSettings("JaJa", "Macronotron")
+    v = s.value("timeline/inout_alpha")
+    if v is None:
         return default
+    try:
+        a = int(v)
+    except (TypeError, ValueError) as e:
+        logging.warning(
+            "timeline: invalid inout_alpha=%r (%s); using default %s", v, e, default
+        )
+        return default
+    return max(0, min(255, a))
 
 
 DIAMOND_W: int = 10
@@ -209,13 +221,15 @@ class TimelineWidget(QWidget):
     def _emit_copy_at(self, idx: int) -> None:
         try:
             self.copyKeyframeClicked.emit(int(idx))
-        except Exception:
+        except (TypeError, ValueError) as e:
+            logging.warning("timeline: invalid copy index=%r (%s); emitting 0", idx, e)
             self.copyKeyframeClicked.emit(0)
 
     def _emit_paste_at(self, idx: int) -> None:
         try:
             self.pasteKeyframeClicked.emit(int(idx))
-        except Exception:
+        except (TypeError, ValueError) as e:
+            logging.warning("timeline: invalid paste index=%r (%s); emitting 0", idx, e)
             self.pasteKeyframeClicked.emit(0)
 
     def resizeEvent(self, e: QEvent) -> None:
@@ -441,8 +455,8 @@ class TimelineWidget(QWidget):
         finally:
             try:
                 p.end()
-            except Exception:
-                pass
+            except RuntimeError as e:
+                logging.debug("QPainter.end failed: %s", e)
 
     def _draw_ticks(
         self, p: QPainter, rr: QRect, tick: QColor, tick_major: QColor

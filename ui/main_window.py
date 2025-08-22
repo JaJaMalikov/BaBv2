@@ -300,4 +300,3 @@ class MainWindow(QMainWindow):
         """Open the settings dialog."""
         # Délègue entièrement au SettingsManager
         self.settings.open_dialog()
-

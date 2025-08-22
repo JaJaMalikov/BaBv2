@@ -16,7 +16,9 @@ class SceneView(QObject):
     def __init__(self, win: Any, visuals: SceneVisuals | None = None) -> None:
         super().__init__()
         self.win = win
-        self.visuals: SceneVisuals = visuals if visuals is not None else SceneVisuals(win)
+        self.visuals: SceneVisuals = (
+            visuals if visuals is not None else SceneVisuals(win)
+        )
         if visuals is None:
             self.visuals.setup()
 

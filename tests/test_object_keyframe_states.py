@@ -33,7 +33,7 @@ def test_object_state_is_per_keyframe(_app):
     win.playback_handler.go_to_frame(0)
 
     # Create a free object at a known position
-    obj_path = str(Path("assets/objets/Faucille.svg").resolve())
+    obj_path = str(Path("assets/objets/faucille.svg").resolve())
     # pylint: disable=protected-access
     name = win.scene_controller._create_object_from_file(obj_path)
     assert name in win.object_manager.graphics_items

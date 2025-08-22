@@ -1007,6 +1007,7 @@ class SettingsDialog(QDialog):
             ("load", "Charger", icon_open()),
             ("scene_size", "Scène", icon_scene_size()),
             ("background", "Fond", icon_background()),
+            ("add_light", "Lumière", get_icon("plus")),
             ("settings", "Paramètres", get_icon("layers")),
             ("reset_scene", "Reset scène", icon_reset_scene()),
             ("reset_ui", "Reset UI", icon_reset_ui()),
@@ -1086,47 +1087,40 @@ class SettingsDialog(QDialog):
         return order, vis
 
     def _init_icons_tab(self) -> None:
-        """Initializes the icons tab."""
-        # Expose ALL available icon keys from assets and override directory,
-        # plus those referenced by overlays/specs to ensure complete coverage.
-        from pathlib import Path
+        """Initializes the icons tab with only actually used icon keys."""
+        used: set[str] = set()
+        try:
+            from ui.menu_defaults import (
+                MAIN_DEFAULT_ORDER,
+                QUICK_DEFAULT_ORDER,
+                CUSTOM_DEFAULT_ORDER,
+            )
 
-        s = QSettings("JaJa", "Macronotron")
-        icon_dir_override = s.value("ui/icon_dir")
-
-        def stems_in(dirpath: str) -> set[str]:
-            keys: set[str] = set()
+            used |= set(MAIN_DEFAULT_ORDER)
+            used |= set(QUICK_DEFAULT_ORDER)
+            used |= set(CUSTOM_DEFAULT_ORDER)
+        except Exception:
+            pass
+        # Include keys from overlay/spec lists (built in _init_icon_lists)
+        used |= {k for (k, _label, _ic) in getattr(self, "_main_specs", [])}
+        used |= {k for (k, _label, _ic) in getattr(self, "_quick_specs", [])}
+        # Include runtime actions registered on the main window (auto-updates when new actions added)
+        mw = self.parent()
+        if hasattr(mw, "shortcuts") and isinstance(getattr(mw, "shortcuts"), dict):
             try:
-                p = Path(str(dirpath))
-                if p.exists() and p.is_dir():
-                    for fn in p.iterdir():
-                        if fn.suffix.lower() in (
-                            ".svg",
-                            ".png",
-                            ".jpg",
-                            ".jpeg",
-                            ".bmp",
-                            ".ico",
-                        ):
-                            keys.add(fn.stem)
+                used |= set(mw.shortcuts.keys())
             except Exception:
                 pass
-            return keys
-
-        keys: set[str] = set()
-        # Assets bundle
-        keys |= stems_in(str(Path("assets/icons")))
-        # User override directory
-        if icon_dir_override:
-            keys |= stems_in(str(icon_dir_override))
-        # Add referenced overlay/spec keys to be safe
-        keys |= {k for (k, _label, _ic) in getattr(self, "_main_specs", [])}
-        keys |= {k for (k, _label, _ic) in getattr(self, "_quick_specs", [])}
-        # Common keys used across the app
-        from ui.menu_defaults import COMMON_ICON_KEYS
-
-        keys |= set(COMMON_ICON_KEYS)
-        self._icon_keys = sorted(keys)
+        # Always-used infrastructure icons (overlay chevrons and layers fallback)
+        used |= {
+            "open_menu",
+            "close_menu",
+            "close_menu_inv",
+            "chevron_left",
+            "chevron_right",
+            "layers",
+        }
+        self._icon_keys = sorted(used)
         self._populate_icons_list()
         if self.list_icons.count():
             self.list_icons.setCurrentRow(0)

@@ -156,7 +156,12 @@ class PuppetOps:
                 logging.exception("Failed to apply initial variants visibility")
 
     def scale_puppet(self, puppet_name: str, ratio: float) -> None:
-        """Scales a puppet by a given ratio."""
+        """Scales a puppet by a given ratio and updates the stored absolute scale.
+
+        The ratio is multiplicative on top of the current scale. We maintain
+        object_manager.puppet_scales as the accumulated absolute scale so that
+        export/import can round-trip reliably (docs/tasks.md Task 16).
+        """
         puppet: Optional[Puppet] = self.win.scene_model.puppets.get(puppet_name)
         if not puppet:
             return

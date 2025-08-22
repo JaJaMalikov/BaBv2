@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+import logging
 
 from PySide6.QtCore import QSettings, QRect
 
@@ -24,6 +25,58 @@ def _bool(v: Any, default: bool = False) -> bool:
         return v
     s = str(v).strip().lower()
     return s in {"1", "true", "yes", "on"}
+
+
+def _int(v: Any, default: int = 0) -> int:
+    """Normalize an int value coming from QSettings.
+    Accepts ints or numeric strings; falls back to default on failure.
+    """
+    if v is None:
+        return default
+    try:
+        if isinstance(v, (int,)):
+            return int(v)
+        s = str(v).strip()
+        # Handle floats that are effectively ints
+        if s.isdigit() or (s.startswith("-") and s[1:].isdigit()):
+            return int(s)
+        return int(float(s))
+    except Exception:
+        return default
+
+
+def _float(v: Any, default: float = 0.0) -> float:
+    """Normalize a float value coming from QSettings.
+    Accepts floats or numeric strings; falls back to default on failure.
+    """
+    if v is None:
+        return default
+    try:
+        if isinstance(v, (float, int)):
+            return float(v)
+        s = str(v).strip().replace(",", ".")
+        return float(s)
+    except Exception:
+        return default
+
+
+def _color(v: Any, default: str = "#000000") -> str:
+    """Normalize a color string from QSettings.
+    Accepts hex colors like #RRGGBB or #RRGGBBAA; returns default on invalid.
+    """
+    if not v:
+        return default
+    s = str(v).strip()
+    if s.startswith("#") and len(s) in (7, 9):
+        try:
+            int(s[1:], 16)
+            return s
+        except Exception:
+            return default
+    # Pass through known rgba() values without validation
+    if s.lower().startswith("rgba("):
+        return s
+    return default
 
 
 def _rect_to_tuple(r: Any) -> Optional[Tuple[int, int, int, int]]:
@@ -122,23 +175,38 @@ class UIProfile:
             s.value("ui/icon_color_active") or p.icon_color_active
         )
 
-        # Timeline
-        p.timeline_bg = str(s.value("timeline/bg") or p.timeline_bg)
-        p.timeline_ruler_bg = str(s.value("timeline/ruler_bg") or p.timeline_ruler_bg)
-        p.timeline_track_bg = str(s.value("timeline/track_bg") or p.timeline_track_bg)
-        p.timeline_tick = str(s.value("timeline/tick") or p.timeline_tick)
-        p.timeline_tick_major = str(
-            s.value("timeline/tick_major") or p.timeline_tick_major
-        )
-        p.timeline_playhead = str(s.value("timeline/playhead") or p.timeline_playhead)
-        p.timeline_kf = str(s.value("timeline/kf") or p.timeline_kf)
-        p.timeline_kf_hover = str(s.value("timeline/kf_hover") or p.timeline_kf_hover)
-        try:
-            p.timeline_inout_alpha = int(
-                s.value("timeline/inout_alpha", p.timeline_inout_alpha)
+        # Timeline (validated)
+        def _get_col(key: str, current: str) -> str:
+            raw = s.value(f"timeline/{key}")
+            if raw is None or raw == "":
+                return current
+            val = _color(raw, current)
+            if str(raw).strip() != val:
+                logging.warning(
+                    "timeline: invalid color for %s=%r; using default %s",
+                    key,
+                    raw,
+                    current,
+                )
+            return val
+
+        p.timeline_bg = _get_col("bg", p.timeline_bg)
+        p.timeline_ruler_bg = _get_col("ruler_bg", p.timeline_ruler_bg)
+        p.timeline_track_bg = _get_col("track_bg", p.timeline_track_bg)
+        p.timeline_tick = _get_col("tick", p.timeline_tick)
+        p.timeline_tick_major = _get_col("tick_major", p.timeline_tick_major)
+        p.timeline_playhead = _get_col("playhead", p.timeline_playhead)
+        p.timeline_kf = _get_col("kf", p.timeline_kf)
+        p.timeline_kf_hover = _get_col("kf_hover", p.timeline_kf_hover)
+
+        raw_alpha = s.value("timeline/inout_alpha", p.timeline_inout_alpha)
+        a = _int(raw_alpha, p.timeline_inout_alpha)
+        clamped = max(0, min(255, a))
+        if clamped != a:
+            logging.warning(
+                "timeline: clamped inout_alpha from %s to %s (range 0..255)", a, clamped
             )
-        except Exception:
-            pass
+        p.timeline_inout_alpha = clamped
 
         # Scene bg
         p.scene_bg = s.value("ui/style/scene_bg") or None

@@ -293,7 +293,8 @@ class StateApplier:
                         scale=prev_st.get("scale", base_obj.scale),
                         z=prev_st.get("z", getattr(base_obj, "z", 0)),
                     )
-                    self.win.object_manager._add_object_graphics(tmp)
+                    # Use public SceneController API instead of private adapter method
+                    self.win.scene_controller.add_object_graphics(tmp)
                     gi = graphics_items.get(name)
 
                 if gi is None:

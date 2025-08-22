@@ -1,8 +1,8 @@
 """Module for managing application styles and themes."""
 
 import logging
-from PySide6.QtGui import QFont
-from .theme_settings import ThemeSettings
+from PySide6.QtGui import QFont, QFontDatabase
+from .theme_settings import ThemeSettings, DEFAULT_CUSTOM_PARAMS
 
 # This is used for the fallback icon drawing function.
 ICON_COLOR = "#2D3748"
@@ -184,6 +184,63 @@ QToolTip { background-color: #111827; color: #E5E7EB; border: 1px solid #374151;
 """
 
 
+def _is_hex_color(value: str) -> bool:
+    if not isinstance(value, str):
+        return False
+    v = value.strip()
+    if not v.startswith("#"):
+        return False
+    n = len(v)
+    if n not in (7, 9):
+        return False
+    try:
+        int(v[1:], 16)
+        return True
+    except Exception:
+        return False
+
+
+def sanitize_custom_params(params: dict) -> dict:
+    """Return a sanitized copy of custom theme params.
+
+    - Ensures expected keys exist using DEFAULT_CUSTOM_PARAMS.
+    - Validates hex colors; falls back to defaults on invalid.
+    - Clamps panel_opacity to [0.0, 1.0] and coerces radius/font_size to int.
+    - Ensures font_family is a string.
+    """
+    sanitized = dict(DEFAULT_CUSTOM_PARAMS)
+    sanitized.update({k: v for k, v in params.items() if k in DEFAULT_CUSTOM_PARAMS})
+
+    # Validate colors
+    for k, dv in DEFAULT_CUSTOM_PARAMS.items():
+        if isinstance(dv, str) and dv.startswith("#"):
+            v = sanitized.get(k)
+            if not _is_hex_color(v):  # type: ignore[arg-type]
+                sanitized[k] = dv
+    # Numeric sanitization
+    try:
+        op = float(sanitized.get("panel_opacity", 0.9))
+    except (TypeError, ValueError):
+        op = 0.9
+    sanitized["panel_opacity"] = max(0.0, min(1.0, op))
+
+    for key in ("radius", "font_size"):
+        try:
+            sanitized[key] = int(sanitized.get(key, DEFAULT_CUSTOM_PARAMS[key]))
+        except (TypeError, ValueError):
+            sanitized[key] = int(DEFAULT_CUSTOM_PARAMS[key])
+
+    # Basic string coercions
+    for key in ("font_family", "header_bg", "tooltip_border"):
+        v = sanitized.get(key)
+        if v is None:
+            sanitized[key] = DEFAULT_CUSTOM_PARAMS.get(key, "")
+        else:
+            sanitized[key] = str(v)
+
+    return sanitized
+
+
 def build_stylesheet(params: dict) -> str:
     """Generate a Qt stylesheet from simple, human-friendly parameters.
 
@@ -286,24 +343,49 @@ def apply_stylesheet(app):
     """Apply the application's stylesheet.
 
     Reads QSettings 'ui/theme' to select light/dark theme.
+    Adds robustness for custom themes and fonts (docs/tasks.md Task 12):
+    - Sanitize custom theme parameters and clamp/validate values.
+    - Verify configured font availability; fall back to a safe stack.
     """
     try:
         from PySide6.QtCore import QSettings
 
         s = QSettings("JaJa", "Macronotron")
         ts = ThemeSettings.from_qsettings(s)
+
+        # Choose a safe font family available on the system
+        try:
+            db = QFontDatabase()
+            desired = str(ts.font_family or "Poppins")
+            fams = set(db.families())
+            fallback_chain = (desired, "Poppins", "Arial", "Sans Serif")
+            chosen_family = next((f for f in fallback_chain if f in fams), desired)
+        except Exception:
+            chosen_family = str(ts.font_family or "Poppins")
+
         if ts.preset == "custom":
-            # Prefer explicit stored CSS, otherwise build from params
+            # Prefer explicit stored CSS, otherwise build from sanitized params
             custom_css = s.value("ui/custom_stylesheet")
             if not custom_css:
                 try:
-                    custom_css = build_stylesheet(ts.custom_params)
+                    params = sanitize_custom_params(ts.custom_params)
+                    params["font_family"] = chosen_family
+                    custom_css = build_stylesheet(params)
                 except Exception:
                     logging.exception(
                         "Failed to build custom stylesheet; falling back to light theme"
                     )
                     custom_css = STYLE_SHEET_LIGHT
             app.setStyleSheet(str(custom_css))
+            # Try to honor font size from custom params
+            try:
+                size = int(ts.custom_params.get("font_size", 10))
+            except Exception:
+                size = 10
+            try:
+                app.setFont(QFont(chosen_family, size))
+            except RuntimeError:
+                logging.warning("Requested font not found, using system default.")
         else:
             preset = ts.preset
             if preset == "dark":
@@ -314,10 +396,10 @@ def apply_stylesheet(app):
             else:
                 css = STYLE_SHEET_LIGHT
             app.setStyleSheet(css)
-        try:
-            app.setFont(QFont(str(ts.font_family or "Poppins"), 10))
-        except RuntimeError:
-            logging.warning("Requested font not found, using system default.")
+            try:
+                app.setFont(QFont(chosen_family, 10))
+            except RuntimeError:
+                logging.warning("Requested font not found, using system default.")
     except Exception:
         logging.exception("Failed to apply theme from settings; using dark fallback")
         app.setStyleSheet(STYLE_SHEET_DARK)

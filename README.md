@@ -38,6 +38,12 @@ pip install -r requirements.txt
 python macronotron.py
 ```
 
+## ⚙️ Paramètres et réinitialisation de l’UI
+
+- Les préférences utilisateur (thème, couleurs d’icônes, couleurs de timeline, raccourcis, etc.) sont stockées via QSettings sous JaJa/Macronotron.
+- Le bouton/menu « Reset UI » ne supprime que les clés de disposition (geometry/*, layout/*). Vos préférences visuelles sont préservées.
+- En tests headless, évitez les boîtes de dialogue de fichiers et utilisez directement ui.scene.scene_io.export_scene/import_scene.
+
 ## 📄 Licence
 
 [The Unlicense](https://unlicense.org/) — libre de droit, libre d’usage, libre de ce que tu veux.

@@ -170,7 +170,9 @@ class ObjectViewAdapter:
             x, y = c.x(), c.y()
         else:
             x, y = float(scene_pos.x()), float(scene_pos.y())
-        obj = SceneObject(name, obj_type, file_path, x=x, y=y, rotation=0, scale=1.0, z=0)
+        obj = SceneObject(
+            name, obj_type, file_path, x=x, y=y, rotation=0, scale=1.0, z=0
+        )
         self.add_object_graphics(obj)
         state = self.read_item_state(obj.name)
         return obj, state

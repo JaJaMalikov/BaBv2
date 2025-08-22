@@ -95,7 +95,7 @@ class InspectorWidget(QWidget):
 
         self.scale_row = QWidget()
         scale_layout = QHBoxLayout(self.scale_row)
-        scale_layout.setContentsMargins(0,0,0,0)
+        scale_layout.setContentsMargins(0, 0, 0, 0)
         scale_layout.addWidget(QLabel("Échelle:"))
         scale_layout.addWidget(self.scale_spin)
         form_layout.addRow(self.scale_row)
@@ -111,14 +111,28 @@ class InspectorWidget(QWidget):
         line.setFrameShadow(QFrame.Sunken)
         form_layout.addRow(line)
 
-        form_layout.addRow("Attacher à:", self.attach_puppet_combo)
-        form_layout.addRow("Membre:", self.attach_member_combo)
+        # Attachment rows wrapped to allow toggling visibility safely (without hiding entire panel)
+        self.attach_row = QWidget()
+        attach_row_layout = QHBoxLayout(self.attach_row)
+        attach_row_layout.setContentsMargins(0, 0, 0, 0)
+        attach_row_layout.addWidget(QLabel("Attacher à:"))
+        attach_row_layout.addWidget(self.attach_puppet_combo)
+        form_layout.addRow(self.attach_row)
+
+        self.member_row = QWidget()
+        member_row_layout = QHBoxLayout(self.member_row)
+        member_row_layout.setContentsMargins(0, 0, 0, 0)
+        member_row_layout.addWidget(QLabel("Membre:"))
+        member_row_layout.addWidget(self.attach_member_combo)
+        form_layout.addRow(self.member_row)
 
         attach_actions_layout = QHBoxLayout()
         attach_actions_layout.addStretch()
         attach_actions_layout.addWidget(self.attach_btn)
         attach_actions_layout.addWidget(self.detach_btn)
-        form_layout.addRow("", attach_actions_layout)
+        self.attach_actions_row = QWidget()
+        self.attach_actions_row.setLayout(attach_actions_layout)
+        form_layout.addRow(self.attach_actions_row)
 
         # Variants section (only visible for puppets with defined slots)
         self.variants_panel = QWidget()
@@ -173,14 +187,16 @@ class InspectorWidget(QWidget):
             return
 
         initial_color = QColor(obj.color or "#FFFFE0")
-        new_color = QColorDialog.getColor(initial_color, self, "Choisir une couleur pour la lumière")
+        new_color = QColorDialog.getColor(
+            initial_color, self, "Choisir une couleur pour la lumière"
+        )
 
         if new_color.isValid():
             # Preserve alpha from intensity spin
             alpha = self.light_intensity_spin.value()
             new_color.setAlpha(alpha)
             obj.color = new_color.name(QColor.HexArgb)
-            self._on_light_props_changed() # Trigger update
+            self._on_light_props_changed()  # Trigger update
 
     def _on_light_props_changed(self):
         typ, name = self._current_info()
@@ -194,7 +210,7 @@ class InspectorWidget(QWidget):
         # Update model from UI
         obj.cone_angle = self.light_angle_spin.value()
         obj.cone_reach = self.light_reach_spin.value()
-        
+
         new_color = QColor(obj.color or "#FFFFE0")
         new_color.setAlpha(self.light_intensity_spin.value())
         obj.color = new_color.name(QColor.HexArgb)
@@ -296,8 +312,16 @@ class InspectorWidget(QWidget):
         return item.data(Qt.UserRole)
 
     def _on_item_changed(self, current, previous):
-        """Handles the selection change in the list widget."""
-        typ, name = self._current_info()
+        """Handles the selection change in the list widget.
+
+        Use the 'current' item provided by the signal to avoid timing issues
+        where QListWidget.currentItem() may still be None.
+        """
+        if current is None:
+            self.props_panel.setVisible(False)
+            return
+        data = current.data(Qt.UserRole)
+        typ, name = data if data else (None, None)
         if not name:
             self.props_panel.setVisible(False)
             return
@@ -309,25 +333,35 @@ class InspectorWidget(QWidget):
         self.light_props_widget.setVisible(is_light)
         self.scale_row.setVisible(not is_light)
         self.variants_panel.setVisible(typ == "puppet")
-        self.attach_puppet_combo.parentWidget().setVisible(typ == "object")
+        is_object = typ == "object"
+        # Toggle only the attachment-related rows; do not hide the whole panel
+        if hasattr(self, "attach_row"):
+            self.attach_row.setVisible(is_object)
+        if hasattr(self, "member_row"):
+            self.member_row.setVisible(is_object)
+        if hasattr(self, "attach_actions_row"):
+            self.attach_actions_row.setVisible(is_object)
 
         if typ == "object":
-            if is_light:
+            if is_light and obj:
                 self.light_angle_spin.setValue(obj.cone_angle or 45.0)
                 self.light_reach_spin.setValue(obj.cone_reach or 500.0)
                 color = QColor(obj.color or "#FFFFE0")
                 self.light_intensity_spin.setValue(color.alpha())
             else:
                 self.scale_spin.setValue(obj.scale if obj else 1.0)
-            
             self.rot_spin.setValue(obj.rotation if obj else 0.0)
             self.z_spin.setValue(getattr(obj, "z", 0))
 
-            for it in self.main_window.scene.selectedItems():
-                it.setSelected(False)
-            gi = self.main_window.object_manager.graphics_items.get(name)
-            if gi and gi.isVisible():
-                gi.setSelected(True)
+            # Reflect selection in the scene view
+            try:
+                for it in self.main_window.scene.selectedItems():
+                    it.setSelected(False)
+                gi = self.main_window.object_manager.graphics_items.get(name)
+                if gi and gi.isVisible():
+                    gi.setSelected(True)
+            except Exception:
+                pass
 
             pu, me = self._attached_state_for_frame(name)
             self._refresh_attach_puppet_combo()
@@ -342,10 +376,16 @@ class InspectorWidget(QWidget):
             else:
                 self.attach_puppet_combo.setCurrentIndex(0)
                 self._refresh_attach_member_combo()
-        else: # Puppet
-            self.scale_spin.setValue(self.main_window.object_manager.puppet_scales.get(name, 1.0))
-            self.rot_spin.setValue(self.main_window.scene_controller.get_puppet_rotation(name))
-            self.z_spin.setValue(self.main_window.object_manager.puppet_z_offsets.get(name, 0))
+        else:  # Puppet
+            self.scale_spin.setValue(
+                self.main_window.object_manager.puppet_scales.get(name, 1.0)
+            )
+            self.rot_spin.setValue(
+                self.main_window.scene_controller.get_puppet_rotation(name)
+            )
+            self.z_spin.setValue(
+                self.main_window.object_manager.puppet_z_offsets.get(name, 0)
+            )
             self._rebuild_variant_rows(name)
 
     def _on_scale_changed(self, value: float) -> None:

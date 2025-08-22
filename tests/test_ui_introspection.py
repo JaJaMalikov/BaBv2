@@ -3,7 +3,6 @@ Test d'introspection de l'interface utilisateur pour lister les widgets visibles
 """
 
 import pytest
-from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication, QWidget, QDialog
 
 from ui.main_window import MainWindow

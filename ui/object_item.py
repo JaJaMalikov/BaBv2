@@ -95,7 +95,9 @@ class ObjectSvgItem(_ObjectItemMixin, QGraphicsSvgItem):
 class LightItem(QGraphicsPolygonItem, _ObjectItemMixin):
     """A QGraphicsPolygonItem that simulates a light source by setting the painter's composition mode."""
 
-    def __init__(self, color_str: str = "#FFFFE0", angle: float = 45.0, reach: float = 500.0):
+    def __init__(
+        self, color_str: str = "#FFFFE0", angle: float = 45.0, reach: float = 500.0
+    ):
         QGraphicsPolygonItem.__init__(self)
 
         self.color = QColor(color_str)

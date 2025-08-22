@@ -1,4 +1,5 @@
 """Tests unitaires pour ``SceneService``."""
+
 from __future__ import annotations
 
 
@@ -19,12 +20,15 @@ def app():
 def _provider(state: Dict[str, Dict] | None = None):
     def _inner() -> Dict[str, Dict]:
         return state or {"puppets": {}, "objects": {}}
+
     return _inner
 
 
 def test_add_keyframe_uses_provider(app):  # noqa: ARG001
     model = SceneModel()
-    service = SceneService(model, _provider({"objects": {"o": {"x": 1}}, "puppets": {}}))
+    service = SceneService(
+        model, _provider({"objects": {"o": {"x": 1}}, "puppets": {}})
+    )
     service.add_keyframe(3)
     assert model.keyframes[3].objects["o"]["x"] == 1
 

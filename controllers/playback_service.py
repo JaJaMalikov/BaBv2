@@ -21,7 +21,9 @@ class PlaybackService(QObject):
     snapshot_requested = Signal(int)
     current_frame_changed = Signal(int)
 
-    def __init__(self, scene_model: SceneModel, parent: Optional[QObject] = None) -> None:
+    def __init__(
+        self, scene_model: SceneModel, parent: Optional[QObject] = None
+    ) -> None:
         super().__init__(parent)
         self.scene_model = scene_model
         self.playback_timer: QTimer = QTimer(self)
@@ -117,4 +119,3 @@ class PlaybackService(QObject):
         self.scene_model.add_keyframe(frame_index, state)
         self.go_to_frame(frame_index)
         self.snapshot_requested.emit(int(frame_index))
-

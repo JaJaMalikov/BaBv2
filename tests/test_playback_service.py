@@ -39,4 +39,3 @@ def test_copy_paste_roundtrip(app):  # noqa: ARG001
     kf = model.keyframes[10]
     assert kf.objects == state["objects"]
     assert kf.puppets == state["puppets"]
-

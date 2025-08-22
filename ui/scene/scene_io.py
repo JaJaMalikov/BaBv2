@@ -13,13 +13,34 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QFileDialog
+from core.scene_validation import (
+    validate_settings,
+    validate_objects,
+    validate_keyframes,
+)
 
+# Tests should use export_scene/import_scene directly; see ALLOW_FILE_DIALOGS below.
 if TYPE_CHECKING:
     from ui.main_window import MainWindow
 
 
+# Whether file dialogs are allowed. Tests should set this to False and call
+# export_scene/import_scene directly. See docs/tasks.md Task 24.
+ALLOW_FILE_DIALOGS: bool = True
+
+
 def save_scene(win: "MainWindow") -> None:
-    """Opens a dialog to save the current scene to a JSON file."""
+    """Open a dialog to save the current scene to a JSON file.
+
+    Notes for tests: avoid using this in headless mode. Instead call
+    export_scene(win, path). To disable dialogs at runtime (e.g., tests), set
+    ui.scene.scene_io.ALLOW_FILE_DIALOGS = False.
+    """
+    if not ALLOW_FILE_DIALOGS:
+        logging.warning(
+            "File dialogs disabled (ALLOW_FILE_DIALOGS=False). Use export_scene()."
+        )
+        return
     file_path: str
     file_path, _ = QFileDialog.getSaveFileName(
         win, "Sauvegarder la scène", "", "JSON Files (*.json)"
@@ -29,7 +50,17 @@ def save_scene(win: "MainWindow") -> None:
 
 
 def load_scene(win: "MainWindow") -> None:
-    """Opens a dialog to load a scene from a JSON file."""
+    """Open a dialog to load a scene from a JSON file.
+
+    Notes for tests: avoid using this in headless mode. Instead call
+    import_scene(win, path). To disable dialogs at runtime (e.g., tests), set
+    ui.scene.scene_io.ALLOW_FILE_DIALOGS = False.
+    """
+    if not ALLOW_FILE_DIALOGS:
+        logging.warning(
+            "File dialogs disabled (ALLOW_FILE_DIALOGS=False). Use import_scene()."
+        )
+        return
     file_path: str
     file_path, _ = QFileDialog.getOpenFileName(
         win, "Charger une scène", "", "JSON Files (*.json)"
@@ -39,16 +70,28 @@ def load_scene(win: "MainWindow") -> None:
 
 
 def export_scene(win: "MainWindow", file_path: str) -> None:
-    """Exports the current scene state to a JSON file."""
+    """Exports the current scene state to a JSON file.
+
+    Robustness notes (docs/tasks.md Task 9):
+    - Ensure there is at least one keyframe (create at 0 if none).
+    - Try to snapshot current frame only when graphics are likely ready and
+      the method exists; treat failures as no-op with debug logging.
+    """
     if not win.scene_model.keyframes:
         win.controller.add_keyframe(0)
     # Capture latest on-screen state into the current keyframe if it exists
     cur = win.scene_model.current_frame
     if cur in win.scene_model.keyframes:
         try:
-            win.object_controller.snapshot_current_frame()
-        except RuntimeError as e:
-            logging.debug("Snapshot on export failed: %s", e)
+            if hasattr(win, "object_controller") and hasattr(
+                win.object_controller, "snapshot_current_frame"
+            ):
+                # Heuristic: skip if no graphics yet
+                has_gfx = bool(getattr(win.object_view_adapter, "graphics_items", {}))
+                if has_gfx:
+                    win.object_controller.snapshot_current_frame()
+        except (RuntimeError, TypeError, ValueError) as e:
+            logging.debug("Snapshot on export ignored: %s", e)
 
     puppets_data: Dict[str, Dict[str, Any]] = {}
     for name, puppet in win.scene_model.puppets.items():
@@ -84,6 +127,15 @@ def import_scene(win: MainWindow, file_path: str) -> None:
         # Chargement du fichier JSON (exceptions ciblées)
         with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
+        # Validate structure before applying to live model
+        if not (
+            validate_settings(data.get("settings"))
+            and validate_objects(data.get("objects"))
+            and validate_keyframes(data.get("keyframes"))
+        ):
+            logging.error("Scene import validation failed for '%s'", file_path)
+            create_blank_scene(win, add_default_puppet=False)
+            return
         create_blank_scene(win, add_default_puppet=False)
         win.scene_model.from_dict(data)
         puppets_data = data.get("puppets_data", {})
@@ -119,7 +171,7 @@ def import_scene(win: MainWindow, file_path: str) -> None:
 
         for obj in win.scene_model.objects.values():
             try:
-                win.scene_controller._add_object_graphics(obj)
+                win.scene_controller.add_object_graphics(obj)
             except RuntimeError as e:
                 logging.error(
                     "Failed to create graphics for '%s': %s",
@@ -142,27 +194,28 @@ def import_scene(win: MainWindow, file_path: str) -> None:
                 "Scene controller background update failed, using fallback"
             )
             win._update_background()
-        win.timeline_widget.set_current_frame(win.scene_model.start_frame)
-        win.inspector_widget.refresh()
-
-        # Assure une application d'état même si la frame n'a pas changé (ex: start=0, current=0)
-        win.controller.update_scene_from_model()
+        # Consolidate visual updates to avoid redundant work: set the frame and
+        # apply the model state once the event loop is idle.
         QTimer.singleShot(
             0,
             lambda: (
                 win.timeline_widget.set_current_frame(
                     win.scene_model.current_frame or win.scene_model.start_frame
                 ),
+                win.inspector_widget.refresh(),
                 win.controller.update_scene_from_model(),
             ),
         )
 
-    except (OSError, json.JSONDecodeError) as e:
-        logging.error("Failed to load scene '%s': %s", file_path, e)
+    except json.JSONDecodeError as e:
+        logging.error("Invalid JSON in scene file '%s': %s", file_path, e)
+        create_blank_scene(win, add_default_puppet=False)
+    except OSError as e:
+        logging.error("File IO error while loading scene '%s': %s", file_path, e)
         create_blank_scene(win, add_default_puppet=False)
     except (RuntimeError, AttributeError, ValueError):
-        # Log full traceback for unexpected errors
-        logging.exception("Unexpected error while loading scene '%s'", file_path)
+        # Log full traceback for unexpected errors while applying model/state
+        logging.exception("Model/state error while loading scene '%s'", file_path)
         create_blank_scene(win, add_default_puppet=False)
 
 

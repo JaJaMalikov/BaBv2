@@ -30,7 +30,9 @@ class PlaybackController(QObject):
         super().__init__(parent)
         self._service = PlaybackService(scene_model, parent)
         self._timeline = timeline_widget
-        self._view = PlaybackViewAdapter(timeline_widget, inspector_widget, self._service, parent)
+        self._view = PlaybackViewAdapter(
+            timeline_widget, inspector_widget, self._service, parent
+        )
 
         # Propager les signaux du service
         self._service.frame_update_requested.connect(self.frame_update_requested)
@@ -74,10 +76,11 @@ class PlaybackController(QObject):
     def update_timeline_ui_from_model(self) -> None:
         """Met à jour le widget timeline à partir du modèle."""
         self._timeline.fps_spinbox.setValue(self._service.scene_model.fps)
-        self._timeline.start_frame_spinbox.setValue(self._service.scene_model.start_frame)
+        self._timeline.start_frame_spinbox.setValue(
+            self._service.scene_model.start_frame
+        )
         self._timeline.end_frame_spinbox.setValue(self._service.scene_model.end_frame)
         self._timeline.slider.setRange(
             self._service.scene_model.start_frame,
             self._service.scene_model.end_frame,
         )
-

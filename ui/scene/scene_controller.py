@@ -3,47 +3,22 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Optional, Protocol, cast
+from typing import TYPE_CHECKING, Optional, cast
 
 from PySide6.QtCore import QPointF
-from PySide6.QtWidgets import QGraphicsItem, QGraphicsScene
+from PySide6.QtWidgets import QGraphicsItem
 
-from core.scene_model import Keyframe, SceneModel, SceneObject
+from core.scene_model import Keyframe, SceneObject
 from controllers.scene_service import SceneService
 from .state_applier import StateApplier
 from .scene_view import SceneView
 from ..onion_skin import OnionSkinManager
 from .puppet_ops import PuppetOps
 from .library_ops import LibraryOps, LibraryPayload
+from ui.contracts import SceneWindowContract
 
 if TYPE_CHECKING:
-    from ..object_view_adapter import ObjectViewAdapter
-    from ..zoomable_view import ZoomableView
-
-
-class InspectorWidgetProtocol(Protocol):
-    """Protocol describing the interface expected from the inspector widget."""
-
-    def refresh(self) -> None:
-        """Refresh the inspector's displayed information."""
-
-
-class MainWindowProtocol(Protocol):
-    """Minimal protocol for the main window used by scene operations."""
-
-    scene: QGraphicsScene
-    scene_model: SceneModel
-    object_manager: ObjectViewAdapter
-    view: ZoomableView
-    zoom_factor: float
-    _suspend_item_updates: bool
-    inspector_widget: InspectorWidgetProtocol
-
-    controller: Any
-
-    def _update_background(self) -> None: ...
-
-    def _update_zoom_status(self) -> None: ...
+    pass
 
 
 class SceneController:
@@ -51,7 +26,7 @@ class SceneController:
 
     def __init__(
         self,
-        win: MainWindowProtocol,
+        win: SceneWindowContract,
         *,
         service: SceneService | None = None,
         view: SceneView | None = None,
@@ -60,8 +35,12 @@ class SceneController:
     ) -> None:
         """Initialize the scene controller."""
         self.win = win
-        self.service = service if service is not None else SceneService(
-            win.scene_model, win.object_controller.capture_scene_state
+        self.service = (
+            service
+            if service is not None
+            else SceneService(
+                win.scene_model, win.object_controller.capture_scene_state
+            )
         )
         self.view = view if view is not None else SceneView(win)
         self.onion: OnionSkinManager = (
@@ -179,15 +158,20 @@ class SceneController:
             pass
         return name
 
-    def _add_object_graphics(self, obj: SceneObject) -> None:
-        """Compatibility shim used by scene import to create graphics for an object.
+    def add_object_graphics(self, obj: SceneObject) -> None:
+        """Public API to create graphics for a SceneObject.
 
-        Delegates to ObjectOps' internal method until a public API is standardized.
+        This delegates to the ObjectViewAdapter. Callers outside this class must
+        use this method instead of any private helpers.
         """
         try:
             self.win.object_view_adapter.add_object_graphics(obj)
         except Exception as e:  # pylint: disable=broad-except
             logging.error("add_object_graphics failed: %s", e)
+
+    def _add_object_graphics(self, obj: SceneObject) -> None:
+        """Deprecated: use add_object_graphics(). Kept for internal/back-compat."""
+        self.add_object_graphics(obj)
 
     def delete_object_from_current_frame(self, name: str) -> None:
         """Delete an object from the current frame."""

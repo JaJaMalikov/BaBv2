@@ -202,8 +202,12 @@ class SceneModel:
         return True
 
     def to_dict(self) -> Dict[str, Any]:
-        """Serialize the whole scene into a JSON-friendly dictionary."""
+        """Serialize the whole scene into a JSON-friendly dictionary.
+
+        Includes an optional format "version" for forward compatibility.
+        """
         return {
+            "version": 1,
             "settings": {
                 "start_frame": self.start_frame,
                 "end_frame": self.end_frame,
@@ -225,7 +229,11 @@ class SceneModel:
         }
 
     def from_dict(self, data: Dict[str, Any]) -> None:
-        """Load scene data from a dictionary produced by :meth:`to_dict`."""
+        """Load scene data from a dictionary produced by :meth:`to_dict`.
+
+        Unknown or missing "version" keys are accepted for backward compatibility.
+        """
+        _version = data.get("version")  # currently unused; future migrations may use it
         settings = data.get("settings", {})
         self.start_frame = settings.get("start_frame", 0)
         self.end_frame = settings.get("end_frame", 100)

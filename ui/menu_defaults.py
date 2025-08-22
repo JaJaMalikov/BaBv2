@@ -73,4 +73,5 @@ COMMON_ICON_KEYS = {
     "minus",
     "rotate",
     "custom",
+    "add_light",
 }

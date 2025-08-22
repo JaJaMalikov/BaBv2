@@ -8,26 +8,40 @@ from typing import Dict, Optional
 from PySide6.QtCore import Qt, QSize, QSettings, QByteArray
 from PySide6.QtGui import QIcon, QPixmap, QPainter
 from PySide6.QtSvg import QSvgRenderer
+from .ui_profile import _color, _int
 
 ICONS_DIR = Path("assets/icons")
+# Cache keyed by name|size|colors to reflect runtime settings
 ICON_CACHE: Dict[str, QIcon] = {}
 
 
 def _icon_colors() -> tuple[str, str, str]:
-    """Read icon colors from settings or return defaults."""
+    """Read icon colors from settings or return defaults with normalization."""
     try:
         s = QSettings("JaJa", "Macronotron")
-        normal = s.value("ui/icon_color_normal") or "#4A5568"
-        hover = s.value("ui/icon_color_hover") or "#E53E3E"
-        active = s.value("ui/icon_color_active") or "#FFFFFF"
-        return str(normal), str(hover), str(active)
+        normal = _color(s.value("ui/icon_color_normal"), "#4A5568")
+        hover = _color(s.value("ui/icon_color_hover"), "#E53E3E")
+        active = _color(s.value("ui/icon_color_active"), "#FFFFFF")
+        return normal, hover, active
     except (RuntimeError, ValueError):
         logging.exception("Failed to read icon colors from settings")
         return "#4A5568", "#E53E3E", "#FFFFFF"
 
 
-def _render_svg(svg_data: str, size: QSize = QSize(32, 32)) -> QPixmap:
-    """Renders SVG data to a QPixmap of a specific size. Safe against invalid SVG."""
+def _icon_size() -> int:
+    """Read preferred icon size from QSettings with normalization; default 32."""
+    try:
+        s = QSettings("JaJa", "Macronotron")
+        return _int(s.value("ui/icon_size"), 32)
+    except Exception:
+        return 32
+
+
+def _render_svg(svg_data: str, size: QSize | None = None) -> QPixmap:
+    """Render SVG data to a QPixmap of a specific size. Safe against invalid SVG."""
+    if size is None:
+        side = _icon_size()
+        size = QSize(side, side)
     pixmap = QPixmap(size)
     pixmap.fill(Qt.transparent)
     try:
@@ -88,23 +102,45 @@ def _load_override_icon(name: str) -> Optional[QIcon]:
 
 
 def _create_icon(name: str) -> QIcon:
-    """Creates a state-aware icon with different colors for normal, hover, and active states."""
-    if name in ICON_CACHE:
-        return ICON_CACHE[name]
+    """Create a state-aware icon honoring current icon size and colors.
+
+    Caching is keyed by (name, size, colors) to ensure live updates when settings change.
+    """
+    c_norm, c_hover, c_active = _icon_colors()
+    side = _icon_size()
+    cache_key = f"{name}|{side}|{c_norm}|{c_hover}|{c_active}"
+    if cache_key in ICON_CACHE:
+        return ICON_CACHE[cache_key]
 
     override_icon = _load_override_icon(name)
     if override_icon:
-        ICON_CACHE[name] = override_icon
+        ICON_CACHE[cache_key] = override_icon
         return override_icon
 
     s = QSettings("JaJa", "Macronotron")
     icon_dir_override = s.value("ui/icon_dir")
 
-    # Otherwise, locate in override directory or default assets (SVG expected)
-    # Provide fallback mapping for missing keys
+    # Locate in override directory or default assets (SVG expected)
+    # Fallback mapping for missing or alias keys. Documented for maintainability.
+    # - load -> open
+    # - zoom_in/out -> plus/minus
+    # - add_light -> plus
+    # - toggle_* -> base icon (library/inspector/timeline/custom)
+    # - custom -> layers
+    # - settings -> layers (robustness when override dir lacks settings.svg)
+    # - close -> close_menu (generic close icon)
     fallback_map = {
         "custom": "layers",
-        "settings": "layers",
+        "settings": "settings",
+        "close": "delete",
+        "load": "open",
+        "zoom_in": "plus",
+        "zoom_out": "minus",
+        "add_light": "plus",
+        "toggle_library": "library",
+        "toggle_inspector": "inspector",
+        "toggle_timeline": "timeline",
+        "toggle_custom": "open_menu",
     }
     svg_key = fallback_map.get(name, name)
     svg_path = ICONS_DIR / f"{svg_key}.svg"
@@ -113,23 +149,48 @@ def _create_icon(name: str) -> QIcon:
         if alt.exists():
             svg_path = alt
     if not svg_path.exists():
-        logging.debug("Icon '%s' not found at %s", name, svg_path)
-        ICON_CACHE[name] = QIcon()  # Cache empty icon if not found
+        logging.warning(
+            "Icon '%s' not found at %s; falling back to 'warning' icon", name, svg_path
+        )
+        warn_path = ICONS_DIR / "warning.svg"
+        if icon_dir_override:
+            alt_warn = Path(str(icon_dir_override)) / "warning.svg"
+            if alt_warn.exists():
+                warn_path = alt_warn
+        if warn_path.exists():
+            with open(warn_path, "r", encoding="utf-8") as f:
+                original_svg = f.read()
+            c_norm, c_hover, c_active = _icon_colors()
+            normal_svg = re.sub(r"<path", f'<path fill="{c_norm}"', original_svg)
+            hover_svg = re.sub(r"<path", f'<path fill="{c_hover}"', original_svg)
+            active_svg = re.sub(r"<path", f'<path fill="{c_active}"', original_svg)
+            size = QSize(side, side)
+            pixmap_normal = _render_svg(normal_svg, size)
+            pixmap_hover = _render_svg(hover_svg, size)
+            pixmap_active = _render_svg(active_svg, size)
+            icon = QIcon()
+            icon.addPixmap(pixmap_normal, QIcon.Normal, QIcon.Off)
+            icon.addPixmap(pixmap_hover, QIcon.Active, QIcon.Off)
+            icon.addPixmap(pixmap_active, QIcon.Normal, QIcon.On)
+            icon.addPixmap(pixmap_active, QIcon.Active, QIcon.On)
+            ICON_CACHE[cache_key] = icon
+            return icon
+        ICON_CACHE[cache_key] = QIcon()
         return QIcon()
 
     with open(svg_path, "r", encoding="utf-8") as f:
         original_svg = f.read()
 
-    # Create different colored versions
-    c_norm, c_hover, c_active = _icon_colors()
+    # Create different colored versions by substituting fill on <path> tags
     normal_svg = re.sub(r"<path", f'<path fill="{c_norm}"', original_svg)
     hover_svg = re.sub(r"<path", f'<path fill="{c_hover}"', original_svg)
     active_svg = re.sub(r"<path", f'<path fill="{c_active}"', original_svg)
 
-    # Render pixmaps
-    pixmap_normal = _render_svg(normal_svg)
-    pixmap_hover = _render_svg(hover_svg)
-    pixmap_active = _render_svg(active_svg)
+    # Render pixmaps at the configured size
+    size = QSize(side, side)
+    pixmap_normal = _render_svg(normal_svg, size)
+    pixmap_hover = _render_svg(hover_svg, size)
+    pixmap_active = _render_svg(active_svg, size)
 
     # Create the icon and add pixmaps for each state
     icon = QIcon()
@@ -138,7 +199,7 @@ def _create_icon(name: str) -> QIcon:
     icon.addPixmap(pixmap_active, QIcon.Normal, QIcon.On)  # Checked/On state
     icon.addPixmap(pixmap_active, QIcon.Active, QIcon.On)  # Checked/On + Hover state
 
-    ICON_CACHE[name] = icon
+    ICON_CACHE[cache_key] = icon
     return icon
 
 
