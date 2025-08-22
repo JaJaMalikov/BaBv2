@@ -387,6 +387,216 @@ class UIProfile:
                 s.setValue(GEOMETRY_MAIN_TOOLBAR, r)
         s.setValue(LAYOUT_TIMELINE_VISIBLE, bool(self.timeline_visible))
 
+    # Dialog I/O ---------------------------------------------------------
+    @classmethod
+    def from_dialog(cls, dlg: Any) -> "UIProfile":
+        """Build a profile from the given settings dialog."""
+        p = cls()
+        try:
+            p.theme.preset = dlg.preset_combo.currentText().strip().lower() or "dark"
+            p.theme.font_family = dlg.font_family_edit.text().strip() or "Poppins"
+            if p.theme.preset == "custom":
+                try:
+                    p.theme.custom_params.update(dlg._params_from_ui())
+                except Exception:
+                    logging.exception("Failed to gather custom theme params")
+            p.icon_dir = dlg.icon_dir_edit.text().strip() or None
+            p.icon_size = int(dlg.icon_size_spin.value())
+            if hasattr(dlg, "icon_norm_edit"):
+                p.icon_color_normal = (
+                    dlg.icon_norm_edit.text().strip() or p.icon_color_normal
+                )
+                p.icon_color_hover = (
+                    dlg.icon_hover_edit.text().strip() or p.icon_color_hover
+                )
+                p.icon_color_active = (
+                    dlg.icon_active_edit.text().strip() or p.icon_color_active
+                )
+            p.timeline_bg = dlg.tl_bg.text().strip() or p.timeline_bg
+            p.timeline_ruler_bg = dlg.tl_ruler_bg.text().strip() or p.timeline_ruler_bg
+            p.timeline_track_bg = dlg.tl_track_bg.text().strip() or p.timeline_track_bg
+            p.timeline_tick = dlg.tl_tick.text().strip() or p.timeline_tick
+            p.timeline_tick_major = (
+                dlg.tl_tick_major.text().strip() or p.timeline_tick_major
+            )
+            p.timeline_playhead = (
+                dlg.tl_playhead.text().strip() or p.timeline_playhead
+            )
+            p.timeline_kf = dlg.tl_kf.text().strip() or p.timeline_kf
+            p.timeline_kf_hover = (
+                dlg.tl_kf_hover.text().strip() or p.timeline_kf_hover
+            )
+            p.timeline_inout_alpha = int(dlg.tl_inout_alpha.value())
+            p.scene_bg = dlg.scene_bg_edit.text().strip() or None
+            if hasattr(dlg, "cb_custom_visible"):
+                p.custom_overlay_visible = bool(dlg.cb_custom_visible.isChecked())
+            try:
+                m_order, m_vis = dlg.extract_icon_list(dlg.list_main_order)
+                q_order, q_vis = dlg.extract_icon_list(dlg.list_quick_order)
+                c_order, c_vis = dlg.extract_icon_list(dlg.list_custom_order)
+                p.menu_main_order, p.menu_main_vis = m_order, m_vis
+                p.menu_quick_order, p.menu_quick_vis = q_order, q_vis
+                p.menu_custom_order, p.menu_custom_vis = c_order, c_vis
+            except Exception:
+                logging.exception("Failed to extract icon lists from dialog")
+            try:
+                p.geom_library = (
+                    dlg.lib_x.value(),
+                    dlg.lib_y.value(),
+                    dlg.lib_w.value(),
+                    dlg.lib_h.value(),
+                )
+                p.geom_inspector = (
+                    dlg.insp_x.value(),
+                    dlg.insp_y.value(),
+                    dlg.insp_w.value(),
+                    dlg.insp_h.value(),
+                )
+                p.geom_view_toolbar = (
+                    dlg.vt_x.value(),
+                    dlg.vt_y.value(),
+                    dlg.vt_w.value(),
+                    dlg.vt_h.value(),
+                )
+                p.geom_main_toolbar = (
+                    dlg.mt_x.value(),
+                    dlg.mt_y.value(),
+                    dlg.mt_w.value(),
+                    dlg.mt_h.value(),
+                )
+            except Exception:
+                logging.exception("Failed to gather geometry values from dialog")
+            if hasattr(dlg, "timeline_visible"):
+                try:
+                    p.timeline_visible = bool(dlg.timeline_visible.isChecked())
+                except Exception:
+                    pass
+        except Exception:
+            logging.exception("Failed to build UIProfile from dialog")
+        return p
+
+    def to_dialog(self, dlg: Any) -> None:
+        """Populate the given settings dialog with this profile."""
+        try:
+            presets_map = {
+                "light": "Light",
+                "dark": "Dark",
+                "high contrast": "High Contrast",
+                "custom": "Custom",
+            }
+            dlg.preset_combo.setCurrentText(presets_map.get(self.theme.preset, "Dark"))
+            dlg.font_family_edit.setText(self.theme.font_family or "Poppins")
+            if self.theme.preset == "custom":
+                from .theme_settings import DEFAULT_CUSTOM_PARAMS, THEME_PARAMS
+
+                cp = self.theme.custom_params
+                for param in THEME_PARAMS:
+                    widget = getattr(dlg, param.widget, None)
+                    if widget is None:
+                        continue
+                    val = cp.get(param.key, DEFAULT_CUSTOM_PARAMS[param.key])
+                    if param.percent:
+                        try:
+                            widget.setValue(int(float(val) * 100))
+                        except Exception:
+                            widget.setValue(int(param.default * 100))
+                    elif hasattr(widget, "setValue"):
+                        widget.setValue(int(val))
+                    else:
+                        widget.setText(str(val))
+                try:
+                    dlg._update_all_swatches()
+                    dlg._preview_theme()
+                except Exception:
+                    pass
+            else:
+                try:
+                    dlg._load_preset_values(dlg.preset_combo.currentText())
+                except Exception:
+                    pass
+            dlg.icon_dir_edit.setText(str(self.icon_dir or ""))
+            dlg.icon_size_spin.setValue(int(self.icon_size))
+            if hasattr(dlg, "icon_norm_edit"):
+                dlg.icon_norm_edit.setText(str(self.icon_color_normal))
+                dlg.icon_hover_edit.setText(str(self.icon_color_hover))
+                dlg.icon_active_edit.setText(str(self.icon_color_active))
+            dlg.tl_bg.setText(self.timeline_bg)
+            dlg.tl_ruler_bg.setText(self.timeline_ruler_bg)
+            dlg.tl_track_bg.setText(self.timeline_track_bg)
+            dlg.tl_tick.setText(self.timeline_tick)
+            dlg.tl_tick_major.setText(self.timeline_tick_major)
+            dlg.tl_playhead.setText(self.timeline_playhead)
+            dlg.tl_kf.setText(self.timeline_kf)
+            dlg.tl_kf_hover.setText(self.timeline_kf_hover)
+            dlg.tl_inout_alpha.setValue(int(self.timeline_inout_alpha))
+            dlg.scene_bg_edit.setText(str(self.scene_bg or ""))
+            if hasattr(dlg, "cb_custom_visible"):
+                dlg.cb_custom_visible.setChecked(bool(self.custom_overlay_visible))
+            try:
+                dlg.populate_icon_list(
+                    dlg.list_main_order,
+                    self.menu_main_order,
+                    self.menu_main_vis,
+                    dlg._main_specs,
+                )
+                dlg.populate_icon_list(
+                    dlg.list_quick_order,
+                    self.menu_quick_order,
+                    self.menu_quick_vis,
+                    dlg._quick_specs,
+                )
+                dlg.populate_icon_list(
+                    dlg.list_custom_order,
+                    self.menu_custom_order,
+                    self.menu_custom_vis,
+                    dlg._custom_specs,
+                )
+            except Exception:
+                pass
+            if self.geom_library:
+                try:
+                    x, y, w, h = self.geom_library
+                    dlg.lib_x.setValue(x)
+                    dlg.lib_y.setValue(y)
+                    dlg.lib_w.setValue(w)
+                    dlg.lib_h.setValue(h)
+                except Exception:
+                    pass
+            if self.geom_inspector:
+                try:
+                    x, y, w, h = self.geom_inspector
+                    dlg.insp_x.setValue(x)
+                    dlg.insp_y.setValue(y)
+                    dlg.insp_w.setValue(w)
+                    dlg.insp_h.setValue(h)
+                except Exception:
+                    pass
+            if self.geom_view_toolbar:
+                try:
+                    x, y, w, h = self.geom_view_toolbar
+                    dlg.vt_x.setValue(x)
+                    dlg.vt_y.setValue(y)
+                    dlg.vt_w.setValue(w)
+                    dlg.vt_h.setValue(h)
+                except Exception:
+                    pass
+            if self.geom_main_toolbar:
+                try:
+                    x, y, w, h = self.geom_main_toolbar
+                    dlg.mt_x.setValue(x)
+                    dlg.mt_y.setValue(y)
+                    dlg.mt_w.setValue(w)
+                    dlg.mt_h.setValue(h)
+                except Exception:
+                    pass
+            if hasattr(dlg, "timeline_visible"):
+                try:
+                    dlg.timeline_visible.setChecked(bool(self.timeline_visible))
+                except Exception:
+                    pass
+        except Exception:
+            logging.exception("Failed to populate dialog from UIProfile")
+
     # JSON I/O -----------------------------------------------------------
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
