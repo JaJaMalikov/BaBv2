@@ -80,20 +80,12 @@ class AppController:
             index,
             list(keyframes.keys()),
         )
-        self._apply_puppet_states(graphics_items, keyframes, index)
-        self._apply_object_states(graphics_items, keyframes, index)
-
-    def _apply_puppet_states(
-        self, graphics_items: Dict[str, Any], keyframes: Dict[int, Keyframe], index: int
-    ) -> None:
-        """Applique les états des pantins."""
-        self.win.scene_controller.apply_puppet_states(graphics_items, keyframes, index)
-
-    def _apply_object_states(
-        self, graphics_items: Dict[str, Any], keyframes: Dict[int, Keyframe], index: int
-    ) -> None:
-        """Applique les états des objets."""
-        self.win.scene_controller.apply_object_states(graphics_items, keyframes, index)
+        self.win.scene_controller.apply_puppet_states(
+            graphics_items, keyframes, index
+        )
+        self.win.scene_controller.apply_object_states(
+            graphics_items, keyframes, index
+        )
 
     # --- Synchronisation scène/inspecteur ------------------------------
     def select_object_in_inspector(self, name: str) -> None:
