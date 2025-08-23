@@ -130,24 +130,24 @@ class SettingsManager:
             try:
                 app_icons.clear_cache()
                 if hasattr(self.win, "save_action"):
-                    self.win.save_action.setIcon(app_icons.icon_save())
+                    self.win.save_action.setIcon(app_icons.get_icon("save"))
                 if hasattr(self.win, "load_action"):
-                    self.win.load_action.setIcon(app_icons.icon_open())
+                    self.win.load_action.setIcon(app_icons.get_icon("open"))
                 if hasattr(self.win, "scene_size_action"):
-                    self.win.scene_size_action.setIcon(app_icons.icon_scene_size())
+                    self.win.scene_size_action.setIcon(app_icons.get_icon("scene_size"))
                 if hasattr(self.win, "background_action"):
-                    self.win.background_action.setIcon(app_icons.icon_background())
+                    self.win.background_action.setIcon(app_icons.get_icon("background"))
                 if hasattr(self.win, "reset_scene_action"):
-                    self.win.reset_scene_action.setIcon(app_icons.icon_reset_scene())
+                    self.win.reset_scene_action.setIcon(app_icons.get_icon("new_file"))
                 if hasattr(self.win, "reset_ui_action"):
-                    self.win.reset_ui_action.setIcon(app_icons.icon_reset_ui())
+                    self.win.reset_ui_action.setIcon(app_icons.get_icon("reset_ui"))
                 if hasattr(self.win, "toggle_library_action"):
-                    self.win.toggle_library_action.setIcon(app_icons.icon_library())
+                    self.win.toggle_library_action.setIcon(app_icons.get_icon("library"))
                 if hasattr(self.win, "toggle_inspector_action"):
-                    self.win.toggle_inspector_action.setIcon(app_icons.icon_inspector())
+                    self.win.toggle_inspector_action.setIcon(app_icons.get_icon("inspector"))
                 if hasattr(self.win, "timeline_dock"):
                     self.win.timeline_dock.toggleViewAction().setIcon(
-                        app_icons.icon_timeline()
+                        app_icons.get_icon("timeline")
                     )
                 if hasattr(self.win, "view"):
                     try:

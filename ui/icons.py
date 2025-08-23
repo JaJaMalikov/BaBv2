@@ -246,11 +246,6 @@ def _create_icon(name: str) -> QIcon:
     return icon
 
 
-# --- Public Icon Functions ---
-# We now use a single function to create all icons.
-# The old functions are kept for compatibility but should be phased out.
-
-
 def get_icon(name: str) -> QIcon:
     """Get an icon by name."""
     return _create_icon(name)
@@ -261,137 +256,33 @@ def clear_cache() -> None:
     ICON_CACHE.clear()
 
 
-# Compatibility layer
-def icon_plus():
-    """Get the plus icon."""
-    return get_icon("plus")
+# Legacy compatibility -----------------------------------------------------
+# ``icon_*`` helpers previously exposed individual functions for each icon.
+# They have been removed in favour of :func:`get_icon`.  The mapping below
+# is used by ``__getattr__`` to lazily provide deprecated wrappers for any
+# remaining imports.
+
+LEGACY_ICON_ALIASES = {
+    "reset_scene": "new_file",
+}
 
 
-def icon_minus():
-    """Get the minus icon."""
-    return get_icon("minus")
+def __getattr__(name: str):  # pragma: no cover - simple delegation
+    """Resolve deprecated ``icon_*`` helpers on demand.
 
+    Accessing ``icon_plus`` will emit a deprecation warning and return a
+    callable equivalent to ``lambda: get_icon("plus")``.  Unknown attributes
+    fall back to normal ``AttributeError`` behaviour.
+    """
+    import warnings
 
-def icon_fit():
-    """Get the fit icon."""
-    return get_icon("fit")
-
-
-def icon_rotate():
-    """Get the rotate icon."""
-    return get_icon("rotate")
-
-
-def icon_chevron_left():
-    """Get the chevron_left icon."""
-    return get_icon("chevron_left")
-
-
-def icon_chevron_right():
-    """Get the chevron_right icon."""
-    return get_icon("chevron_right")
-
-
-def icon_scene_size():
-    """Get the scene_size icon."""
-    return get_icon("scene_size")
-
-
-def icon_background():
-    """Get the background icon."""
-    return get_icon("background")
-
-
-def icon_library():
-    """Get the library icon."""
-    return get_icon("library")
-
-
-def icon_inspector():
-    """Get the inspector icon."""
-    return get_icon("inspector")
-
-
-def icon_timeline():
-    """Get the timeline icon."""
-    return get_icon("timeline")
-
-
-def icon_onion():
-    """Get the onion icon."""
-    return get_icon("onion")
-
-
-def icon_save():
-    """Get the save icon."""
-    return get_icon("save")
-
-
-def icon_open():
-    """Get the open icon."""
-    return get_icon("open")
-
-
-def icon_delete():
-    """Get the delete icon."""
-    return get_icon("delete")
-
-
-def icon_duplicate():
-    """Get the duplicate icon."""
-    return get_icon("duplicate")
-
-
-def icon_link():
-    """Get the link icon."""
-    return get_icon("link")
-
-
-def icon_link_off():
-    """Get the link_off icon."""
-    return get_icon("link_off")
-
-
-def icon_close():
-    """Get the close icon."""
-    return get_icon("close")
-
-
-def icon_objets():
-    """Get the objets icon."""
-    return get_icon("objets")
-
-
-def icon_puppet():
-    """Get the puppet icon."""
-    return get_icon("puppet")
-
-
-def icon_reset_ui():
-    """Get the reset_ui icon."""
-    return get_icon("reset_ui")
-
-
-def icon_reset_scene():
-    """Get the new_file icon."""
-    return get_icon("new_file")
-
-
-def icon_open_menu():
-    """Get the open_menu icon."""
-    return get_icon("open_menu")
-
-
-def icon_close_menu():
-    """Get the close_menu icon."""
-    return get_icon("close_menu")
-
-
-def icon_close_menu_inv():
-    """Get the close_menu_inv icon."""
-    return get_icon("close_menu_inv")
-
-
-def icon_settings():
-    """Get the settings icon."""
-    return get_icon("settings")
+    if name.startswith("icon_"):
+        key = name[5:]
+        key = LEGACY_ICON_ALIASES.get(key, key)
+        warnings.warn(
+            f"{name} is deprecated; use get_icon('{key}')",  # noqa: B028
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return lambda: get_icon(key)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
