@@ -123,8 +123,18 @@
     "onion": true
   },
   "icon_overrides": {},
-  "geom_library": null,
-  "geom_inspector": null,
+  "geom_library": [
+    10,
+    10,
+    290,
+    550
+  ],
+  "geom_inspector": [
+    1066,
+    10,
+    290,
+    550
+  ],
   "geom_view_toolbar": null,
   "geom_main_toolbar": null,
   "timeline_visible": true,

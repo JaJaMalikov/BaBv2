@@ -42,7 +42,6 @@ def get_order_and_vis(
     return order_list, vis
 
 
-
 def apply_all_settings(win: Any, dlg: Any, s: QSettings) -> None:
     """Apply settings from the dialog widgets into QSettings and refresh UI."""
     try:
@@ -53,7 +52,6 @@ def apply_all_settings(win: Any, dlg: Any, s: QSettings) -> None:
             UI_THEME,
             UI_CUSTOM_STYLESHEET,
             UI_THEME_FILE,
-            UI_CUSTOM_PARAM,
             UI_CUSTOM_PARAMS_GROUP,
             UI_STYLE_SCENE_BG,
             UI_ICON_COLOR_NORMAL,
@@ -112,17 +110,16 @@ def apply_all_settings(win: Any, dlg: Any, s: QSettings) -> None:
                 or (dlg.accent_edit.text() or "#E53E3E"),
                 "list_selected_text": dlg.list_sel_text_edit.text() or "#FFFFFF",
                 "checkbox_unchecked_bg": dlg.cb_un_bg_edit.text() or "#EDF2F7",
-                "checkbox_unchecked_border": dlg.cb_un_border_edit.text()
-                or "#A0AEC0",
+                "checkbox_unchecked_border": dlg.cb_un_border_edit.text() or "#A0AEC0",
                 "checkbox_checked_bg": dlg.cb_ch_bg_edit.text()
                 or (dlg.accent_edit.text() or "#E53E3E"),
-                "checkbox_checked_border": dlg.cb_ch_border_edit.text()
-                or "#C53030",
+                "checkbox_checked_border": dlg.cb_ch_border_edit.text() or "#C53030",
                 "checkbox_checked_hover": dlg.cb_ch_hover_edit.text() or "#F56565",
             }
             css = build_stylesheet(params)
             s.setValue(UI_CUSTOM_STYLESHEET, css)
             from pathlib import Path
+
             try:
                 theme_path = s.value(UI_THEME_FILE) or str(
                     Path.home() / ".config/JaJa/Macronotron/theme.json"
@@ -147,9 +144,15 @@ def apply_all_settings(win: Any, dlg: Any, s: QSettings) -> None:
             win.scene.setBackgroundBrush(QColor(scene_bg))
             win.view.viewport().update()
         if hasattr(dlg, "icon_norm_edit"):
-            s.setValue(UI_ICON_COLOR_NORMAL, dlg.icon_norm_edit.text().strip() or "#4A5568")
-            s.setValue(UI_ICON_COLOR_HOVER, dlg.icon_hover_edit.text().strip() or "#E53E3E")
-            s.setValue(UI_ICON_COLOR_ACTIVE, dlg.icon_active_edit.text().strip() or "#FFFFFF")
+            s.setValue(
+                UI_ICON_COLOR_NORMAL, dlg.icon_norm_edit.text().strip() or "#4A5568"
+            )
+            s.setValue(
+                UI_ICON_COLOR_HOVER, dlg.icon_hover_edit.text().strip() or "#E53E3E"
+            )
+            s.setValue(
+                UI_ICON_COLOR_ACTIVE, dlg.icon_active_edit.text().strip() or "#FFFFFF"
+            )
         s.setValue(TIMELINE_BG, dlg.tl_bg.text().strip() or "#1E1E1E")
         s.setValue(TIMELINE_RULER_BG, dlg.tl_ruler_bg.text().strip() or "#2C2C2C")
         s.setValue(TIMELINE_TRACK_BG, dlg.tl_track_bg.text().strip() or "#242424")

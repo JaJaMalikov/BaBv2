@@ -1,10 +1,5 @@
 from __future__ import annotations
 
-"""Adaptateur de vue pour la lecture.
-
-Relie les signaux du ``TimelineWidget`` aux appels du ``PlaybackService``.
-"""
-
 from typing import Optional
 
 from PySide6.QtCore import QObject
@@ -12,6 +7,11 @@ from PySide6.QtCore import QObject
 from controllers.playback_service import PlaybackService
 from ui.views.timeline_widget import TimelineWidget
 from ui.views.inspector.inspector_widget import InspectorWidget
+
+"""Adaptateur de vue pour la lecture.
+
+Relie les signaux du ``TimelineWidget`` aux appels du ``PlaybackService``.
+"""
 
 
 class PlaybackViewAdapter(QObject):

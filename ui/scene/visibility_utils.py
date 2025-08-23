@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from core.puppet_piece import PuppetPiece
+from ui.scene.puppet_piece import PuppetPiece
 
 
 def update_piece_visibility(win: Any, piece: PuppetPiece, is_on: bool) -> None:

@@ -5,16 +5,28 @@ the puppet hierarchy from an SVG file. The hierarchy, pivot and z-order data
 are stored externally in ``puppet_config.json`` and loaded at runtime.
 """
 
-from typing import Dict, List, Optional, Tuple
-from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Protocol, runtime_checkable
 from dataclasses import dataclass, field
 from collections import defaultdict
-import json
 import logging
 
-from core.svg_loader import SvgLoader
-
 logger = logging.getLogger(__name__)
+
+
+@runtime_checkable
+class SvgLoaderProtocol(Protocol):
+    """Minimal contract required by Puppet to build from an SVG.
+
+    Implemented in the UI layer (ui.scene.svg_loader.SvgLoader).
+    """
+
+    def get_groups(self) -> List[str]: ...
+
+    def get_group_bounding_box(
+        self, group_id: str
+    ) -> Optional[Tuple[float, float, float, float]]: ...
+
+    def get_pivot(self, group_id: str) -> Tuple[float, float]: ...
 
 
 def compute_child_map(
@@ -32,6 +44,7 @@ def compute_child_map(
 HANDLE_EXCEPTION = {
     # "torse": "cou",
     # Ajoute ici tes exceptions si besoin
+    "tete": "bouche"
 }
 
 
@@ -59,10 +72,21 @@ class PuppetMember:
 
 
 class Puppet:
-    """In-memory puppet composed of PuppetMember nodes built from an SVG file."""
+    """In-memory puppet composed of PuppetMember nodes built from an SVG file.
 
-    def __init__(self, config_path: Optional[str | Path] = None) -> None:
-        """Create an empty puppet and load configuration from JSON."""
+    The configuration dict is provided by the UI layer (see ui.scene.scene_io.load_puppet_config).
+    This keeps core/ free of file I/O and UI dependencies.
+    """
+
+    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+        """Create an empty puppet. Optionally initialize with a config dict.
+
+        The expected config structure is a mapping with keys:
+        - parent: dict[str, Optional[str]] mapping child -> parent
+        - pivot: dict[str, str] mapping part -> pivot group id
+        - z_order: dict[str, int] mapping part -> base z
+        - variants: dict[str, list[str]] optional variant slots
+        """
         self.members: Dict[str, PuppetMember] = {}
         self.parent_map: Dict[str, Optional[str]] = {}
         self.pivot_map: Dict[str, str] = {}
@@ -74,20 +98,7 @@ class Puppet:
         # Optional absolute z-order override per variant name
         self.variant_z: Dict[str, int] = {}
 
-        if config_path:
-            cfg_path = Path(config_path)
-        else:
-            cfg_path = Path(__file__).with_name("puppet_config.json")
-        try:
-            with cfg_path.open("r", encoding="utf-8") as fh:
-                data = json.load(fh)
-        except FileNotFoundError:
-            logger.error("Puppet config file not found: %s", cfg_path)
-            data = {}
-        except json.JSONDecodeError:
-            logger.error("Invalid puppet config JSON: %s", cfg_path)
-            data = {}
-
+        data: Dict[str, Any] = config or {}
         self.parent_map = data.get("parent", {})
         self.pivot_map = data.get("pivot", {})
         self.z_order_map = data.get("z_order", {})
@@ -95,7 +106,7 @@ class Puppet:
         self.variants, self.variant_z = normalize_variants(raw_variants)
         self.child_map = dict(compute_child_map(self.parent_map))
 
-    def build_from_svg(self, svg_loader: "SvgLoader") -> None:
+    def build_from_svg(self, svg_loader: "SvgLoaderProtocol") -> None:
         """Populate members from an SVG using the loaded configuration."""
         groups = svg_loader.get_groups()
         for group_id in groups:
@@ -212,14 +223,14 @@ def normalize_variants(
     # Legacy: dict[str, list[str]] or invalid
     try:
         return dict(raw_variants), {}
-    except Exception:  # pylint: disable=broad-except
+    except Exception:
         return {}, {}
 
 
 def print_hierarchy(
     self, member: Optional[PuppetMember] = None, indent: str = ""
 ) -> None:
-    """Print the puppet hierarchy starting from ``member`` (or roots)."""
+    """Print the puppet hierarchy starting from 'member' or roots."""
     if member is None:
         for root in self.get_root_members():
             self.print_hierarchy(root, indent)
@@ -236,7 +247,7 @@ def print_hierarchy(
 
 
 def validate_svg_structure(
-    svg_loader: "SvgLoader",
+    svg_loader: "SvgLoaderProtocol",
     parent_map: Dict[str, Optional[str]],
     pivot_map: Dict[str, str],
 ) -> None:
@@ -267,18 +278,3 @@ def validate_svg_structure(
     else:
         logger.info("✅ Tous les pivots du pivot_map existent dans le SVG.")
     logger.info("-----------------------------\n")
-
-
-def main() -> None:
-    """Run a quick validation and print the puppet hierarchy for debugging."""
-    svg_path: str = "assets/manululu.svg"
-    loader: SvgLoader = SvgLoader(svg_path)
-    puppet: Puppet = Puppet()
-    validate_svg_structure(loader, puppet.parent_map, puppet.pivot_map)
-    puppet.build_from_svg(loader)
-    logger.info("Hiérarchie des membres (z-order inclus) :")
-    puppet.print_hierarchy()
-
-
-if __name__ == "__main__":
-    main()

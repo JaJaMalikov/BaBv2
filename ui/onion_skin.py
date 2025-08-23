@@ -19,7 +19,7 @@ from PySide6.QtGui import QPixmap
 from PySide6.QtCore import QPointF
 
 from core.scene_model import Keyframe
-from core.puppet_piece import PuppetPiece
+from ui.scene.puppet_piece import PuppetPiece
 
 
 class OnionSkinManager:

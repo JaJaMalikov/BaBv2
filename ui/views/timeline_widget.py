@@ -51,6 +51,7 @@ def _c(val: str, default: str) -> QColor:
         TIMELINE_KF,
         TIMELINE_KF_HOVER,
     )
+
     key_map = {
         "bg": TIMELINE_BG,
         "ruler_bg": TIMELINE_RULER_BG,
@@ -77,6 +78,7 @@ def _c(val: str, default: str) -> QColor:
 
 def _alpha(default: int) -> int:
     from ui.settings_keys import ORG, APP, TIMELINE_INOUT_ALPHA
+
     s = QSettings(ORG, APP)
     v = s.value(TIMELINE_INOUT_ALPHA)
     if v is None:
@@ -88,7 +90,12 @@ def _alpha(default: int) -> int:
             "timeline: invalid inout_alpha=%r (%s); using default %s", v, e, default
         )
         return default
-    return max(0, min(255, a))
+    clamped = max(0, min(255, a))
+    if clamped != a:
+        logging.warning(
+            "timeline: clamped inout_alpha from %s to %s (range 0..255)", a, clamped
+        )
+    return clamped
 
 
 DIAMOND_W: int = 10

@@ -1,4 +1,7 @@
-"""Utilities to inspect and extract data from SVG files."""
+"""Utilities to inspect and extract data from SVG files (UI layer).
+
+Relocated from core/ to ui/scene/ to keep Qt dependencies out of core.
+"""
 
 from __future__ import annotations
 
@@ -6,10 +9,8 @@ import logging
 import xml.etree.ElementTree as ET
 from typing import Dict, List, Optional, Tuple
 
-
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtCore import QRectF
-
 
 # Types parlants
 Point = Tuple[float, float]

@@ -16,7 +16,7 @@ from ui.icon_list_utils import (
     extract_icon_list as _extract_icon_list,
 )
 
-from . import settings_geometry, settings_shortcuts, settings_theme
+from ui import settings_geometry, settings_shortcuts, settings_theme
 
 # QSettings keys used here (maintenance):
 # UI_THEME, UI_THEME_FILE, UI_CUSTOM_PARAM handle theme configuration.
@@ -49,7 +49,6 @@ class SettingsManager:
         self.org = org
         self.app = app
 
-
     def save(self) -> None:
         """Saves the current UI settings."""
         settings_geometry.save(self.win, self.org, self.app)
@@ -58,7 +57,6 @@ class SettingsManager:
         """Loads the UI settings."""
         settings_geometry.load(self.win, self.org, self.app)
         settings_shortcuts.load(self.win, self.org, self.app)
-
 
     def clear(self) -> None:
         """Clear persisted UI layout state only (geometry/layout keys)."""
@@ -142,9 +140,13 @@ class SettingsManager:
                 if hasattr(self.win, "reset_ui_action"):
                     self.win.reset_ui_action.setIcon(app_icons.get_icon("reset_ui"))
                 if hasattr(self.win, "toggle_library_action"):
-                    self.win.toggle_library_action.setIcon(app_icons.get_icon("library"))
+                    self.win.toggle_library_action.setIcon(
+                        app_icons.get_icon("library")
+                    )
                 if hasattr(self.win, "toggle_inspector_action"):
-                    self.win.toggle_inspector_action.setIcon(app_icons.get_icon("inspector"))
+                    self.win.toggle_inspector_action.setIcon(
+                        app_icons.get_icon("inspector")
+                    )
                 if hasattr(self.win, "timeline_dock"):
                     self.win.timeline_dock.toggleViewAction().setIcon(
                         app_icons.get_icon("timeline")

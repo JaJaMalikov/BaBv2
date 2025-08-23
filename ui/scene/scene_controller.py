@@ -144,6 +144,35 @@ class SceneController:
         except AttributeError:
             pass
 
+    def set_object_rotation(self, name: str, angle: float) -> None:
+        """Update object rotation via controller without directly mutating the model from the view."""
+        try:
+            self.win.object_controller.update_object_state_if_keyframe_exists(
+                name, {"rotation": float(angle)}
+            )
+        except Exception:
+            logging.exception("Failed to set object rotation for %s", name)
+
+    def set_object_z(self, name: str, z_value: int) -> None:
+        """Update object Z via controller without directly mutating the model from the view."""
+        try:
+            self.win.object_controller.update_object_state_if_keyframe_exists(
+                name, {"z": int(z_value)}
+            )
+        except Exception:
+            logging.exception("Failed to set object z for %s", name)
+
+    def set_object_scale(self, name: str, scale: float) -> None:
+        """Update object scale via controller without directly mutating the model from the view."""
+        try:
+            if float(scale) <= 0:
+                return
+            self.win.object_controller.update_object_state_if_keyframe_exists(
+                name, {"scale": float(scale)}
+            )
+        except Exception:
+            logging.exception("Failed to set object scale for %s", name)
+
     def _create_object_from_file(
         self, file_path: str, scene_pos: Optional[QPointF] = None
     ) -> Optional[str]:

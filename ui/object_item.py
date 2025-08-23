@@ -59,9 +59,13 @@ class _ObjectItemMixin:
                     }
                     # Only update model if a keyframe exists at current frame
                     try:
-                        mw.object_controller.update_object_state_if_keyframe_exists(name, state)
+                        mw.object_controller.update_object_state_if_keyframe_exists(
+                            name, state
+                        )
                     except Exception:  # pylint: disable=broad-except
-                        logging.exception("Failed to propagate item state to controller")
+                        logging.exception(
+                            "Failed to propagate item state to controller"
+                        )
                     # Sync selection with inspector
                     if change == QGraphicsItem.ItemSelectedHasChanged and bool(value):
                         mw.controller.select_object_in_inspector(name)

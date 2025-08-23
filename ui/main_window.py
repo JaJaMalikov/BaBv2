@@ -164,12 +164,22 @@ class MainWindow(QMainWindow):
                 ONION_OPACITY_PREV,
                 ONION_OPACITY_NEXT,
             )
+
             s = QSettings(ORG, APP)
             from ui.ui_profile import _int as _to_int, _float as _to_float
-            self.onion.prev_count = _to_int(s.value(ONION_PREV_COUNT), self.onion.prev_count)
-            self.onion.next_count = _to_int(s.value(ONION_NEXT_COUNT), self.onion.next_count)
-            self.onion.opacity_prev = _to_float(s.value(ONION_OPACITY_PREV), self.onion.opacity_prev)
-            self.onion.opacity_next = _to_float(s.value(ONION_OPACITY_NEXT), self.onion.opacity_next)
+
+            self.onion.prev_count = _to_int(
+                s.value(ONION_PREV_COUNT), self.onion.prev_count
+            )
+            self.onion.next_count = _to_int(
+                s.value(ONION_NEXT_COUNT), self.onion.next_count
+            )
+            self.onion.opacity_prev = _to_float(
+                s.value(ONION_OPACITY_PREV), self.onion.opacity_prev
+            )
+            self.onion.opacity_next = _to_float(
+                s.value(ONION_OPACITY_NEXT), self.onion.opacity_next
+            )
             self.overlays.apply_menu_settings()
         except (RuntimeError, ValueError, ImportError):
             logging.exception("Failed to apply startup preferences")

@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "main_gauche": ["main_gauche", "main_gauche_rev", ["main_gauche_f", 3]],
+    "main_droite": ["main_droite", "main_droite_rev", ["main_droite_f", 3]],
+    "bouche": ["bouche", "bouche_th", "bouche_ou", "bouche_b", "bouche_u", "bouche_c", "bouche_l", "bouche_r", "bouche_ch", "bouche_o", "bouche_f", "bouche_a"]
+  }
+}

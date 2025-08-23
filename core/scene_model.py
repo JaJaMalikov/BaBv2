@@ -5,7 +5,6 @@ This module contains pure data structures and serialization helpers used by the 
 
 from typing import Dict, Any, Optional
 import logging
-import json
 from dataclasses import dataclass, field, asdict
 from core.puppet_model import Puppet
 from core.scene_validation import (
@@ -64,9 +63,20 @@ class SceneObject:
             scale=data.get("scale", 1.0),
             z=data.get("z", 0),
         )
+        # Optional light-specific fields
+        if "color" in data:
+            obj.color = data.get("color")
+        if "cone_angle" in data:
+            obj.cone_angle = data.get("cone_angle")
+        if "cone_reach" in data:
+            obj.cone_reach = data.get("cone_reach")
         attached = data.get("attached_to")
         if attached is not None:
-            obj.attached_to = tuple(attached)
+            # JSON may encode tuples as lists, normalize to tuple[str, str]
+            try:
+                obj.attached_to = (attached[0], attached[1])
+            except Exception:  # keep robust to malformed data
+                obj.attached_to = tuple(attached)  # type: ignore[assignment]
         return obj
 
 
@@ -258,23 +268,3 @@ class SceneModel:
             self.keyframes[index] = new_kf
 
         self.keyframes = dict(sorted(self.keyframes.items()))
-
-    def export_json(self, file_path: str) -> None:
-        """Export the scene to a JSON file at ``file_path``."""
-        with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(self.to_dict(), f, indent=2)
-
-    def import_json(self, file_path: str) -> bool:
-        """Load scene data from a JSON file, returning success."""
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            # Valider avant d'appliquer pour éviter tout état partiel
-            if not self._validate_data(data):
-                logging.error("Import JSON invalide: structure non conforme")
-                return False
-            self.from_dict(data)
-            return True
-        except (IOError, json.JSONDecodeError) as e:
-            logging.error("Erreur lors du chargement du fichier : %s", e)
-            return False

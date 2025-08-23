@@ -8,7 +8,7 @@ from typing import Dict, Optional, Any, List, Tuple
 from PySide6.QtWidgets import QGraphicsItem
 
 from core.scene_model import SceneObject, Keyframe
-from core.puppet_piece import PuppetPiece
+from ui.scene.puppet_piece import PuppetPiece
 from .visibility_utils import update_piece_visibility
 
 

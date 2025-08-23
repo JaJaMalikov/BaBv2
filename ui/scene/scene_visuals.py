@@ -66,7 +66,9 @@ class SceneVisuals:
                 != pixmap.height()
             ):
                 try:
-                    self.win.scene_controller.set_scene_size(pixmap.width(), pixmap.height())
+                    self.win.scene_controller.set_scene_size(
+                        pixmap.width(), pixmap.height()
+                    )
                     return
                 except (AttributeError, RuntimeError):
                     # As an ultimate fallback, keep UI responsive without mutating the model.

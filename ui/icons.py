@@ -35,13 +35,19 @@ def _tint_svg(svg: str, color: str) -> str:
             return svg
         # Remove explicit fill attributes on path
         svg2 = re.sub(r"(<path\b[^>]*?)\s+fill=\"[^\"]*\"", r"\\1", svg)
+
         # Remove style fill declarations inside style="..."
         def _strip_style_fill(m: re.Match[str]) -> str:
             prefix, body, suffix = m.group(1), m.group(2), m.group(3)
             # Remove fill:...; occurrences
-            parts = [p for p in body.split(";") if p.strip() and not p.strip().lower().startswith("fill:")]
+            parts = [
+                p
+                for p in body.split(";")
+                if p.strip() and not p.strip().lower().startswith("fill:")
+            ]
             new_body = ";".join(parts)
             return f"{prefix}{new_body}{suffix}"
+
         svg2 = re.sub(r"(<path\b[^>]*?\sstyle=\")([^\"]*)(\")", _strip_style_fill, svg2)
         # Inject our fill
         tinted = re.sub(r"<path\b", f'<path fill="{color}"', svg2)
@@ -115,6 +121,7 @@ def _load_override_icon(name: str) -> Optional[QIcon]:
 
     p = Path(str(override_path))
     if not p.exists():
+        logging.warning("Icon override for %s set to missing path: %s", name, p)
         return None
 
     try:

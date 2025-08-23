@@ -70,7 +70,11 @@ def load(win: Any, org: str = "JaJa", app: str = "Macronotron") -> None:
     if s.contains(LAYOUT_TIMELINE_VISIBLE):
         is_visible = _bool(s.value(LAYOUT_TIMELINE_VISIBLE), True)
         win.timeline_dock.setVisible(is_visible)
-    if hasattr(win.view, "_overlay") and win.view._overlay and s.contains(GEOMETRY_VIEW_TOOLBAR):
+    if (
+        hasattr(win.view, "_overlay")
+        and win.view._overlay
+        and s.contains(GEOMETRY_VIEW_TOOLBAR)
+    ):
         win.view._overlay.setGeometry(s.value(GEOMETRY_VIEW_TOOLBAR))
     if (
         hasattr(win.view, "_main_tools_overlay")

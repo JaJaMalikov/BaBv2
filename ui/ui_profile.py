@@ -14,8 +14,39 @@ import logging
 
 from PySide6.QtCore import QSettings, QRect
 
-from .theme_settings import ThemeSettings
-from .menu_defaults import MAIN_DEFAULT_ORDER, QUICK_DEFAULT_ORDER, CUSTOM_DEFAULT_ORDER
+from ui.theme_settings import ThemeSettings, DEFAULT_CUSTOM_PARAMS, THEME_PARAMS
+from ui.menu_defaults import (
+    MAIN_DEFAULT_ORDER,
+    QUICK_DEFAULT_ORDER,
+    CUSTOM_DEFAULT_ORDER,
+)
+from ui.settings_keys import (
+    UI_ICON_DIR,
+    UI_ICON_SIZE,
+    UI_ICON_COLOR_NORMAL,
+    UI_ICON_COLOR_HOVER,
+    UI_ICON_COLOR_ACTIVE,
+    TIMELINE_BG,
+    TIMELINE_RULER_BG,
+    TIMELINE_TRACK_BG,
+    TIMELINE_TICK,
+    TIMELINE_TICK_MAJOR,
+    TIMELINE_PLAYHEAD,
+    TIMELINE_KF,
+    TIMELINE_KF_HOVER,
+    TIMELINE_INOUT_ALPHA,
+    UI_STYLE_SCENE_BG,
+    UI_CUSTOM_STYLESHEET,
+    UI_MENU_CUSTOM_VISIBLE,
+    UI_MENU_ORDER,
+    UI_MENU_VIS,
+    UI_ICON_OVERRIDE,
+    GEOMETRY_LIBRARY,
+    GEOMETRY_INSPECTOR,
+    GEOMETRY_VIEW_TOOLBAR,
+    GEOMETRY_MAIN_TOOLBAR,
+    LAYOUT_TIMELINE_VISIBLE,
+)
 
 
 def _bool(v: Any, default: bool = False) -> bool:
@@ -165,38 +196,19 @@ class UIProfile:
         p.theme = ThemeSettings.from_qsettings(s)
 
         # Icon base
-        from ui.settings_keys import (
-            UI_ICON_DIR,
-            UI_ICON_SIZE,
-            UI_ICON_COLOR_NORMAL,
-            UI_ICON_COLOR_HOVER,
-            UI_ICON_COLOR_ACTIVE,
-        )
+
         p.icon_dir = s.value(UI_ICON_DIR) or None
         try:
             p.icon_size = int(s.value(UI_ICON_SIZE, p.icon_size))
         except Exception:
             pass
-        p.icon_color_normal = str(
-            s.value(UI_ICON_COLOR_NORMAL) or p.icon_color_normal
-        )
+        p.icon_color_normal = str(s.value(UI_ICON_COLOR_NORMAL) or p.icon_color_normal)
         p.icon_color_hover = str(s.value(UI_ICON_COLOR_HOVER) or p.icon_color_hover)
-        p.icon_color_active = str(
-            s.value(UI_ICON_COLOR_ACTIVE) or p.icon_color_active
-        )
+        p.icon_color_active = str(s.value(UI_ICON_COLOR_ACTIVE) or p.icon_color_active)
 
         # Timeline (validated)
         def _get_col(key: str, current: str) -> str:
-            from ui.settings_keys import (
-                TIMELINE_BG,
-                TIMELINE_RULER_BG,
-                TIMELINE_TRACK_BG,
-                TIMELINE_TICK,
-                TIMELINE_TICK_MAJOR,
-                TIMELINE_PLAYHEAD,
-                TIMELINE_KF,
-                TIMELINE_KF_HOVER,
-            )
+
             key_map = {
                 "bg": TIMELINE_BG,
                 "ruler_bg": TIMELINE_RULER_BG,
@@ -229,20 +241,6 @@ class UIProfile:
         p.timeline_kf = _get_col("kf", p.timeline_kf)
         p.timeline_kf_hover = _get_col("kf_hover", p.timeline_kf_hover)
 
-        from ui.settings_keys import (
-            TIMELINE_INOUT_ALPHA,
-            UI_STYLE_SCENE_BG,
-            UI_CUSTOM_STYLESHEET,
-            UI_MENU_CUSTOM_VISIBLE,
-            UI_MENU_ORDER,
-            UI_MENU_VIS,
-            UI_ICON_OVERRIDE,
-            GEOMETRY_LIBRARY,
-            GEOMETRY_INSPECTOR,
-            GEOMETRY_VIEW_TOOLBAR,
-            GEOMETRY_MAIN_TOOLBAR,
-            LAYOUT_TIMELINE_VISIBLE,
-        )
         raw_alpha = s.value(TIMELINE_INOUT_ALPHA, p.timeline_inout_alpha)
         a = _int(raw_alpha, p.timeline_inout_alpha)
         clamped = max(0, min(255, a))
@@ -308,33 +306,6 @@ class UIProfile:
         # Theme first
         self.theme.to_qsettings(s)
         # Icon base
-        from ui.settings_keys import (
-            UI_ICON_DIR,
-            UI_ICON_SIZE,
-            UI_ICON_COLOR_NORMAL,
-            UI_ICON_COLOR_HOVER,
-            UI_ICON_COLOR_ACTIVE,
-            TIMELINE_BG,
-            TIMELINE_RULER_BG,
-            TIMELINE_TRACK_BG,
-            TIMELINE_TICK,
-            TIMELINE_TICK_MAJOR,
-            TIMELINE_PLAYHEAD,
-            TIMELINE_KF,
-            TIMELINE_KF_HOVER,
-            TIMELINE_INOUT_ALPHA,
-            UI_STYLE_SCENE_BG,
-            UI_CUSTOM_STYLESHEET,
-            UI_MENU_CUSTOM_VISIBLE,
-            UI_MENU_ORDER,
-            UI_MENU_VIS,
-            UI_ICON_OVERRIDE,
-            GEOMETRY_LIBRARY,
-            GEOMETRY_INSPECTOR,
-            GEOMETRY_VIEW_TOOLBAR,
-            GEOMETRY_MAIN_TOOLBAR,
-            LAYOUT_TIMELINE_VISIBLE,
-        )
         s.setValue(UI_ICON_DIR, self.icon_dir or "")
         s.setValue(UI_ICON_SIZE, int(self.icon_size))
         s.setValue(UI_ICON_COLOR_NORMAL, self.icon_color_normal)
@@ -419,13 +390,9 @@ class UIProfile:
             p.timeline_tick_major = (
                 dlg.tl_tick_major.text().strip() or p.timeline_tick_major
             )
-            p.timeline_playhead = (
-                dlg.tl_playhead.text().strip() or p.timeline_playhead
-            )
+            p.timeline_playhead = dlg.tl_playhead.text().strip() or p.timeline_playhead
             p.timeline_kf = dlg.tl_kf.text().strip() or p.timeline_kf
-            p.timeline_kf_hover = (
-                dlg.tl_kf_hover.text().strip() or p.timeline_kf_hover
-            )
+            p.timeline_kf_hover = dlg.tl_kf_hover.text().strip() or p.timeline_kf_hover
             p.timeline_inout_alpha = int(dlg.tl_inout_alpha.value())
             p.scene_bg = dlg.scene_bg_edit.text().strip() or None
             if hasattr(dlg, "cb_custom_visible"):
@@ -487,8 +454,6 @@ class UIProfile:
             dlg.preset_combo.setCurrentText(presets_map.get(self.theme.preset, "Dark"))
             dlg.font_family_edit.setText(self.theme.font_family or "Poppins")
             if self.theme.preset == "custom":
-                from .theme_settings import DEFAULT_CUSTOM_PARAMS, THEME_PARAMS
-
                 cp = self.theme.custom_params
                 for param in THEME_PARAMS:
                     widget = getattr(dlg, param.widget, None)

@@ -394,12 +394,11 @@ class InspectorWidget(QWidget):
         if not name:
             return
         if typ == "object":
-            obj = self.main_window.scene_model.objects.get(name)
-            if obj:
-                obj.scale = value
-                item = self.main_window.object_manager.graphics_items.get(name)
-                if item:
-                    item.setScale(value)
+            # Route model mutation via controller; keep immediate visual update
+            self.main_window.scene_controller.set_object_scale(name, float(value))
+            item = self.main_window.object_manager.graphics_items.get(name)
+            if item:
+                item.setScale(value)
         else:
             old = self.main_window.object_manager.puppet_scales.get(name, 1.0)
             if value <= 0:
@@ -436,10 +435,10 @@ class InspectorWidget(QWidget):
         if not name:
             return
         if typ == "object":
-            obj = self.main_window.scene_model.objects.get(name)
             item = self.main_window.object_manager.graphics_items.get(name)
-            if obj and item:
-                obj.rotation = value
+            # Route model mutation via controller; keep immediate visual update
+            self.main_window.scene_controller.set_object_rotation(name, float(value))
+            if item:
                 try:
                     item.setTransformOriginPoint(item.boundingRect().center())
                 except RuntimeError as e:
@@ -455,10 +454,10 @@ class InspectorWidget(QWidget):
         if not name:
             return
         if typ == "object":
-            obj = self.main_window.scene_model.objects.get(name)
             item = self.main_window.object_manager.graphics_items.get(name)
-            if obj and item:
-                obj.z = int(value)
+            # Route model mutation via controller; keep immediate visual update
+            self.main_window.scene_controller.set_object_z(name, int(value))
+            if item:
                 item.setZValue(int(value))
         else:
             # Z offset global du pantin (appliqué à toutes les pièces)

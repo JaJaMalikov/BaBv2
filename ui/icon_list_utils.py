@@ -36,7 +36,9 @@ def populate_icon_list(
             | Qt.ItemIsDragEnabled
             | Qt.ItemIsSelectable
         )
-        item.setCheckState(Qt.Checked if visibility_map.get(key, True) else Qt.Unchecked)
+        item.setCheckState(
+            Qt.Checked if visibility_map.get(key, True) else Qt.Unchecked
+        )
         lw.addItem(item)
 
 

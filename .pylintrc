@@ -39,5 +39,3 @@ min-similarity-lines=10
 [DESIGN]
 max-attributes=16
 
-[EXCEPTIONS]
-overgeneral-exceptions=Exception

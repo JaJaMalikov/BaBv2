@@ -82,7 +82,10 @@ class ZoomableView(QGraphicsView):
         try:
             from ui.ui_profile import _int as _to_int
         except Exception:
-            _to_int = lambda v, d=32: int(v) if v is not None else d  # type: ignore
+
+            def _to_int(v, d=32):
+                return int(v) if v is not None else d  # type: ignore
+
         size_val = _to_int(s.value(UI_ICON_SIZE), 32)
         icon_size: int = max(16, min(128, int(size_val)))
         button_size: int = max(28, icon_size + 4)
@@ -173,7 +176,10 @@ class ZoomableView(QGraphicsView):
         try:
             from ui.ui_profile import _int as _to_int
         except Exception:
-            _to_int = lambda v, d=32: int(v) if v is not None else d  # type: ignore
+
+            def _to_int(v, d=32):
+                return int(v) if v is not None else d  # type: ignore
+
         size_val = _to_int(s.value(UI_ICON_SIZE), 32)
         icon_size: int = max(16, min(128, int(size_val)))
         button_size: int = max(28, icon_size + 4)
@@ -311,7 +317,10 @@ class ZoomableView(QGraphicsView):
         try:
             from ui.ui_profile import _int as _to_int
         except Exception:
-            _to_int = lambda v, d=32: int(v) if v is not None else d  # type: ignore
+
+            def _to_int(v, d=32):
+                return int(v) if v is not None else d  # type: ignore
+
         size_val = _to_int(s.value(UI_ICON_SIZE), 32)
         icon_size: int = max(16, min(128, int(size_val)))
         button_size: int = max(28, icon_size + 4)
@@ -355,7 +364,7 @@ class ZoomableView(QGraphicsView):
             if not btn:
                 continue
             vis = s.value(UI_MENU_VIS(CUSTOM_MENU, key))
-            visible = True if vis is None else (vis in [True, "true", "1"]) 
+            visible = True if vis is None else (vis in [True, "true", "1"])
             btn.setVisible(visible)
             lay.addWidget(btn)
         # Geometry defaults
@@ -485,11 +494,15 @@ class ZoomableView(QGraphicsView):
     def apply_icon_size(self) -> None:
         """Applies the icon size from settings to all overlay buttons."""
         from ui.settings_keys import ORG, APP, UI_ICON_SIZE
+
         s = QSettings(ORG, APP)
         try:
             from ui.ui_profile import _int as _to_int
         except Exception:
-            _to_int = lambda v, d=32: int(v) if v is not None else d  # type: ignore
+
+            def _to_int(v, d=32):
+                return int(v) if v is not None else d  # type: ignore
+
         size_val = _to_int(s.value(UI_ICON_SIZE), 32)
         icon_size: int = max(16, min(128, int(size_val)))
         button_size: int = max(28, icon_size + 4)
@@ -527,7 +540,9 @@ class ZoomableView(QGraphicsView):
         try:
             from ui.ui_profile import _bool as _to_bool
         except Exception:
-            _to_bool = lambda v, d=True: d if v is None else (v in [True, "true", "1"])  # type: ignore
+
+            def _to_bool(v, d=True):
+                return d if v is None else v in [True, "true", "1"]  # type: ignore
 
         def is_on(key: str, default: bool = True) -> bool:
             v = s.value(UI_MENU_VIS(MAIN_MENU, key))
@@ -583,7 +598,9 @@ class ZoomableView(QGraphicsView):
         try:
             from ui.ui_profile import _bool as _to_bool
         except Exception:
-            _to_bool = lambda v, d=True: d if v is None else (v in [True, "true", "1"])  # type: ignore
+
+            def _to_bool(v, d=True):
+                return d if v is None else v in [True, "true", "1"]  # type: ignore
 
         def is_on(key: str, default: bool = True) -> bool:
             v = s.value(UI_MENU_VIS(QUICK_MENU, key))
@@ -606,7 +623,9 @@ class ZoomableView(QGraphicsView):
         for key, btn in self.quick_buttons_map.items():
             btn.setVisible(is_on(key, defaults.get(key, True)))
         # Reorder
-        order = s.value(UI_MENU_ORDER(QUICK_MENU)) or list(self.quick_buttons_map.keys())
+        order = s.value(UI_MENU_ORDER(QUICK_MENU)) or list(
+            self.quick_buttons_map.keys()
+        )
         if isinstance(order, str):
             order = [k for k in order.split(",") if k]
         try:

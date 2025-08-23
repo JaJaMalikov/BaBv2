@@ -44,6 +44,18 @@ python macronotron.py
 - Le bouton/menu « Reset UI » ne supprime que les clés de disposition (geometry/*, layout/*). Vos préférences visuelles sont préservées.
 - En tests headless, évitez les boîtes de dialogue de fichiers et utilisez directement ui.scene.scene_io.export_scene/import_scene.
 
+## 🧪 Type checking (optional)
+
+- Run static typing locally to validate Protocol usage and catch mismatches:
+
+```bash
+mypy --config-file mypy.ini
+```
+
+- Notes:
+  - mypy.ini is configured to ignore missing PySide6 stubs.
+  - Type checking is non-blocking; use it as guidance when working on controllers and Protocols.
+
 ## 📄 Licence
 
 [The Unlicense](https://unlicense.org/) — libre de droit, libre d’usage, libre de ce que tu veux.

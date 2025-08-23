@@ -866,6 +866,7 @@ class SettingsDialog(QDialog):
         """Saves the current style parameters as a custom theme."""
         css = build_stylesheet(self._params_from_ui())
         from ui.settings_keys import ORG, APP, UI_CUSTOM_STYLESHEET, UI_THEME
+
         s = QSettings(ORG, APP)
         s.setValue(UI_CUSTOM_STYLESHEET, css)
         s.setValue(UI_THEME, "custom")
@@ -1067,11 +1068,15 @@ class SettingsDialog(QDialog):
         self.list_icons.clear()
         # Uniform grid for cleaner alignment
         from ui.settings_keys import ORG, APP, UI_ICON_SIZE, UI_ICON_OVERRIDE
+
         raw = QSettings(ORG, APP).value(UI_ICON_SIZE, 32)
         try:
             from ui.ui_profile import _int as _to_int
         except Exception:
-            _to_int = lambda v, d=32: int(v) if v is not None else d  # type: ignore
+
+            def _to_int(v, d=32):
+                return int(v) if v is not None else d  # type: ignore
+
         icon_h = max(16, min(128, int(_to_int(raw, 32))))
         cell_w = max(64, icon_h + 48)
         cell_h = max(64, icon_h + 32)
@@ -1106,6 +1111,7 @@ class SettingsDialog(QDialog):
         key = current.data(Qt.UserRole)
         self.lbl_key.setText(str(key))
         from ui.settings_keys import ORG, APP, UI_ICON_OVERRIDE
+
         s = QSettings(ORG, APP)
         self.lbl_path.setText(str(s.value(UI_ICON_OVERRIDE(key)) or ""))
 
@@ -1123,6 +1129,7 @@ class SettingsDialog(QDialog):
         if not path:
             return
         from ui.settings_keys import ORG, APP, UI_ICON_OVERRIDE
+
         s = QSettings(ORG, APP)
         s.setValue(UI_ICON_OVERRIDE(key), path)
         self.lbl_path.setText(path)
@@ -1136,6 +1143,7 @@ class SettingsDialog(QDialog):
             return
         key = item.data(Qt.UserRole)
         from ui.settings_keys import ORG, APP, UI_ICON_OVERRIDE
+
         s = QSettings(ORG, APP)
         s.remove(UI_ICON_OVERRIDE(key))
         self.lbl_path.setText("")
@@ -1145,6 +1153,7 @@ class SettingsDialog(QDialog):
     def _reset_all_icons(self) -> None:
         """Resets all custom icon files."""
         from ui.settings_keys import ORG, APP, UI_ICON_OVERRIDE_GROUP
+
         s = QSettings(ORG, APP)
         s.beginGroup(UI_ICON_OVERRIDE_GROUP)
         s.remove("")

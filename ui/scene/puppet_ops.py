@@ -9,9 +9,10 @@ from PySide6.QtCore import QPointF
 from PySide6.QtWidgets import QGraphicsItem
 from PySide6.QtSvg import QSvgRenderer
 
-from core.puppet_model import Puppet, PuppetMember, normalize_variants
-from core.puppet_piece import PuppetPiece
-from core.svg_loader import SvgLoader
+from core.puppet_model import Puppet, PuppetMember
+from ui.scene.puppet_piece import PuppetPiece
+from ui.scene.svg_loader import SvgLoader
+from ui.scene.scene_io import load_puppet_config
 
 if TYPE_CHECKING:
     from .scene_controller import MainWindowProtocol
@@ -28,33 +29,11 @@ class PuppetOps:
 
     def add_puppet(self, file_path: str, puppet_name: str) -> None:
         """Adds a puppet to the scene."""
-        puppet: Puppet = Puppet()
+        config = load_puppet_config(file_path)
+        puppet: Puppet = Puppet(config)
         loader: SvgLoader = SvgLoader(file_path)
         renderer: QSvgRenderer = loader.renderer
         self.win.object_manager.renderers[puppet_name] = renderer
-        # Optionnel: charger un fichier JSON de configuration à côté du SVG
-        # pour définir des variantes spécifiques au pantin (sans toucher au fichier global).
-        try:
-            from pathlib import Path
-
-            svg_path = Path(file_path)
-            candidates = [
-                svg_path.with_suffix(".json"),
-                svg_path.with_name(f"conf_{svg_path.stem}.json"),
-            ]
-            for sidecar in candidates:
-                if sidecar.exists():
-                    import json
-
-                    with sidecar.open("r", encoding="utf-8") as fh:
-                        data = json.load(fh)
-                    if isinstance(data, dict):
-                        vmap, vz = normalize_variants(data.get("variants", {}))
-                        puppet.variants = vmap
-                        puppet.variant_z = vz
-                    break
-        except Exception:  # pylint: disable=broad-except
-            logging.exception("Sidecar variants loading failed for %s", file_path)
         puppet.build_from_svg(loader)
         self.scene_service.add_puppet(puppet_name, puppet)
         self.win.object_manager.puppet_scales[puppet_name] = 1.0

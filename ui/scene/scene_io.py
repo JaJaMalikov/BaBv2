@@ -30,6 +30,50 @@ if TYPE_CHECKING:
 ALLOW_FILE_DIALOGS: bool = True
 
 
+def load_puppet_config(svg_path: str) -> Dict[str, Any]:
+    """Load puppet configuration dict used by core.puppet_model.Puppet.
+
+    Sources:
+    - Base config at core/puppet_config.json (ships with repository).
+    - Optional sidecar JSON next to the provided SVG path. If present and
+      it contains a "variants" mapping, it overrides the base "variants".
+
+    Returns a dict with keys: parent, pivot, z_order, and optional variants.
+    Fails gracefully by logging and returning an empty or partial dict.
+    """
+    config: Dict[str, Any] = {}
+    try:
+        repo_root = Path(__file__).resolve().parents[2]
+        base_cfg = repo_root / "core" / "puppet_config.json"
+        if base_cfg.exists():
+            with base_cfg.open("r", encoding="utf-8") as fh:
+                config = json.load(fh)
+        else:
+            logging.error("Base puppet config not found at %s", base_cfg)
+    except Exception as e:  # pylint: disable=broad-except
+        logging.error("Failed to load base puppet config: %s", e)
+        config = {}
+
+    # Optional sidecar next to the SVG (overrides variants only)
+    try:
+        svg_p = Path(svg_path)
+        candidates = [
+            svg_p.with_suffix(".json"),
+            svg_p.with_name(f"conf_{svg_p.stem}.json"),
+        ]
+        for sidecar in candidates:
+            if sidecar.exists():
+                with sidecar.open("r", encoding="utf-8") as fh:
+                    data = json.load(fh)
+                if isinstance(data, dict) and isinstance(data.get("variants"), dict):
+                    config["variants"] = data["variants"]
+                break
+    except Exception:  # pylint: disable=broad-except
+        logging.exception("Sidecar variants loading failed for %s", svg_path)
+
+    return config
+
+
 def save_scene(win: "MainWindow") -> None:
     """Open a dialog to save the current scene to a JSON file.
 

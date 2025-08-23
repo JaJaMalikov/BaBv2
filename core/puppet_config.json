@@ -26,7 +26,8 @@
     "genou_gauche": "cuisse_gauche",
     "tibia_gauche": "cuisse_gauche",
     "cheville_gauche": "tibia_gauche",
-    "pied_gauche": "cheville_gauche"
+    "pied_gauche": "cheville_gauche",
+    "bouche": "tete"
   },
   "pivot": {
     "tete": "cou",
@@ -41,7 +42,8 @@
     "main_droite": "poignet_droite",
     "main_gauche": "poignet_gauche",
     "pied_droite": "cheville_droite",
-    "pied_gauche": "cheville_gauche"
+    "pied_gauche": "cheville_gauche",
+    "bouche": null
   },
   "z_order": {
     "torse": 0,
@@ -66,6 +68,7 @@
     "cuisse_gauche": -1,
     "genou_gauche": 0,
     "tibia_gauche": 1,
-    "pied_gauche": 2
+    "pied_gauche": 2,
+    "bouche": 1
   }
 }

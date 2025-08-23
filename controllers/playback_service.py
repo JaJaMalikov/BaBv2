@@ -5,12 +5,12 @@ from __future__ import annotations
 Gère le timer Qt, la navigation entre frames et un presse-papiers
 simple pour les keyframes."""
 
-from copy import deepcopy
 from typing import Optional
 
 from PySide6.QtCore import QObject, QTimer, Signal
 
 from core.scene_model import SceneModel
+from core.frame_math import compute_next_playback_frame
 
 
 class PlaybackService(QObject):
@@ -58,18 +58,17 @@ class PlaybackService(QObject):
 
     # --- Navigation --------------------------------------------------------
     def next_frame(self) -> None:
-        """Avance d'une frame en tenant compte du loop."""
+        """Avance d'une frame en tenant compte du loop (centralisé)."""
         current = self.scene_model.current_frame
         start, end = self.scene_model.start_frame, self.scene_model.end_frame
-        new_frame = current + 1
-        if new_frame > end:
-            if self.loop_enabled:
-                new_frame = start
-            else:
-                self.pause_animation()
-                self.current_frame_changed.emit(current)
-                return
-        self.go_to_frame(new_frame)
+        next_index, should_stop = compute_next_playback_frame(
+            int(current), int(start), int(end), bool(self.loop_enabled)
+        )
+        if should_stop:
+            self.pause_animation()
+            self.current_frame_changed.emit(int(current))
+            return
+        self.go_to_frame(int(next_index))
 
     def go_to_frame(self, frame_index: int) -> None:
         """Déplace le modèle vers ``frame_index`` et émet les signaux adéquats."""
@@ -91,31 +90,18 @@ class PlaybackService(QObject):
 
     # --- Presse-papiers ----------------------------------------------------
     def copy_keyframe(self, frame_index: int) -> None:
-        """Copie l'état exact d'une keyframe."""
-        kf = self.scene_model.keyframes.get(frame_index)
-        if not kf:
-            return
-        try:
-            self._kf_clipboard = {
-                "objects": deepcopy(kf.objects),
-                "puppets": deepcopy(kf.puppets),
-                "source_index": int(frame_index),
-            }
-        except Exception:
-            self._kf_clipboard = {
-                "objects": dict(kf.objects),
-                "puppets": dict(kf.puppets),
-                "source_index": int(frame_index),
-            }
+        """Copie l'état exact d'une keyframe (centralisé)."""
+        from controllers import keyframe_service as kfs
+
+        self._kf_clipboard = kfs.copy_keyframe(self.scene_model, int(frame_index))
 
     def paste_keyframe(self, frame_index: int) -> None:
-        """Colle l'état du presse-papiers à ``frame_index``."""
-        if not self._kf_clipboard:
+        """Colle l'état du presse-papiers à ``frame_index`` (centralisé)."""
+        from controllers import keyframe_service as kfs
+
+        if not kfs.paste_keyframe(
+            self.scene_model, self._kf_clipboard, int(frame_index)
+        ):
             return
-        state = {
-            "objects": self._kf_clipboard.get("objects", {}),
-            "puppets": self._kf_clipboard.get("puppets", {}),
-        }
-        self.scene_model.add_keyframe(frame_index, state)
-        self.go_to_frame(frame_index)
+        self.go_to_frame(int(frame_index))
         self.snapshot_requested.emit(int(frame_index))

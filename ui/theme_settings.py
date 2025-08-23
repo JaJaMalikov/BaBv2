@@ -36,7 +36,9 @@ THEME_PARAMS: List[ThemeParam] = [
     ThemeParam("panel_border", "border_edit", "#D0D5DD"),
     ThemeParam("header_bg", "header_bg_edit", ""),
     ThemeParam("header_text", "header_text_edit", "#1A202C", fallback="text_color"),
-    ThemeParam("header_border", "header_border_edit", "#D0D5DD", fallback="panel_border"),
+    ThemeParam(
+        "header_border", "header_border_edit", "#D0D5DD", fallback="panel_border"
+    ),
     ThemeParam("group_title_color", "group_edit", "#2D3748"),
     ThemeParam("tooltip_bg", "tooltip_bg_edit", "#F7F8FC", fallback="panel_bg"),
     ThemeParam("tooltip_text", "tooltip_text_edit", "#1A202C", fallback="text_color"),
@@ -50,7 +52,10 @@ THEME_PARAMS: List[ThemeParam] = [
     ThemeParam("input_text", "input_text_edit", "#1A202C", fallback="text_color"),
     ThemeParam("input_focus_bg", "input_focus_bg_edit", "#FFFFFF"),
     ThemeParam(
-        "input_focus_border", "input_focus_border_edit", "#E53E3E", fallback="accent_color"
+        "input_focus_border",
+        "input_focus_border_edit",
+        "#E53E3E",
+        fallback="accent_color",
     ),
     ThemeParam("list_hover_bg", "list_hover_edit", "#E2E8F0"),
     ThemeParam(
@@ -108,7 +113,9 @@ class ThemeSettings:
         ensuring sanitation even when styles are not yet applied.
         """
         sanitized: Dict[str, Any] = dict(DEFAULT_CUSTOM_PARAMS)
-        sanitized.update({k: v for k, v in params.items() if k in DEFAULT_CUSTOM_PARAMS})
+        sanitized.update(
+            {k: v for k, v in params.items() if k in DEFAULT_CUSTOM_PARAMS}
+        )
 
         # Validate colors
         for k, dv in DEFAULT_CUSTOM_PARAMS.items():
@@ -144,6 +151,7 @@ class ThemeSettings:
         """Load theme settings from QSettings, falling back to defaults."""
         s = s or QSettings(cls.ORG, cls.APP)
         from ui.settings_keys import UI_THEME, UI_FONT_FAMILY, UI_THEME_FILE
+
         preset = str(s.value(UI_THEME, "light")).lower()
         font_family = str(s.value(UI_FONT_FAMILY) or "Poppins")
         theme_file = s.value(UI_THEME_FILE)

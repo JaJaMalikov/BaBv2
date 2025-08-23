@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict
 
-from core.scene_model import Keyframe
 from ui import selection_sync
 from ui.scene import scene_io
 from ui.contracts import AppWindowContract
@@ -41,9 +39,7 @@ class AppController:
             self.win._kf_copy_sc.activated.connect(self.copy_current_keyframe)
             self.win._kf_paste_sc.activated.connect(self.paste_current_keyframe)
         except (AttributeError, RuntimeError) as e:
-            logger.warning(
-                "Failed to install keyframe shortcuts: %s", e, exc_info=True
-            )
+            logger.warning("Failed to install keyframe shortcuts: %s", e, exc_info=True)
 
     def copy_current_keyframe(self) -> None:
         """Copie le keyframe courant via le `PlaybackController`."""
@@ -69,23 +65,19 @@ class AppController:
         self.win.timeline_widget.add_keyframe_marker(frame_index)
 
     def update_scene_from_model(self) -> None:
-        """Applique l'état du modèle à la scène graphique."""
-        index: int = self.win.scene_model.current_frame
-        keyframes: Dict[int, Keyframe] = self.win.scene_model.keyframes
-        if not keyframes:
-            return
-        graphics_items: Dict[str, Any] = self.win.object_view_adapter.graphics_items
+        """Applique l'état du modèle à la scène graphique via un point d'entrée unique."""
+        from controllers import state_applier
+
         logging.debug(
             "update_scene_from_model: frame=%s, keyframes=%s",
-            index,
-            list(keyframes.keys()),
+            self.win.scene_model.current_frame,
+            (
+                list(self.win.scene_model.keyframes.keys())
+                if self.win.scene_model.keyframes
+                else []
+            ),
         )
-        self.win.scene_controller.apply_puppet_states(
-            graphics_items, keyframes, index
-        )
-        self.win.scene_controller.apply_object_states(
-            graphics_items, keyframes, index
-        )
+        state_applier.apply_frame(self.win)
 
     # --- Synchronisation scène/inspecteur ------------------------------
     def select_object_in_inspector(self, name: str) -> None:

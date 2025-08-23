@@ -27,7 +27,5 @@ def load(win: Any, org: str = "JaJa", app: str = "Macronotron") -> None:
                 else:
                     action.setShortcut(ks)
             except Exception as e:
-                logging.warning(
-                    "Failed to apply shortcut for %s: %r (%s)", key, seq, e
-                )
+                logging.warning("Failed to apply shortcut for %s: %r (%s)", key, seq, e)
     s.endGroup()

@@ -40,11 +40,15 @@ def validate_settings(data: Any) -> bool:
             return False
     if "scene_width" in data:
         if data["scene_width"] <= 0:
-            logging.error("settings: scene_width must be > 0, got %r", data["scene_width"])
+            logging.error(
+                "settings: scene_width must be > 0, got %r", data["scene_width"]
+            )
             return False
     if "scene_height" in data:
         if data["scene_height"] <= 0:
-            logging.error("settings: scene_height must be > 0, got %r", data["scene_height"])
+            logging.error(
+                "settings: scene_height must be > 0, got %r", data["scene_height"]
+            )
             return False
     if "start_frame" in data and "end_frame" in data:
         if data["start_frame"] > data["end_frame"]:

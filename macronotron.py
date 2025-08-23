@@ -8,7 +8,7 @@ from PySide6.QtCore import QCoreApplication
 from PySide6.QtWidgets import QApplication
 from ui.main_window import MainWindow
 from ui.styles import apply_stylesheet
-
+from ui.settings_manager import SettingsManager
 
 logger = logging.getLogger(__name__)
 
@@ -38,11 +38,11 @@ def main(argv: List[str]) -> int:
         # Ensure QSettings scope is established
         create_app(argv)
         try:
-            from ui.settings_manager import SettingsManager
-
             sm = SettingsManager(win=object())
             sm.clear()
-            logger.info("Macronotron: cleared UI layout (geometry/layout keys) in QSettings.")
+            logger.info(
+                "Macronotron: cleared UI layout (geometry/layout keys) in QSettings."
+            )
             return 0
         except Exception:  # log stack trace for debugging
             logger.exception("Macronotron: failed to reset layout")

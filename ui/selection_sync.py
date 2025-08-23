@@ -38,7 +38,12 @@ def scene_selection_changed(win: Any) -> None:
     scene = getattr(win, "scene", None)
     if scene is None or not hasattr(scene, "selectedItems"):
         return
-    selected = scene.selectedItems() or []
+    try:
+        selected = scene.selectedItems() or []
+    except RuntimeError:
+        # Happens during teardown when the underlying C++ scene is deleted
+        logger.debug("Scene deleted during teardown; skipping selection sync")
+        return
     if not selected:
         return
     item = selected[0]

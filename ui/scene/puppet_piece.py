@@ -1,4 +1,9 @@
-"""Graphical QGraphicsItems representing puppet pieces and handles."""
+"""Graphical QGraphicsItems representing puppet pieces and handles.
+
+Moved from core/ to ui/scene/ to enforce zero-Qt policy in core.
+"""
+
+from __future__ import annotations
 
 from typing import Optional, Tuple, List, Any
 import logging
@@ -15,7 +20,15 @@ from PySide6.QtGui import QBrush, QPen, QColor, QTransform
 from PySide6.QtSvg import QSvgRenderer  # Added for type hinting
 
 # --- Constantes ---
-PIVOT_KEYWORDS = ["coude", "genou", "hanche", "epaule", "cheville", "poignet", "cou"]
+PIVOT_KEYWORDS = [
+    "coude",
+    "genou",
+    "hanche",
+    "epaule",
+    "cheville",
+    "poignet",
+    "cou",
+]
 HANDLE_Z_VALUE = 1000
 PIVOT_Z_VALUE = 999
 

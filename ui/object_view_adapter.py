@@ -10,7 +10,7 @@ from PySide6.QtCore import QPointF
 from PySide6.QtWidgets import QGraphicsItem, QGraphicsScene
 
 from core.scene_model import SceneModel, SceneObject
-from core.puppet_piece import PuppetPiece
+from ui.scene.puppet_piece import PuppetPiece
 from .object_item import ObjectPixmapItem, ObjectSvgItem, LightItem
 
 if TYPE_CHECKING:  # pragma: no cover - hints only

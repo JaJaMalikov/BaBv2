@@ -38,8 +38,12 @@ def build_actions(win: Any) -> None:
     # Settings icon: configurable via key 'settings'
     win.settings_action = QAction(get_icon("settings"), "Paramètres", win)
 
-    win.reset_scene_action = QAction(get_icon("new_file"), "Réinitialiser la scène", win)
-    win.reset_ui_action = QAction(get_icon("reset_ui"), "Réinitialiser l'interface", win)
+    win.reset_scene_action = QAction(
+        get_icon("new_file"), "Réinitialiser la scène", win
+    )
+    win.reset_ui_action = QAction(
+        get_icon("reset_ui"), "Réinitialiser l'interface", win
+    )
 
     # Overlay toggles
     win.toggle_library_action = QAction(get_icon("library"), "Bibliothèque", win)
@@ -80,6 +84,7 @@ def build_actions(win: Any) -> None:
 
     # Load persisted shortcuts
     from ui.settings_keys import ORG, APP, SHORTCUT_KEY
+
     s = QSettings(ORG, APP)
     for key, action in win.shortcuts.items():
         seq = s.value(SHORTCUT_KEY(key))
@@ -87,7 +92,9 @@ def build_actions(win: Any) -> None:
             try:
                 ks = QKeySequence(seq)
                 if ks.isEmpty():
-                    logger.warning("Ignoring invalid shortcut sequence for %s: %r", key, seq)
+                    logger.warning(
+                        "Ignoring invalid shortcut sequence for %s: %r", key, seq
+                    )
                 else:
                     action.setShortcut(ks)
             except Exception as e:
