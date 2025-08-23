@@ -961,23 +961,7 @@ class SettingsDialog(QDialog):
 
     def _init_icon_lists(self) -> None:
         """Initializes the icon lists for the overlay builder."""
-        from ui.icons import (
-            get_icon,
-            icon_background,
-            icon_fit,
-            icon_inspector,
-            icon_library,
-            icon_minus,
-            icon_onion,
-            icon_open,
-            icon_plus,
-            icon_reset_scene,
-            icon_reset_ui,
-            icon_rotate,
-            icon_save,
-            icon_scene_size,
-            icon_timeline,
-        )
+        from ui.icons import get_icon
 
         # Configure lists to show icons horizontally with wrapping
         for lw in (
@@ -997,25 +981,25 @@ class SettingsDialog(QDialog):
             )
 
         self._main_specs = [
-            ("save", "Sauver", icon_save()),
-            ("load", "Charger", icon_open()),
-            ("scene_size", "Scène", icon_scene_size()),
-            ("background", "Fond", icon_background()),
+            ("save", "Sauver", get_icon("save")),
+            ("load", "Charger", get_icon("open")),
+            ("scene_size", "Scène", get_icon("scene_size")),
+            ("background", "Fond", get_icon("background")),
             ("add_light", "Lumière", get_icon("plus")),
             ("settings", "Paramètres", get_icon("layers")),
-            ("reset_scene", "Reset scène", icon_reset_scene()),
-            ("reset_ui", "Reset UI", icon_reset_ui()),
-            ("toggle_library", "Lib", icon_library()),
-            ("toggle_inspector", "Insp", icon_inspector()),
-            ("toggle_timeline", "Time", icon_timeline()),
+            ("reset_scene", "Reset scène", get_icon("new_file")),
+            ("reset_ui", "Reset UI", get_icon("reset_ui")),
+            ("toggle_library", "Lib", get_icon("library")),
+            ("toggle_inspector", "Insp", get_icon("inspector")),
+            ("toggle_timeline", "Time", get_icon("timeline")),
             ("toggle_custom", "Custom", get_icon("layers")),
         ]
         self._quick_specs = [
-            ("zoom_out", "-", icon_minus()),
-            ("zoom_in", "+", icon_plus()),
-            ("fit", "Fit", icon_fit()),
-            ("handles", "Rot", icon_rotate()),
-            ("onion", "Onion", icon_onion()),
+            ("zoom_out", "-", get_icon("minus")),
+            ("zoom_in", "+", get_icon("plus")),
+            ("fit", "Fit", get_icon("fit")),
+            ("handles", "Rot", get_icon("rotate")),
+            ("onion", "Onion", get_icon("onion")),
         ]
         # Custom can use both
         self._custom_specs = self._main_specs + self._quick_specs
@@ -1175,38 +1159,28 @@ class SettingsDialog(QDialog):
             import ui.icons as app_icons
 
             app_icons.clear_cache()
-            from ui.icons import (
-                icon_background,
-                icon_inspector,
-                icon_library,
-                icon_open,
-                icon_reset_scene,
-                icon_reset_ui,
-                icon_save,
-                icon_scene_size,
-                icon_timeline,
-            )
+            from ui.icons import get_icon
 
             mw = self.parent()
             # Actions
             if hasattr(mw, "save_action"):
-                mw.save_action.setIcon(icon_save())
+                mw.save_action.setIcon(get_icon("save"))
             if hasattr(mw, "load_action"):
-                mw.load_action.setIcon(icon_open())
+                mw.load_action.setIcon(get_icon("open"))
             if hasattr(mw, "scene_size_action"):
-                mw.scene_size_action.setIcon(icon_scene_size())
+                mw.scene_size_action.setIcon(get_icon("scene_size"))
             if hasattr(mw, "background_action"):
-                mw.background_action.setIcon(icon_background())
+                mw.background_action.setIcon(get_icon("background"))
             if hasattr(mw, "reset_scene_action"):
-                mw.reset_scene_action.setIcon(icon_reset_scene())
+                mw.reset_scene_action.setIcon(get_icon("new_file"))
             if hasattr(mw, "reset_ui_action"):
-                mw.reset_ui_action.setIcon(icon_reset_ui())
+                mw.reset_ui_action.setIcon(get_icon("reset_ui"))
             if hasattr(mw, "toggle_library_action"):
-                mw.toggle_library_action.setIcon(icon_library())
+                mw.toggle_library_action.setIcon(get_icon("library"))
             if hasattr(mw, "toggle_inspector_action"):
-                mw.toggle_inspector_action.setIcon(icon_inspector())
+                mw.toggle_inspector_action.setIcon(get_icon("inspector"))
             if hasattr(mw, "timeline_dock"):
-                mw.timeline_dock.toggleViewAction().setIcon(icon_timeline())
+                mw.timeline_dock.toggleViewAction().setIcon(get_icon("timeline"))
             # Overlay buttons
             if hasattr(mw, "view"):
                 mw.view.refresh_overlay_icons(mw)

@@ -8,18 +8,7 @@ from typing import Any
 from PySide6.QtCore import QSettings
 from PySide6.QtGui import QAction, QKeySequence
 
-from ui.icons import (
-    get_icon,
-    icon_background,
-    icon_inspector,
-    icon_library,
-    icon_open,
-    icon_reset_scene,
-    icon_reset_ui,
-    icon_save,
-    icon_scene_size,
-    icon_timeline,
-)
+from ui.icons import get_icon
 from ui.views.inspector import actions as inspector_actions
 from ui.views.library import actions as library_actions
 from ui.scene import actions as scene_actions
@@ -39,28 +28,28 @@ def build_actions(win: Any) -> None:
     Args:
         win: The MainWindow instance.
     """
-    win.save_action = QAction(icon_save(), "Sauvegarder", win)
+    win.save_action = QAction(get_icon("save"), "Sauvegarder", win)
     win.save_action.setShortcut("Ctrl+S")
-    win.load_action = QAction(icon_open(), "Charger", win)
+    win.load_action = QAction(get_icon("open"), "Charger", win)
     win.load_action.setShortcut("Ctrl+O")
-    win.scene_size_action = QAction(icon_scene_size(), "Taille Scène", win)
-    win.background_action = QAction(icon_background(), "Image de fond", win)
+    win.scene_size_action = QAction(get_icon("scene_size"), "Taille Scène", win)
+    win.background_action = QAction(get_icon("background"), "Image de fond", win)
     win.add_light_action = QAction(get_icon("plus"), "Ajouter Projecteur", win)
     # Settings icon: configurable via key 'settings'
     win.settings_action = QAction(get_icon("settings"), "Paramètres", win)
 
-    win.reset_scene_action = QAction(icon_reset_scene(), "Réinitialiser la scène", win)
-    win.reset_ui_action = QAction(icon_reset_ui(), "Réinitialiser l'interface", win)
+    win.reset_scene_action = QAction(get_icon("new_file"), "Réinitialiser la scène", win)
+    win.reset_ui_action = QAction(get_icon("reset_ui"), "Réinitialiser l'interface", win)
 
     # Overlay toggles
-    win.toggle_library_action = QAction(icon_library(), "Bibliothèque", win)
+    win.toggle_library_action = QAction(get_icon("library"), "Bibliothèque", win)
     win.toggle_library_action.setCheckable(True)
     win.toggle_library_action.setChecked(win.library_overlay.isVisible())
     win.toggle_library_action.toggled.connect(
         lambda v: library_actions.set_library_overlay_visible(win, v)
     )
 
-    win.toggle_inspector_action = QAction(icon_inspector(), "Inspecteur", win)
+    win.toggle_inspector_action = QAction(get_icon("inspector"), "Inspecteur", win)
     win.toggle_inspector_action.setCheckable(True)
     win.toggle_inspector_action.setChecked(win.inspector_overlay.isVisible())
     win.toggle_inspector_action.toggled.connect(
@@ -68,7 +57,7 @@ def build_actions(win: Any) -> None:
     )
 
     # Timeline toggle (dock)
-    win.timeline_dock.toggleViewAction().setIcon(icon_timeline())
+    win.timeline_dock.toggleViewAction().setIcon(get_icon("timeline"))
 
     # Custom overlay toggle: configurable via key 'custom' (falls back to 'layers' if missing)
     win.toggle_custom_action = QAction(get_icon("custom"), "Custom", win)

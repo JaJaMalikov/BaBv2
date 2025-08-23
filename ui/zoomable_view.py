@@ -29,16 +29,7 @@ from PySide6.QtWidgets import (
 )
 
 from ui.draggable_widget import DraggableOverlay
-from ui.icons import (
-    icon_close_menu,
-    icon_close_menu_inv,
-    icon_fit,
-    icon_minus,
-    icon_onion,
-    icon_open_menu,
-    icon_plus,
-    icon_rotate,
-)
+from ui.icons import get_icon
 from ui.views.library.library_widget import LIB_MIME
 from ui.utils import make_tool_button
 from ui.settings_keys import (
@@ -98,7 +89,7 @@ class ZoomableView(QGraphicsView):
 
         self.collapse_btn: QToolButton = make_tool_button(
             self._overlay,
-            icon=icon_close_menu(),
+            icon=get_icon("close_menu"),
             tooltip="Replier/Déplier le panneau",
             checkable=True,
             icon_size=icon_size,
@@ -110,7 +101,7 @@ class ZoomableView(QGraphicsView):
 
         self.zoom_out_btn: QToolButton = make_tool_button(
             self._overlay,
-            icon=icon_minus(),
+            icon=get_icon("minus"),
             tooltip="Zoom arrière (Ctrl+Molette)",
             callback=lambda: self.zoom_requested.emit(0.8),
             icon_size=icon_size,
@@ -118,7 +109,7 @@ class ZoomableView(QGraphicsView):
         )
         self.zoom_in_btn: QToolButton = make_tool_button(
             self._overlay,
-            icon=icon_plus(),
+            icon=get_icon("plus"),
             tooltip="Zoom avant (Ctrl+Molette)",
             callback=lambda: self.zoom_requested.emit(1.25),
             icon_size=icon_size,
@@ -126,7 +117,7 @@ class ZoomableView(QGraphicsView):
         )
         self.fit_btn: QToolButton = make_tool_button(
             self._overlay,
-            icon=icon_fit(),
+            icon=get_icon("fit"),
             tooltip="Ajuster à la vue",
             callback=self.fit_requested.emit,
             icon_size=icon_size,
@@ -135,7 +126,7 @@ class ZoomableView(QGraphicsView):
 
         self.handles_btn: QToolButton = make_tool_button(
             self._overlay,
-            icon=icon_rotate(),
+            icon=get_icon("rotate"),
             tooltip="Afficher/Masquer les poignées",
             checkable=True,
             icon_size=icon_size,
@@ -145,7 +136,7 @@ class ZoomableView(QGraphicsView):
 
         self.onion_btn: QToolButton = make_tool_button(
             self._overlay,
-            icon=icon_onion(),
+            icon=get_icon("onion"),
             tooltip="Onion skin (fantômes)",
             checkable=True,
             icon_size=icon_size,
@@ -189,7 +180,7 @@ class ZoomableView(QGraphicsView):
 
         self.main_collapse_btn: QToolButton = make_tool_button(
             self._main_tools_overlay,
-            icon=icon_close_menu_inv(),
+            icon=get_icon("close_menu_inv"),
             checkable=True,
             icon_size=icon_size,
             button_size=button_size,
@@ -405,9 +396,13 @@ class ZoomableView(QGraphicsView):
 
         # Determine which icon to use for the collapse button
         if collapse_btn is getattr(self, "main_collapse_btn", None):
-            collapse_btn.setIcon(icon_close_menu_inv() if checked else icon_open_menu())
+            collapse_btn.setIcon(
+                get_icon("close_menu_inv") if checked else get_icon("open_menu")
+            )
         else:
-            collapse_btn.setIcon(icon_close_menu() if checked else icon_open_menu())
+            collapse_btn.setIcon(
+                get_icon("close_menu") if checked else get_icon("open_menu")
+            )
 
         # Hide/show the tool buttons. When expanding, respect configured visibility/order.
         if checked:
@@ -472,11 +467,11 @@ class ZoomableView(QGraphicsView):
         """
         try:
             # Left overlay buttons
-            self.zoom_out_btn.setIcon(icon_minus())
-            self.zoom_in_btn.setIcon(icon_plus())
-            self.fit_btn.setIcon(icon_fit())
-            self.handles_btn.setIcon(icon_rotate())
-            self.onion_btn.setIcon(icon_onion())
+            self.zoom_out_btn.setIcon(get_icon("minus"))
+            self.zoom_in_btn.setIcon(get_icon("plus"))
+            self.fit_btn.setIcon(get_icon("fit"))
+            self.handles_btn.setIcon(get_icon("rotate"))
+            self.onion_btn.setIcon(get_icon("onion"))
             # Collapse icons respect state
             self.toggle_overlay_collapse(self.collapse_btn.isChecked())
 

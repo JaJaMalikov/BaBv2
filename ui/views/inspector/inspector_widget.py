@@ -25,7 +25,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon, QColor
 
-from ui.icons import icon_delete, icon_duplicate, icon_link, icon_link_off
+from ui.icons import get_icon
 from ui.object_item import LightItem
 
 
@@ -53,17 +53,17 @@ class InspectorWidget(QWidget):
         self.attach_puppet_combo = QComboBox()
         self.attach_member_combo = QComboBox()
         self.attach_btn = QToolButton()
-        self.attach_btn.setIcon(icon_link())
+        self.attach_btn.setIcon(get_icon("link"))
         self.attach_btn.setToolTip("Lier l'objet au membre")
         self.detach_btn = QToolButton()
-        self.detach_btn.setIcon(icon_link_off())
+        self.detach_btn.setIcon(get_icon("link_off"))
         self.detach_btn.setToolTip("Détacher l'objet")
 
         self.duplicate_btn = QToolButton()
-        self.duplicate_btn.setIcon(icon_duplicate())
+        self.duplicate_btn.setIcon(get_icon("duplicate"))
         self.duplicate_btn.setToolTip("Dupliquer")
         self.delete_btn = QToolButton()
-        self.delete_btn.setIcon(icon_delete())
+        self.delete_btn.setIcon(get_icon("delete"))
         self.delete_btn.setToolTip("Supprimer")
 
         # Light object properties
@@ -295,7 +295,7 @@ class InspectorWidget(QWidget):
             # Small visual indicator if attached at current frame
             pu, me = self._attached_state_for_frame(name)
             if pu and me:
-                item.setIcon(icon_link())
+                item.setIcon(get_icon("link"))
             self.list_widget.addItem(item)
         self._refresh_attach_puppet_combo()
         # Ensure icons reflect current frame state
@@ -600,7 +600,7 @@ class InspectorWidget(QWidget):
                 continue
             pu, me = self._attached_state_for_frame(nm)
             if pu and me:
-                it.setIcon(icon_link())
+                it.setIcon(get_icon("link"))
             else:
                 # Clear icon to keep list clean when not attached
                 it.setIcon(QIcon())

@@ -40,6 +40,8 @@ Audience: Advanced Python/PySide6 developers working on this repository. Focus o
 
 - Icons
   - Default icons live in assets/icons/*.svg; dynamic coloring is applied by ui/icons.py based on QSettings icon colors.
+  - Retrieve icons via ``ui.icons.get_icon("name")``. Legacy ``icon_*`` helpers are
+    deprecated and resolved through ``LEGACY_ICON_ALIASES`` for backward compatibility.
   - Override search path: ui/icon_dir. Per-icon override: ui/icon_override/{name} (supports .svg and bitmap). Fallback mapping exists (e.g., custom -> layers, settings -> layers).
   - When adding icons, stick to simple path-based SVGs so fill substitution works; or provide a flat bitmap fallback.
 
